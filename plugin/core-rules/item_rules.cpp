@@ -30,6 +30,7 @@
 #include "log.h"
 #include "hot_log.h"
 
+#include <D2RLPlugin/data_tables.h>
 #include <D2RLPlugin/mutations.h>
 #include <D2RLPlugin/threads.h>
 
@@ -285,6 +286,31 @@ std::atomic<uint32_t> g_ethReads {0};
 std::atomic<uint32_t> g_missingHpRefreshes {0};
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::ThreadService* g_threads = nullptr;
+const D2RL::DataTableService* g_tables = nullptr;
+std::atomic<uint32_t> g_statRows[4] {};  // itemstatcost rows per data flag (the bank, as cube_rules reads it); 0 = unread
+
+// Game thread. PD2's stats past D2R's 368 exist only in the RotW bank. A Classic or LoD character reads the base bank,
+// and a stat id past it fails its extended save ("encoding-error=yes", #1825), so such a unit never gets one.
+// shortcut: the count is read once per bank; tables reload only at game start, so it holds.
+auto InBank(Unit* unit, uint32_t stat) noexcept -> bool {
+	const uint32_t flag = d2r::api.unitDataFlag(unit);
+	if (g_tables == nullptr || flag >= std::size(g_statRows)) {
+		return false;
+	}
+	uint32_t rows = g_statRows[flag].load(std::memory_order_relaxed);
+	if (rows == 0) {
+		D2RL::DataTables::TableView view {.structSize = D2RL::DataTables::TableViewSize};
+		if (g_tables->getTable(g_context, static_cast<D2RL::DataTables::Bank>(flag), D2RL::DataTables::TableId::ItemStatCost,
+		                       &view) != D2RL::DataTables::Result::Success) {
+			return false;
+		}
+		rows = view.rowCount;
+		g_statRows[flag].store(rows, std::memory_order_relaxed);
+		plog::Info("op bases: data flag %u reads %u itemstatcost rows%s", flag, rows,
+		           rows <= StatEquippedEth ? ": no equipped_eth or missing_hp there" : "");
+	}
+	return stat < rows;
+}
 
 // UI thread: the same value on the client's copy of the player, whose tooltips read it (the server never sends it)
 void MirrorOpBase(const D2RL::PluginContext*, void* user) noexcept {
@@ -362,7 +388,7 @@ auto RecomputeOp(Unit* unit, uint32_t opStat) noexcept -> int32_t {
 // item change. Upgrade with an equip hook if one is found.
 auto RefreshOpBase(Unit* unit, uint32_t stat) noexcept -> void {
 	const int32_t type = At<int32_t>(unit, d2r::rva::UnitType);
-	if (type != 0 && type != 1) {
+	if ((type != 0 && type != 1) || !InBank(unit, stat)) {
 		return;
 	}
 	int32_t value = 0;
@@ -2191,6 +2217,11 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	if (context->QueryService(&g_threads) != D2RL::ServiceQueryResult::Success ||
 	    !D2RL::HasThreadServiceField(g_threads, D2RL::ThreadServiceRequiredSize)) {
 		g_threads = nullptr;  // the server stats still work; only the client's tooltips miss them
+	}
+	if (context->QueryService(&g_tables) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasDataTableServiceField(g_tables, D2RL::DataTableServiceRequiredSize)) {
+		g_tables = nullptr;  // InBank then refuses: no op bases at all rather than a save that fails
+		plog::Warn("op bases: no data table service, equipped_eth and missing_hp are off");
 	}
 	static constexpr uint8_t Empty[8] = {};
 	using PropertyFn = int32_t (*)(uint8_t, uint32_t, uint64_t, Unit*, const void*, uint8_t, uint16_t, uint16_t,
