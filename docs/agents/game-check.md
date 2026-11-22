@@ -69,6 +69,12 @@ Three lanes spent 5 minutes stuck without pad focus before they got it. These st
 - Spawned items can show stand-in art. Tell them apart by their tooltip after focusing, not by their icon.
 - If focus is still stuck after 5 minutes with no progress, stop and hand off. Do not try workarounds.
 
+## Items not to test with
+
+- **Retired items:** PD2's Uber Ancients map and sigils (`uba`, `ubaa` Sigil of Madawc, `ubab`, `ubac`), the Uber Tristram key `ubtm` and the Bone Fragment `rtmf` are unused in game. They don't drop, their recipes are off, and they stay only so old saves load ([deviations](../deviations.md), #1585). A cheat can still spawn them, but they don't split or stack like live items. Never use them to check stacks, splits or the stash: use a live material such as keys (`pk1`), essences (`tes`) or runes.
+- **Over-max spawns:** a stack spawned above the item's `maxstack` (tooltip "Quantity: 120 of 50") is refused by D2R's own merge rule. It proves nothing about our stacking code.
+- **Stash clicks:** harness clicks can't put items into a stash opened with `core-ui stash personal` or a `cheat ospawn 267` chest. Walk to the real town stash.
+
 ## Worktree hygiene
 
 Remove a worktree with the toolkit's `tools/worktree_remove.ps1 -Path <worktree> [-DeleteBranch]`: it unlinks every junction first and
