@@ -86,8 +86,8 @@ constexpr auto InMapView(int32_t x, int32_t y) noexcept -> bool {
 }
 
 // A map currency's cell, by its place in MapMaterials: two columns each side of the cube, rows 4-9, 12 left (columns
-// 0-1) and the rest right (8-9), so stone shows between them and the cube
-inline constexpr int32_t CurrencyCells = 24;
+// 0-1) and the rest right (8-9), so stone shows between them and the cube; a cell per currency, none spare (#1699)
+inline constexpr int32_t CurrencyCells = static_cast<int32_t>(std::size(MapMaterials));
 constexpr auto CurrencyCell(int32_t i) noexcept -> Cell {
 	if (i < 0 || i >= CurrencyCells) {
 		return {};
@@ -100,19 +100,9 @@ constexpr auto CurrencyCell(int32_t i) noexcept -> Cell {
 // rows 0 and 2 with stone between the blocks, the Tristram map and torch fragments over the cube, by place in Bossing
 inline constexpr Cell BossingCell[] = {{4, 4}, {0, 0}, {1, 0}, {2, 0}, {3, 0}, {6, 0}, {7, 0}, {8, 0}, {9, 0},
                                        {0, 2}, {1, 2}, {2, 2}, {3, 2}, {6, 2}, {7, 2}, {8, 2}, {9, 2}, {5, 4}};
-// The boss maps do not stack: a second one, or a part past a full stack, takes a spare cell beside the cube
+// The boss maps do not stack: a second one, or a part past a full stack, goes back to the inventory (the tab has no
+// spare cells, #1699)
 inline constexpr const char* BossingMaps[] = {"ubtm", "dcma", "rtma", "uba", "luca"};
-inline constexpr int32_t SpareCells = 20;
-constexpr auto SpareCell(int32_t i) noexcept -> Cell {
-	if (i < 0 || i >= SpareCells) {
-		return {};
-	}
-	const int32_t j = i % 10;
-	return {(i < 10 ? 0 : 8) + j % 2, 5 + j / 2};
-}
-constexpr auto InSpare(int32_t x, int32_t y) noexcept -> bool {
-	return y >= 5 && y < PageWidth && (x <= 1 || x >= 8) && x >= 0 && x < PageWidth;
-}
 
 // The tier (0-2) and the place in its list of a map code; {-1, -1} for the rest
 struct Base {
@@ -193,9 +183,6 @@ constexpr auto AtHome(const Home& home, uint32_t code, uint32_t shown, bool shar
 	    InMapView(x, y)) {
 		return true;
 	}
-	if (home.category == Category::Bossing && page == BossingPage && InSpare(x, y)) {
-		return true;
-	}
 	return page == home.page && (home.row < 0 || y == home.row) && (home.column < 0 || x == home.column);
 }
 
@@ -225,6 +212,7 @@ static_assert(HomeOf(Code("dcma")).category == Category::Bossing && HomeOf(Code(
 static_assert(HomeOf(Code("pk1")).category == Category::None);  // the RotW Materials tab keeps the keys
 static_assert(HomeOf(Code("r01")).category == Category::None);
 static_assert(CurrencyCell(11).x == 1 && CurrencyCell(11).y == 9 && CurrencyCell(12).x == 8 && CurrencyCell(12).y == 4);
+static_assert(CurrencyCell(21).x == 9 && CurrencyCell(21).y == 8 && CurrencyCell(22).x == -1);  // (8, 9), (9, 9) dropped
 static_assert(MapView(0).y == 2 && MapView(19).x == 9 && MapView(19).y == 3 && MapView(20).x == -1);
 static_assert(InMapView(5, 3) && !InMapView(5, 4) && !InMapView(1, 4) && !InMapView(4, 5));
 static_assert([] {  // no map cell is a currency cell
@@ -243,22 +231,19 @@ static_assert(AtHome(HomeOf(Code("imma")), Code("imma"), 0, true, 15, 0, 4));
 static_assert(!AtHome(HomeOf(Code("imma")), Code("imma"), 0, true, 15, 1, 4));
 static_assert(AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 19, 0, 0));
 static_assert(!AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 19, 4, 4));
-static_assert(AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 19, 9, 9));  // a spare cell
+static_assert(!AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, true, 19, 9, 9));  // no spare cell (#1699)
 static_assert(HomeOf(Code("cm2f")).column == 5 && HomeOf(Code("cm2f")).row == 4 && HomeOf(Code("lucd")).column == 9);
 static_assert(std::size(BossingCell) == std::size(Bossing));
 static_assert(!Stacks(Code("dcma")) && Stacks(Code("dcbl")) && Stacks(Code("imma")));
-static_assert([] {  // no two bossing items share a cell, and none is a spare cell
+static_assert([] {  // no two bossing items share a cell
 	for (size_t i = 0; i < std::size(BossingCell); ++i) {
 		for (size_t j = i + 1; j < std::size(BossingCell); ++j) {
 			if (BossingCell[i].x == BossingCell[j].x && BossingCell[i].y == BossingCell[j].y) {
 				return false;
 			}
 		}
-		if (InSpare(BossingCell[i].x, BossingCell[i].y)) {
-			return false;
-		}
 	}
-	return SpareCell(9).x == 1 && SpareCell(9).y == 9 && SpareCell(10).x == 8 && SpareCell(10).y == 5;
+	return true;
 }());
 static_assert(!AtHome(HomeOf(Code("dcma")), Code("dcma"), 0, false, 19, 4, 4));
 static_assert(FreeColumn(0) == 0 && FreeColumn(0b111) == 3 && FreeColumn(0x3ff) == -1);

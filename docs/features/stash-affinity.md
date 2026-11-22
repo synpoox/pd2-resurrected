@@ -10,8 +10,10 @@ The **Maps** and **Bossing** tabs sit on a row above D2R's five stash tabs; one 
   icons, the name on hover, a gold frame on the selected one). The selected base's maps sit in rows 2-3 above the Horadric
   Cube, which stays usable at its RotW-tab spot; the map currency fills fixed cells in two columns each side of the cube.
   Selecting a base swaps the last base's maps back to storage and this base's onto the tab.
-- **Bossing** looks like the RotW Materials tab: a fixed, spaced cell per boss item round the cube, spare cells in columns
-  0-1 and 8-9 for a second uber map.
+- **Bossing** looks like the RotW Materials tab: a fixed, spaced cell per boss item round the cube, stone beside the cube
+  (no spare cells, #1699): a second uber map, or a part past a full stack, goes back to the inventory. An item already
+  in one of the dropped cells (here, or the Maps tab's two bottom-right cells) is moved by the tidy pass to its own cell,
+  or to the inventory; with a full inventory it stays where it is, still shown and still takeable.
 - While Maps or Bossing is up, the stock page arrows are hidden, so the page stays put; a stock tab returns to D2R's tabs.
 
 core-ui's `tabs` part (`stash_tabs.cpp`) runs the buttons; the widgets are in `bankexpansionlayouthd.json`, all hidden until it
@@ -28,9 +30,9 @@ them. The mod sets `[d2rcore.stash] add_shared_tabs = 15` (the Pyre Stash Search
 |---|---|
 | 0-4 | D2R's shared tabs |
 | 5-14 | general Loader tabs |
-| 15 | the Maps tab: rows 0-1 under the buttons stay empty; the shown base's maps in rows 2-3; the map currency in columns 0-1 and 8-9 of rows 4-9, a fixed cell per item, stacked to 50 |
+| 15 | the Maps tab: rows 0-1 under the buttons stay empty; the shown base's maps in rows 2-3; the map currency in columns 0-1 of rows 4-9 and 8-9 of rows 4-8, a fixed cell per item, stacked to 50 |
 | 16, 17, 18 | stored maps of tier 1, 2, 3: one row per base (the order in `plugin/common/stash_home.h`) |
-| 19 | Bossing: PD2's uber maps, keys and ingredients the RotW Materials tab does not take, the Torch Fragment; a fixed cell each (`BossingCell` in `stash_home.h`), stackables merged, a second uber map in a spare cell |
+| 19 | Bossing: PD2's uber maps, keys and ingredients the RotW Materials tab does not take, the Torch Fragment; a fixed cell each (`BossingCell` in `stash_home.h`), stackables merged; a second uber map goes back to the inventory |
 
 Map currency: map orbs and ready orbs, Fortify, Dungeon Scarab, Force Mapevent Shard, invader ears. Precedence: Maps, map
 currency, Bossing; items the RotW Materials tab takes (Pandemonium keys, organs, essences) stay there.

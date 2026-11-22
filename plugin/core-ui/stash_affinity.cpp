@@ -191,16 +191,6 @@ auto FreeMapCell() noexcept -> aff::Cell {
 	return {};
 }
 
-// The first free spare cell of the Bossing page; {-1, -1} when they are all used
-auto FreeSpareCell() noexcept -> aff::Cell {
-	for (int32_t i = 0; i < aff::SpareCells; ++i) {
-		if (const aff::Cell c = aff::SpareCell(i); !Used(aff::BossingPage, c.x, c.y)) {
-			return c;
-		}
-	}
-	return {};
-}
-
 // A map to its base's row on its tier's storage page, or anywhere on that page when the row is full
 auto ToStorage(D2RL::PlayerHandle player, items::ItemInfo& item) noexcept -> items::Result {
 	const aff::Home home = aff::HomeOf(item.code);
@@ -289,11 +279,6 @@ void Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept {
 		} else if (on >= 0 && aff::Stacks(item.code) && aff::Normal(g_pass.reserved[on].code) == aff::Normal(item.code)) {
 			moved = Merge(player, item, g_pass.reserved[on]);
 		}
-		if (moved != items::Result::Success && home.category == aff::Category::Bossing) {
-			if (const aff::Cell spare = FreeSpareCell(); spare.x >= 0) {
-				moved = MoveTo(player, item, home.page, spare.x, spare.y);
-			}
-		}
 	}
 	if (moved == items::Result::Success) {
 		++g_routed;
@@ -354,12 +339,6 @@ void Tidy(D2RL::PlayerHandle player) noexcept {
 		}
 		const aff::Home home = aff::HomeOf(item.code);
 		if (aff::AtHome(home, item.code, g_shown, true, item.sharedStashPage, item.x, item.y)) {
-			if (home.category == aff::Category::Bossing && aff::InSpare(item.x, item.y) && At(home.page, home.row, home.column) == -1) {
-				items::ItemInfo copy = item;  // a spare one, its own cell now free: onto it
-				if (MoveTo(player, copy, home.page, home.column, home.row) == items::Result::Success) {
-					At(home.page, home.row, home.column) = -2;
-				}
-			}
 			continue;
 		}
 		bool found = false;  // Route has it already, from its own copy

@@ -6,7 +6,8 @@ their cells sit on grid cells, not on the Materials slots. This takes the Materi
 surround and lower panel, fills the Materials slots (inside the inner gold line, outside the cube surround) with stone made
 from a clean patch of the same art, and copies each cell recess the mouse art (stash_<name>_background) draws, translated
 into the pad art's space (pad x = mouse x + 69, y = mouse y - 180: the mouse grid is at (89, 219) and the pad grid at (156, 139),
-the pad art at (-2, 100)). The mouse art is read, never written.
+the pad art at (-2, 100)). The mouse art is read; only its cells the page plan dropped (#1699: the Maps tab's two
+bottom-right currency cells, the Bossing tab's spare cells beside the cube) are filled with stone from the Maps art's clean patch.
 Needs the toolkit's modkit. Run: py -3 tools/make_pad_stash_art.py
 """
 from pathlib import Path
@@ -28,6 +29,10 @@ X0, Y0 = 90, 214  # mouse art: top-left of grid cell (0, 0)
 INSIDE = [(154, 32, 1139, 532), (154, 533, 424, 1021), (868, 533, 1139, 1021)]
 PATCH_L = (170, 545, 350, 925)  # clean stone of the Mats art, left of the cube surround
 PATCH_R = (905, 545, 1120, 925)  # and right of it
+# Clean stone of the mouse Maps art above the cube; the Bossing art has no patch as tall
+MOUSE_PATCH = (300, 616, 860, 756)
+# Cells the mouse art drew that the page plan dropped (#1699), (col, row)
+DROPPED = {"maps": [(8, 9), (9, 9)], "bossing": [(c, r) for r in range(5, 10) for c in (0, 1, 8, 9)]}
 
 
 def load(path) -> np.ndarray:
@@ -48,13 +53,21 @@ def stone(patch: np.ndarray, w: int, h: int) -> np.ndarray:
 
 def plan(name: str) -> list[tuple[int, int]]:
     """Grid cells (col, row) the mouse art draws a recess in; read off that art, the cube's cells apart."""
-    def sides(r0):
-        return [(c, r) for r in range(r0, 10) for c in (0, 1, 8, 9)]
-
     if name == "maps":  # the shown base's two rows, and the map currency each side of the cube
-        return [(c, r) for r in (2, 3) for c in range(10)] + sides(4)
-    return ([(c, r) for r in (0, 2) for c in (0, 1, 2, 3, 6, 7, 8, 9)] + [(4, 4), (5, 4)] + sides(5))
+        sides = [(c, r) for r in range(4, 10) for c in (0, 1, 8, 9)]
+        return [(c, r) for r in (2, 3) for c in range(10)] + [s for s in sides if s not in DROPPED["maps"]]
+    return [(c, r) for r in (0, 2) for c in (0, 1, 2, 3, 6, 7, 8, 9)] + [(4, 4), (5, 4)]
 
+
+def clear(name: str, mouse: np.ndarray, patch: np.ndarray) -> np.ndarray:
+    """The mouse art with its dropped cells stoned over (a rerun stones them again)."""
+    h, w = mouse.shape[:2]
+    fill = stone(patch, w, h)  # tiled over the whole art, so neighbouring cells continue each other
+    art = mouse.copy()
+    for c, r in DROPPED[name]:
+        x, y = X0 + c * CELL, Y0 + r * CELL
+        art[y:y + CELL, x:x + CELL] = fill[y:y + CELL, x:x + CELL]
+    return art
 
 def build(name: str, mouse: np.ndarray, mats: np.ndarray) -> np.ndarray:
     art = mats.copy()
@@ -75,8 +88,12 @@ def build(name: str, mouse: np.ndarray, mats: np.ndarray) -> np.ndarray:
 def main() -> None:
     _, _, images = pd2_art.modkit()
     mats = load(MATS)
+    x0, y0, x1, y1 = MOUSE_PATCH
+    patch = load(PANEL / "stash_maps_background.sprite")[y0:y1, x0:x1]
     for name in ("maps", "bossing"):
-        mouse = load(PANEL / f"stash_{name}_background.sprite")
+        mouse = clear(name, load(PANEL / f"stash_{name}_background.sprite"), patch)
+        h, w = mouse.shape[:2]
+        images.write_sprite(PANEL / f"stash_{name}_background.sprite", (w, h, mouse.tobytes()), w, 1)
         art = build(name, mouse, mats)
         h, w = art.shape[:2]
         images.write_sprite(PANEL / f"stash_{name}_pad_background.sprite", (w, h, art.tobytes()), w, 1)
