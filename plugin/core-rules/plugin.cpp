@@ -25,6 +25,7 @@
 #include "off_switch.h"
 #include "parts.h"
 #include "skill_functions.h"
+#include "summon_ai.h"
 
 #include <windows.h>
 
@@ -117,6 +118,12 @@ void InstallLoot(const D2RL::PluginContext* context, char* report, size_t size) 
 	std::snprintf(report, size, "%d/%d installed: %s", installed, LootRuleCount(), rules);
 }
 
+void InstallSummons(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallSummonAi(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, SummonAiCount(), rules);
+}
+
 void InstallArena(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	InstallArenaSpots(context, report, size);
 }
@@ -133,6 +140,7 @@ parts::Part g_parts[] = {
 	{"shrines", true, InstallShrinesPart},
 	{"loot", true, InstallLoot},
 	{"sockets", true, InstallSockets},
+	{"summons", true, InstallSummons},
 };
 
 // Cast Triggers allocates its 5 relay pages upward from the image (within +0x70000000) when tables load, and D2R's
@@ -236,6 +244,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	SocketRuleCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	SummonAiCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
