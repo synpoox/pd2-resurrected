@@ -257,12 +257,22 @@ auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& st
 	if (result == items::Result::Success) {
 		step = "edit";
 		result = g_items->editItem(g_context, player, stack.handle, &edit);
+		if (result == items::Result::Success && Quantity(stack.handle) != sum) {
+			// the loader misreports these items' quantity (#1628): trust the stat, not the edit's result, before destroying
+			step = "verify";
+			result = items::Result::Unsupported;
+			edit.quantity = static_cast<uint32_t>(have);
+			g_items->editItem(g_context, player, stack.handle, &edit);
+		}
 		if (result == items::Result::Success) {
 			step = "destroy";
 			result = g_items->destroyItem(g_context, player, item.handle, items::SocketedItemPolicy::RejectIfNotEmpty);
 			if (result != items::Result::Success) {
 				edit.quantity = static_cast<uint32_t>(have);  // undo, so nothing is made from nothing
-				g_items->editItem(g_context, player, stack.handle, &edit);
+				if (const auto undo = g_items->editItem(g_context, player, stack.handle, &edit); undo != items::Result::Success) {
+					plog::Warn("affinity: %08x undo failed (result %u): the stack may hold %d with the item still there", item.code,
+					           static_cast<uint32_t>(undo), sum);
+				}
 			}
 		}
 	}
