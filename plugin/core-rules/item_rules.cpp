@@ -1758,6 +1758,32 @@ static auto PatchTelekinesisArrows(const D2RL::PluginContext* context) noexcept 
 	return true;
 }
 
+// --- Shrine potions: Poison drops tpgs, Exploding drops tpfs (#1851) ----------------------------------------------
+// PD2 rewrites the item code pushed by its shrine potion makers (1.13c D2Game +0x6c281 in +0x6c200, +0x6c601 in
+// +0x6c580) from `gpm ` to `tpgs` and from `opm ` to `tpfs`. D2R's makers (93847: 0x591a90, 0x591700) pass the code as
+// `mov edx,imm32` to the item-code lookup 0x313ef0; these are its only code uses. No SDK service covers a code
+// constant in code, hence the byte patches; the imm32 sits 4 bytes into each match.
+constexpr const char* ShrineGasCode = "48 8b 07 ba 67 70 6d 20 0f b6 88 06 01 00 00 e8 ?? ?? ?? ?? 8b d8 83 f8 ff 75 0f";
+constexpr const char* ShrineFireCode = "48 8b 07 ba 6f 70 6d 20 0f b6 88 06 01 00 00 e8 ?? ?? ?? ?? 8b d8 83 f8 ff 75 0f";
+constexpr int ShrineCodeAt = 4;
+
+static auto PatchShrinePotions(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t gas = 0;
+	uint64_t fire = 0;
+	static constexpr uint8_t GasStock[] = {'g', 'p', 'm', ' '};
+	static constexpr uint8_t FireStock[] = {'o', 'p', 'm', ' '};
+	static constexpr uint8_t Tpgs[] = {'t', 'p', 'g', 's'};
+	static constexpr uint8_t Tpfs[] = {'t', 'p', 'f', 's'};
+	if (sigscan::ScanUnique(context->exeBase, ShrineGasCode, ShrineCodeAt, &gas) != 1 ||
+	    sigscan::ScanUnique(context->exeBase, ShrineFireCode, ShrineCodeAt, &fire) != 1 ||
+	    !PatchBytes(context, gas, GasStock, Tpgs, sizeof(Tpgs)) || !PatchBytes(context, fire, FireStock, Tpfs, sizeof(Tpfs))) {
+		return false;
+	}
+	plog::Info("shrine potions: tpgs at 0x%llx, tpfs at 0x%llx", static_cast<unsigned long long>(gas),
+	           static_cast<unsigned long long>(fire));
+	return true;
+}
+
 // --- Dim Vision and Terror full length; hit blind takes blinddimvision (#1837) ------------------------------------
 // PD2 NOPs 1.13c srvdo 30's AiCurseDivisor call (D2Game +0x506a8), so Dim Vision and Terror (and item procs of them)
 // keep their full length in Nightmare and Hell. D2R's srvdo 30 (93847: 0x55c840) divides at 0x55ca27 only for
@@ -1824,38 +1850,52 @@ static auto PatchCurseLength(const D2RL::PluginContext* context) noexcept -> boo
 }
 
 // --- Missile pierce cap (#1839) -----------------------------------------------------------------------------------
-// PD2 calls 0x10374f20 (installed 0x10374f90) at 1.13c D2Game +0x6fe59 in place of +0x6f660: when a piercing
-// missile is made, chance = item_pierce + skill_pierce + 0x10381720(owner, skill_pierce) (our HandStatSum), rolled
-// rand % 100 < chance up to 10 times, 6 for a Lightning Fury missile (missile data +0xa, the skill: 1.13c D2Common
-// 0x6fdba2b0), into the missile's pierce_idx. D2R's roll (93847: 0x537ed0, Missiles.cpp) stops at 4 and its third
-// term is its weapon mastery bonus type 3 (0x33deb0, players only). No SDK service covers missile creation, so the
-// whole roll is replaced by a hook found by signature. pierce_idx stays a byte in D2R's missile copy (0x537e14).
+// PD2 replaces both halves of the pierce roll made when a piercing missile is created:
+// - server: 0x10374f20 (installed 0x10374f90), called at 1.13c D2Game +0x6fe59 in place of +0x6f660. chance =
+//   item_pierce + skill_pierce + 0x10381720(owner, skill_pierce) (our HandStatSum);
+// - client: 0x10375060 (installed 0x103750d0), called at 1.13c D2Client +0xb363d in place of 0x6fb60a60. chance =
+//   item_pierce + skill_pierce, seed always the owner's base pierce_idx (1.13c's chance 100 / seed 0 for another
+//   player's missile is dropped).
+// Both roll rand % 100 < chance up to 10 times, 6 for a Lightning Fury missile (missile data +0xa, the skill: 1.13c
+// D2Common 0x6fdba2b0), into the missile's pierce_idx, the pierces left, which each hit lowers by one (D2R 0x463bde
+// server, 0x1b87f2 client). D2R's rolls (93847: server 0x537ed0, client 0x1bced0) stop at 4 and add the weapon mastery
+// bonus type 3 (0x33deb0, players only). No SDK service covers missile creation, so both rolls are replaced by hooks
+// found by signature. pierce_idx stays a byte in D2R's missile copy (0x537e14).
 constexpr const char* PierceRollEntry =
     "40 53 56 57 48 83 ec 30 49 8b d8 48 8b fa 48 8b f1 4d 85 c0 74 12 48 85 d2 74 0d 48 8b ca e8 ?? ?? ?? ?? 83 f8 03 74 26";
 constexpr uint8_t PierceRollStock[] = {0x40, 0x53, 0x56, 0x57, 0x48, 0x83, 0xec, 0x30, 0x49,
                                        0x8b, 0xd8, 0x48, 0x8b, 0xfa, 0x48, 0x8b, 0xf1};  // whole instructions
+constexpr const char* ClientPierceRollEntry =
+    "48 89 6c 24 18 48 89 74 24 20 57 41 56 41 57 48 83 ec 30 45 33 ff 48 8b fa 4c 8b f1 bd 01 00 00 00";
+constexpr uint8_t ClientPierceRollStock[] = {0x48, 0x89, 0x6c, 0x24, 0x18, 0x48, 0x89, 0x74,
+                                             0x24, 0x20, 0x57, 0x41, 0x56, 0x41, 0x57};  // whole instructions
 constexpr uint32_t StatPierceIdx = 0x148, StatSkillPierce = 0xa6, StatItemPierce = 0x9c;
 constexpr int32_t SkillLightningFury = 35;
 constexpr uint8_t MissilePierceFlag = 0x04;  // missiles.txt Pierce: D2R tests record +0x24 against its bit table's 4
 using PierceRollFn = void (*)(Game*, Unit*, Unit*) noexcept;
+using ClientPierceRollFn = void (*)(Unit*, Unit*) noexcept;
 static PierceRollFn g_pierceRollOriginal = nullptr;  // not called: PD2's roll replaces D2R's
+static ClientPierceRollFn g_clientPierceRollOriginal = nullptr;  // not called either
 static std::atomic<uint32_t> g_pierceRolls {0};
 
-static void PierceRoll(Game* game, Unit* missile, Unit* owner) noexcept {
+// The part both halves share: the owner and missile types, the Pierce flag, then the roll into pierce_idx.
+// `server` adds PD2's server-only HandStatSum term.
+static void RollPierce(uint32_t dataFlag, Unit* missile, Unit* owner, bool server) noexcept {
 	using namespace d2r::rva;
-	if (game == nullptr || missile == nullptr || owner == nullptr || At<int32_t>(missile, UnitType) != 3 ||
+	if (missile == nullptr || owner == nullptr || At<int32_t>(missile, UnitType) != 3 ||
 	    At<int32_t>(owner, UnitType) > 1) {
 		return;
 	}
 	const auto* row = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MissileRecord)(
-	    d2r::DataFlag(game), At<int32_t>(missile, UnitClassId));
+	    dataFlag, At<int32_t>(missile, UnitClassId));
 	if (row == nullptr || (At<uint8_t>(row, 0x24) & MissilePierceFlag) == 0) {
 		return;
 	}
 	// signed, as D2R's compare; PD2's unsigned one would let a negative chance pierce every roll (no data gives one)
-	const int32_t chance = Stat(owner, StatSkillPierce) +
-	                       d2r::Engine<int32_t (*)(Unit*, uint32_t) noexcept>(UnitStatNoParam)(owner, StatItemPierce) +
-	                       HandStatSum(owner, StatSkillPierce);
+	const int32_t chance =
+	    Stat(owner, StatSkillPierce) +
+	    d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStatNoParam)(owner, StatItemPierce, 0) +
+	    (server ? HandStatSum(owner, StatSkillPierce) : 0);
 	if (chance == 0) {
 		return;
 	}
@@ -1875,7 +1915,20 @@ static void PierceRoll(Game* game, Unit* missile, Unit* owner) noexcept {
 	}
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(missile, StatPierceIdx, count, 0);
 	if (pd2::HotSample(g_pierceRolls)) {
-		plog::Info("pierce roll: skill %d chance %d cap %d -> %d", skill, chance, cap, count);
+		plog::Info("pierce roll (%s): skill %d chance %d cap %d -> %d", server ? "server" : "client", skill, chance, cap,
+		           count);
+	}
+}
+
+static void PierceRoll(Game* game, Unit* missile, Unit* owner) noexcept {
+	if (game != nullptr) {
+		RollPierce(d2r::DataFlag(game), missile, owner, true);
+	}
+}
+
+static void ClientPierceRoll(Unit* missile, Unit* owner) noexcept {
+	if (missile != nullptr) {
+		RollPierce(d2r::api.unitDataFlag(missile), missile, owner, false);
 	}
 }
 
@@ -2153,18 +2206,18 @@ auto DyedSpriteDraw(void* sprite, int32_t* xy, float* record, float scale) noexc
 	g_spriteDrawOriginal(sprite, xy, copy, scale);
 }
 
-// The HD item draw's one call of the UI sprite draw (93847: 0xc71f3, `E8 rel32` at +22 of this match) is pointed at a
-// relay page that jumps to DyedSpriteDraw, by a MutationService byte patch with the stock call as expected bytes.
-auto PatchItemSpriteCall(const D2RL::PluginContext* context) noexcept -> bool {
+auto RedirectCall(const D2RL::PluginContext* context, const char* pattern, uint32_t callAt, uint64_t entry,
+                  uint64_t* original) noexcept -> bool {
 	uint64_t match = 0;
-	if (sigscan::ScanUnique(context->exeBase,
-	                        "f3 0f 11 44 24 70 0f 28 de 4c 8d 44 24 60 48 8d 54 24 28 49 8b cf e8 ?? ?? ?? ?? c6 47 04 00", 0,
-	                        &match) != 1) {
+	if (sigscan::ScanUnique(context->exeBase, pattern, 0, &match) != 1) {
 		return false;
 	}
-	const uint64_t site = context->exeBase + match + 22;
+	const uint64_t site = context->exeBase + match + callAt;
 	uint8_t stock[5];
 	std::memcpy(stock, reinterpret_cast<const void*>(site), 5);
+	if (stock[0] != 0xe8) {
+		return false;
+	}
 	int32_t rel = 0;
 	std::memcpy(&rel, stock + 1, 4);
 	const D2RL::MutationService* mutations = nullptr;
@@ -2176,8 +2229,7 @@ auto PatchItemSpriteCall(const D2RL::PluginContext* context) noexcept -> bool {
 	if (relay == nullptr) {
 		return false;
 	}
-	const uint64_t entry = reinterpret_cast<uint64_t>(&DyedSpriteDraw);
-	const uint8_t jump[6] = {0xff, 0x25, 0, 0, 0, 0};  // jmp [rip+0]; &DyedSpriteDraw
+	const uint8_t jump[6] = {0xff, 0x25, 0, 0, 0, 0};  // jmp [rip+0]; &entry
 	std::memcpy(relay, jump, sizeof(jump));
 	std::memcpy(relay + sizeof(jump), &entry, 8);
 	const int64_t reach = static_cast<int64_t>(reinterpret_cast<uint64_t>(relay)) - static_cast<int64_t>(site + 5);
@@ -2191,7 +2243,7 @@ auto PatchItemSpriteCall(const D2RL::PluginContext* context) noexcept -> bool {
 		VirtualFree(relay, 0, MEM_RELEASE);
 		return false;
 	}
-	g_spriteDrawOriginal = reinterpret_cast<SpriteDrawFn>(site + 5 + static_cast<int64_t>(rel));  // before the call can land
+	*original = site + 5 + static_cast<int64_t>(rel);  // before the call can land
 	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
 	                                              .rva = site - context->exeBase,
 	                                              .expected = stock,
@@ -2228,7 +2280,9 @@ auto InstallDyeTint(const D2RL::PluginContext* context) noexcept -> const char* 
 	                        "48 89 5c 24 08 44 89 4c 24 20 55 56 57 41 54 41 55 41 56 41 57 48 8b ec 48 83 ec 30 45 8b e1 4d 8b e8 48 8b fa 4c 8b f9 48 85 d2 0f 84",
 	                        0, ColorEntry, sizeof(ColorEntry), DyedItemColor, &g_itemColorOriginal);
 	// the call first: the item draw hook only marks the draw the redirected call tints
-	const bool hd = PatchItemSpriteCall(context) &&
+	// The HD item draw's one call of the UI sprite draw (93847: 0xc71f3, `E8 rel32` at +22 of this match)
+	const bool hd = RedirectCall(context, "f3 0f 11 44 24 70 0f 28 de 4c 8d 44 24 60 48 8d 54 24 28 49 8b cf e8 ?? ?? ?? ?? c6 47 04 00",
+	                             22, reinterpret_cast<uint64_t>(&DyedSpriteDraw), reinterpret_cast<uint64_t*>(&g_spriteDrawOriginal)) &&
 	                sigscan::HookBySignature(context, "HdItemDraw",
 	                                         "4c 8b dc 55 57 41 57 49 8d ab 48 ff ff ff 48 81 ec a0 01 00 00 41 0f 29 73 b8", 0,
 	                                         DrawEntry, sizeof(DrawEntry), DyedItemDraw, &g_itemDrawOriginal);
@@ -2441,11 +2495,16 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool unlimited = PatchUnlimitedBooks(context);
 	const bool charms = InstallCharmRows(context);
 	const bool telekinesis = PatchTelekinesisArrows(context);
+	const bool shrinePotions = PatchShrinePotions(context);
 	const bool curseLength = PatchCurseLength(context);
-	const bool pierceCap = sigscan::HookBySignature(context, "PierceRoll", PierceRollEntry, 0, PierceRollStock,
-	                                                sizeof(PierceRollStock), PierceRoll, &g_pierceRollOriginal);
+	// One rule, ok only with both halves: a client roll capped apart from the server's draws the missile stopping early
+	const bool pierceCap =
+	    sigscan::HookBySignature(context, "PierceRoll", PierceRollEntry, 0, PierceRollStock, sizeof(PierceRollStock),
+	                             PierceRoll, &g_pierceRollOriginal) &&
+	    sigscan::HookBySignature(context, "ClientPierceRoll", ClientPierceRollEntry, 0, ClientPierceRollStock,
+	                             sizeof(ClientPierceRollStock), ClientPierceRoll, &g_clientPierceRollOriginal);
 	if (pierceCap) {
-		plog::Info("pierce cap: missile pierce roll hooked, PD2's cap 10 (6 for Lightning Fury)");
+		plog::Info("pierce cap: server and client missile pierce rolls hooked, PD2's cap 10 (6 for Lightning Fury)");
 	}
 	const char* const dye = InstallDyeTint(context);
 	const bool mapStack = sigscan::HookBySignature(
@@ -2466,7 +2525,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; pierce cap%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
@@ -2476,15 +2535,17 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              charms ? "" : " FAILED (signature or bytes differ)", dye, mapStack ? "" : " FAILED (bytes differ)",
 	              noMagicMaps ? " (hooked when tables load)" : " FAILED (no table listener)", mapMakerLog ? "" : " FAILED (signature or bytes differ)",
 	              telekinesis ? "" : " FAILED (signature or bytes differ)",
-	              curseLength ? "" : " FAILED (signature, bytes or states.txt)", pierceCap ? "" : " FAILED (signature or bytes differ)");
+	              curseLength ? "" : " FAILED (signature, bytes or states.txt)",
+	              shrinePotions ? "" : " FAILED (signature or bytes differ)",
+	              pierceCap ? "" : " FAILED (signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
 	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0) +
-	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (pierceCap ? 1 : 0);
+	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (shrinePotions ? 1 : 0) + (pierceCap ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 18;
+	return 19;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {

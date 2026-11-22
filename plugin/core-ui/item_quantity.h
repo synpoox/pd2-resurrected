@@ -21,7 +21,11 @@ constexpr auto TextRect(Rect picture, int32_t pad) noexcept -> Rect {
 // Hooks the grid item draw. Returns the report for the log.
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept;
 
-// The hook's counters, for the status command.
+// Hooks the Gems/Materials/Runes slot draw and GetMaxStack (by signature) so a tab cell tooltip shows its count of
+// set_materials_limit (#1827). Returns the report for the log.
+void InstallTabTooltip(const D2RL::PluginContext* context, char* report, size_t size) noexcept;
+
+// The hooks' counters, for the status command.
 void Counters(char* out, size_t size) noexcept;
 
 }  // namespace item_quantity

@@ -12,6 +12,11 @@ namespace pd2::stashstack {
 inline constexpr int32_t TabMax = 255;
 inline constexpr int32_t DefaultLimit = 99;
 
+// The limit in force for a `set_materials_limit` read from the toml (-1: no key)
+constexpr auto LimitOf(int32_t raw) noexcept -> int32_t {
+	return raw < 1 ? DefaultLimit : raw > TabMax ? TabMax : raw;
+}
+
 // How many items a stack of `quantity` is
 constexpr auto Units(int32_t quantity) noexcept -> int32_t {
 	return quantity < 1 ? 1 : quantity;

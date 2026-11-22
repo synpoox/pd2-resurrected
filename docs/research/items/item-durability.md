@@ -37,8 +37,9 @@ durability would reach 0, `dec ebp; jle +0x12fd8` at `+0x12f6f`). It reads stat 
 `SetStat(72, GetMaxDurability)` (`+0x13065`-`+0x13073`). At quantity 1 the `jle` goes to `+0x130b4`, which zeroes both
 stats and removes the item. So the NOP keeps the stack and refills durability; a stack of 1 is still used up.
 
-core-rules `loot_rules.cpp` (`PatchThrowingQuantity`): D2R's `lea ebx,[rax-1]` at `0x441cb9` becomes `mov ebx,eax; nop`
-(`8d 58 ff` -> `89 c3 90`); `ebx` is the value written back to stat 70 (`call 0x43eb30` with `r9d` 0x46). The signature
+core-rules `loot_rules.cpp` (`PatchBySignature`, `ThrowingQuantityPattern`): D2R's `lea ebx,[rax-1]` at `0x441cb9` becomes
+`jmp +0x21; nop` (`8d 58 ff` -> `eb 21 90`) to `0x441cdc`, skipping the stat 70 write (`call 0x43eb30` with `r9d` 0x46): the
+read includes a socketed gem's own quantity, so writing it back grew a socketed stack by 1 per throw (#1887). The signature
 `7E 57 33 F6 8D 58 FF E8 ?? ?? ?? ?? 48 8B D0 90 89 74 24 28 44 8D 4E 46` with offset 4 matches once in 93847
 (count 1, at RVA `0x441cb9`).
 

@@ -58,6 +58,7 @@ parts::Part g_parts[] = {
 	{"padbinds", false, pad_binds::Install},
 	{"hotkeys", false, hotkeys::Install},
 	{"quantity", true, item_quantity::Install},
+	{"tabtips", false, item_quantity::InstallTabTooltip},
 	{"palette", true, level_palette::Install},
 	{"lock", false, inventory_lock::Install},
 	{"affinity", false, stash_affinity::Install},
