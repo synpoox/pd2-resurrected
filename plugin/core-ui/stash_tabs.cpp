@@ -13,7 +13,8 @@
 // (Slot2), so a hidden button is disabled too. Tier and base buttons (PanelManager:OpenPanel:core-ui/Stash..., caught
 // and consumed like the padlock's) pick what the Maps tab shows: a base asks stash_affinity to swap its maps onto the
 // Maps page. Both tabs show the stock cube (advancedstash_horadriccube, which the stash shows itself on its RotW
-// tabs) at its RotW spot, and hides the stock page arrows while one of our tabs is up, so its page cannot change.
+// tabs) at its RotW spot, shown and enabled as the stash does there (#1699), and hides the stock page
+// arrows while one of our tabs is up, so its page cannot change.
 // D2R keeps the tab and page on show across a stash close, so the state stays until a stock tab or a new game.
 // The stock Shared tab never pages onto the reserved pages (#1653): no SDK service reads the stash page and this
 // loader's widget service has no getText for its label, so the page is counted from the arrows (ours and the player's),
@@ -294,7 +295,7 @@ void Leave() noexcept {
 	}
 	stash_affinity::SetTabOpen(false);
 	Show(g_navigation, true);
-	Show(g_cube, false);
+	ShowButton(g_cube, false);
 }
 
 // The pad on our tab (5 Maps, 6 Bossing) as a mouse click on it opens it, the stock bar going to Shared next frame
@@ -538,7 +539,7 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 	ShowButton(g_padTabs, ours);   // the pad layout's Maps and Bossing tabs, ours lit
 	if (ours) {
 		Show(g_navigation, false);  // the page stays ours
-		Show(g_cube, true);
+		ShowButton(g_cube, true);  // enabled too: off a RotW tab the stash disables it, and its grid and Transmute with it
 		Show(g_cubeWithdraw, false);  // the RotW tabs' Withdraw, not ours
 	}
 	for (int t = 0; t < 3; ++t) {
