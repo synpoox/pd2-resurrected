@@ -1,0 +1,1 @@
+- Invaders roll their gear when they spawn and drop exactly that gear on death. (#1708)

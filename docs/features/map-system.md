@@ -114,6 +114,9 @@ map and `t14` Sanatorium is tier 1. The research's "T4" and "T5" are only the it
 - **Invaders** run their table AIs (the vanilla `BloodRaven`, `Summoner` and so on). That is an approximated deviation.
   The portal's think and the invaders' ears and drops are PD2's (MS10, `plugin/core-events/lane-c/invaders.cpp`).
   PD2's own invader brain (`AiThink4.cpp`) replaces them in [MS11](https://github.com/synpoox/pd2-resurrected/issues/225).
+  An invader's gear is rolled from PD2's `Invader*` treasure classes when the portal spawns it and held until it dies;
+  then exactly those items drop, with its ear ([#1708](https://github.com/synpoox/pd2-resurrected/issues/1708)). An invader that dies
+  holding nothing (spawned another way) rolls at death.
 - **Plugins:** `core-events` (Shared) holds the code that belongs only to the map system: opening maps, map stats, cube
   op 30, map events and invaders. It is a plugin of its own because the map system is large enough to be used outside
   this project ([ADR 0004](../adr/0004-plugins-split-by-multiplayer-scope.md), amended). Rules the map system shares with
