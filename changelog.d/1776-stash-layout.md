@@ -1,3 +1,3 @@
 #### Items
 
-- Maps tab pairs each ready orb with its plain orb; Bossing drops the Uber Ancients cells. (#1776)
+- Paired each ready orb with its plain orb on the Maps tab and removed the Bossing key cells (#1776).
