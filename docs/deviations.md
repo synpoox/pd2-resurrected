@@ -354,7 +354,7 @@ is thousands of cells), so the cell count shows breadth, not work left.
 
 | Deviation | Gate |
 |---|---|
-| Mercenaries wear an amulet, two rings, gloves, a belt and boots | `itemtypes.tors.Equiv2` `itemtypes.ring.Equiv2` `itemtypes.amul.Equiv2` `itemtypes.glov.Equiv2` `itemtypes.boot.Equiv2` `itemtypes.belt.Equiv2` |
+| Mercenaries wear an amulet, two rings, gloves, a belt and boots; the Act 2 mercenary wields spears and polearms (D2R's `sppl` test) | `itemtypes.pas.Equiv1` `itemtypes.tors.Equiv2` `itemtypes.ring.Equiv2` `itemtypes.amul.Equiv2` `itemtypes.glov.Equiv2` `itemtypes.boot.Equiv2` `itemtypes.belt.Equiv2` |
 | Invaders map event: spawn and drops | `monstats2.InvaderAmazon.RHv` `monstats2.InvaderAmazon.LHv` `monstats2.InvaderAmazon.SHv` `monstats2.InvaderAmazon.RH` `monstats2.InvaderAmazon.SH` `monstats2.InvaderAmazon.TotalPieces` `monstats2.InvaderAssassin.HDv` `monstats2.InvaderAssassin.RHv` `monstats2.InvaderAssassin.LHv` `monstats2.InvaderBarbarian.HDv` `monstats2.InvaderBarbarian.RHv` `monstats2.InvaderBarbarian.LHv` `monstats2.InvaderDruid.HDv` `monstats2.InvaderDruid.SHv` `monstats2.InvaderNecromancer.HDv` `monstats2.InvaderNecromancer.TRv` `monstats2.InvaderNecromancer.S3v` `monstats2.InvaderPaladin.HDv` `monstats2.InvaderPaladin.RHv` `monstats2.InvaderPaladin.SHv` `monstats2.InvaderSorceress.HDv` `monstats2.InvaderSorceress.RHv` `monstats2.InvaderSorceress.SHv` `monstats2.InvaderSorceress.SH` `monstats2.InvaderSorceress.TotalPieces` |
 | Dclone's soul pillars: targetable, and the novas stop on them and on his skeleton adds | `monstats2.UberTrappedSoul.isSel` `monstats2.UberTrappedSoul.isAtt` `missiles.ubernova.CollideFriend` |
 | PD2's AutoMap.txt rows: D2R's table is kept | `automap.*` |

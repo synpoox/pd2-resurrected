@@ -30,6 +30,14 @@ class MercInventory(unittest.TestCase):
             for item in data_tables.rows(table):
                 self.assertNotIn("merc", (item.get("type"), item.get("type2")), item.get("code"))
 
+    def test_a2_merc_weapons_reach_sppl(self):
+        # monstats act2hire wears "sppl"; spea and pole only chain to it through pas (#1730)
+        data_tables.need(self)
+        types = {t["Code"]: t for t in data_tables.rows("itemtypes") if t["Code"]}
+        self.assertEqual(types["pas"]["Equiv1"], "sppl")
+        for code in ("spea", "pole"):
+            self.assertEqual(types[code]["Equiv2"], "pas")
+
     def test_hireling_rows_have_the_new_rects(self):
         # the server refuses a body slot whose rect is -1 (#1627)
         data_tables.need(self)
