@@ -99,9 +99,17 @@ The apply passes flag 0, so the walker gets the handler set `0x105dc628` (built 
 - PD2 splashes these hits: its splash damage% table (`0x10305eb0`) lists Whirlwind (151) and Blade Dance (PD2 380,
   merged 452) by calc1. Where PD2 skips the state 54 refusal is not found: its D2Game calls go through obfuscated jmp
   thunks.
-- core-rules wraps `AuraEventTable` slot 20 (signature entry). For a splash stat while the attacker is in state 54 with
-  a srvdofunc 76 current skill, it rolls the chance as `0x583b30` does and calls the splash on the struck unit. Every
-  other call, and every other skill on hit during a spin, goes to D2R's function unchanged.
+- D2R never calls `0x583b30` here: D2RCore dispatches item events itself (the walker `0x5881e0` jumps to it). Seen
+  in game: a wrapper in `AuraEventTable` slot 20 (read back as installed) and an inline hook on `0x583b30` both stayed
+  silent while item_splashonhit splashed on plain attacks. D2RCore refuses spin hits the same way: no splash came on a
+  Whirlwind hit.
+- core-rules adds the splash in item_rules' `HitEvent`, its existing relay of D2R's event 5 and 6 calls (no new hook).
+  After D2R's dispatch, when the attacker is in state 54 with a srvdofunc 76 current skill, each event-5 node with stat
+  412 or 480 rolls `UnitStat(unit, stat, layer)` below 100 on `UnitSeed`, as `0x583b30` does. On a hit it calls the
+  splash on the struck unit. The node's stat is the int32 at +0xc and its layer the uint16 at +0x10 (seen in game:
+  412, 0x6b81 = skill 430 level 1). Other skills on hit keep the refusal.
+- Game check (Slot4, Hell, no mercenary, The Gnasher): Whirlwind hits log `current skill 151 level 20 damage% 115`
+  splashes, Blade Dance `current skill 452 level 20 damage% 106`, and a plain Attack still splashes once per hit.
 
 ## Deviations (approximated, on the deviation list)
 

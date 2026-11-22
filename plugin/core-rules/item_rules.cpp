@@ -17,6 +17,7 @@
 //   HitEvents' event 5/6 calls, where PD2's open wounds and deep wounds (event 15) run too.
 #include <intrin.h>
 #include "item_rules.h"
+#include "skill_functions.h"
 
 #define NOMINMAX
 #include <windows.h>
@@ -589,6 +590,9 @@ auto HitEvent(Game* game, int32_t event, Unit* unit, Unit* target, void* damage)
 	}
 	const int32_t result = g_hitEventOriginal(game, event, unit, target, damage);
 	t_hiddenEvent = outerHidden;
+	if (event == EventMeleeDamage) {
+		SpinSplashes(game, event, unit, target, static_cast<const uint8_t*>(damage));
+	}
 	for (int i = 0; i < count; ++i) {
 		*reinterpret_cast<uint16_t*>(hidden[i] + EventNodeEvent) = static_cast<uint16_t>(event);
 	}

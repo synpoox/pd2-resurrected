@@ -3690,16 +3690,16 @@ auto AuraEventReviveSplash(Game* game, int32_t event, Unit* unit, Unit* target, 
 }
 
 // --- Splash on Whirlwind and Blade Dance hits (#1812) ---------------------------------------------------------------
-// D2R's skill-on-hit item event (slot 20, 0x583b30) casts through 0x5896e0, which refuses while the attacker has state
-// uninterruptable; Whirlwind's start (srvst 38, 0x56a420 via 0x48e820) sets it for the whole spin, so item_splashonhit
-// never fired on Whirlwind or Blade Dance (srvdofunc 76) hits. 1.13c has the same refusal (D2Game 0x6fd117e0). PD2
-// splashes these hits: its splash takes their calc1 as damage% (0x10305eb0, ids 151 and 380). For the splash stats
-// this rolls the chance as 0x583b30 does and calls the splash on the struck unit, as Revive's event does. Other skills
-// on hit keep D2R's refusal.
-using ItemEventFn = int64_t (*)(Game*, int32_t, Unit*, Unit*, const uint8_t*, uint32_t) noexcept;
-ItemEventFn g_skillOnHitOriginal = nullptr;
-constexpr int32_t ItemEventSkillOnHit = 20, SrvDoSpin = 76;                // Whirlwind and Blade Dance
-constexpr int32_t StatSplashOnHit = 412, StatMapMonSplash = 480;          // item_splashonhit, map_mon_splash (merged)
+// Whirlwind's start (srvst 38, 0x56a420 via 0x48e820) sets state uninterruptable for the whole spin, and D2R's
+// skill-on-hit casts refuse an attacker in it (0x5896e0, which D2R's item event 20, 0x583b30, casts through). D2RCore
+// dispatches item events itself and refuses there too: in game no item_splashonhit splash came on a Whirlwind hit, and
+// a hook on 0x583b30 never ran (D2RCore does not call it). 1.13c has the same refusal (D2Game 0x6fd117e0). PD2 splashes
+// these hits: its splash takes their calc1 as damage% (0x10305eb0, ids 151 and 380). So on a spin's melee hit (event 5,
+// relayed by item_rules' HitEvent) each splash node rolls its chance as 0x583b30 does and the splash is called on the
+// struck unit, as Revive's event does. Other skills on hit keep the refusal.
+constexpr int32_t SrvDoSpin = 76;                                  // Whirlwind and Blade Dance
+constexpr int32_t StatSplashOnHit = 412, StatMapMonSplash = 480;  // item_splashonhit, map_mon_splash (merged)
+constexpr int EventNodeLayer = 0x10;                               // the node's stat layer (seen in game: 412, 0x6b81)
 std::atomic<uint32_t> g_spinSplashes {0};
 
 auto Spinning(Game* game, Unit* unit) noexcept -> bool {
@@ -3712,32 +3712,43 @@ auto Spinning(Game* game, Unit* unit) noexcept -> bool {
 	return skill != nullptr && At<uint16_t>(skill, SkSrvDoFunc) == SrvDoSpin;
 }
 
-auto ItemEventSpinSplash(Game* game, int32_t event, Unit* unit, Unit* target, const uint8_t* damage, uint32_t param) noexcept
-	-> int64_t {
+}  // namespace
+
+auto SpinSplashes(Game* game, int32_t event, Unit* unit, Unit* target, const uint8_t* damage) noexcept -> void {
 	using namespace d2r::rva;
-	const auto stat = static_cast<int32_t>(param >> 16);
-	const uint32_t layer = param & 0xffff;
-	// 0x583b30's own gates first: a target, and a damage block marked as a hit (flag 0x20)
-	if ((stat != StatSplashOnHit && stat != StatMapMonSplash) || game == nullptr || unit == nullptr || target == nullptr ||
+	// The splash's own hits raise event 5 again while the spin lasts: they must not splash in turn
+	static thread_local bool t_spinSplashing = false;
+	if (t_spinSplashing || game == nullptr || unit == nullptr || target == nullptr ||
 	    (damage != nullptr && (damage[0] & 0x20) == 0) || !Spinning(game, unit)) {
-		return g_skillOnHitOriginal(game, event, unit, target, damage, param);
+		return;
 	}
-	const int32_t chance = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(unit, stat, layer);
-	const auto roll = static_cast<int32_t>(d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit), 100));
-	if (chance < 1 || roll >= chance) {
-		return 0;
-	}
+	t_spinSplashing = true;
 	const uint8_t* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(d2r::DataFlag(game));
-	const auto skillId = static_cast<int32_t>(layer >> (At<uint32_t>(tables, TablesSkillLayerShift) & 0x1f));
-	const auto level = static_cast<int32_t>(layer & At<uint32_t>(tables, TablesSkillLayerMask));
-	const int64_t cast = Splash(game, unit, target, skillId, level);
-	if (pd2::HotSample(g_spinSplashes)) {
-		plog::Info("spin splash: stat %d skill %d level %d chance %d roll %d on unit type %d: cast %lld, %u so far", stat,
-		           skillId, level, chance, roll, At<int32_t>(target, UnitType), static_cast<long long>(cast),
-		           g_spinSplashes.load());
+	for (auto* node = At<uint8_t*>(unit, UnitEventNodes); node != nullptr; node = At<uint8_t*>(node, EventNodeNext)) {
+		const int32_t stat = At<int32_t>(node, EventNodeStat);
+		if (At<uint16_t>(node, EventNodeEvent) != event || (stat != StatSplashOnHit && stat != StatMapMonSplash)) {
+			continue;
+		}
+		const uint32_t layer = At<uint16_t>(node, EventNodeLayer);
+		const int32_t chance = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(unit, stat, layer);
+		const auto roll = static_cast<int32_t>(d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit), 100));
+		if (chance < 1 || roll >= chance) {
+			continue;
+		}
+		const auto skillId = static_cast<int32_t>(layer >> (At<uint32_t>(tables, TablesSkillLayerShift) & 0x1f));
+		const auto level = static_cast<int32_t>(layer & At<uint32_t>(tables, TablesSkillLayerMask));
+		const int64_t cast = Splash(game, unit, target, skillId, level);
+		if (pd2::HotSample(g_spinSplashes)) {
+			plog::Info("spin splash: stat %d layer %u skill %d level %d chance %d roll %d on unit type %d: "
+			           "cast %lld, %u so far",
+			           stat, layer, skillId, level, chance, roll,
+			           At<int32_t>(target, UnitType), static_cast<long long>(cast), g_spinSplashes.load());
+		}
 	}
-	return cast;
+	t_spinSplashing = false;
 }
+
+namespace {
 
 // Revive's do (srvdofunc 58): D2R's own, then Revive's aura events go on the revived monster. D2R's Revive never
 // registers them, so without this event 32 never fires. The corpse is revived in place (seen in game: same unit,
@@ -4845,25 +4856,6 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		                            d2r::rva::AuraEventUnused, revive ? "" : " FAILED (slot is not D2R's event 32)");
 		used += n > 0 ? static_cast<size_t>(n) : 0;
 	}
-	// Item event 20 (skill on hit), found by the table's signature entry; the slot holds D2R's function, which the
-	// wrapper calls for everything but a splash during a spin
-	bool spin = false;
-	if (d2r::sig::AuraEventTable.state == sigscan::State::Ok) {
-		const uint64_t slot = d2r::sig::AuraEventTable.rva + static_cast<uint64_t>(ItemEventSkillOnHit) * 8;
-		uint64_t original = 0;
-		std::memcpy(&original, reinterpret_cast<const void*>(d2r::sig::AuraEventTable.address + ItemEventSkillOnHit * 8),
-		            sizeof(original));
-		g_skillOnHitOriginal = reinterpret_cast<ItemEventFn>(original);
-		spin = original != 0 &&
-		       context->PatchWriteU64(slot, &original, sizeof(original),
-		                              reinterpret_cast<uint64_t>(static_cast<ItemEventFn>(ItemEventSpinSplash)));
-	}
-	installed += spin ? 1 : 0;
-	if (used < reportSize) {
-		const int n = std::snprintf(report + used, reportSize - used, "; auraeventfunc %d spin splash%s",
-		                            ItemEventSkillOnHit, spin ? "" : " FAILED (table signature or slot)");
-		used += n > 0 ? static_cast<size_t>(n) : 0;
-	}
 	// The hit queue hook first (inert until the Smite wrapper runs), then Smite's do, D2R's (expected value), which the
 	// wrapper calls.
 	const uint64_t d2rSmite = d2r::imageBase + d2r::rva::SrvDoSmiteD2R;
@@ -4934,8 +4926,8 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 }
 
 auto SkillFunctionCount() noexcept -> int {
-	// + the srvdo router, the cltdo 22 patch, aura event 32, item event 20, Smite's do and hit queue, Revive's do, the busy
-	// mode gate and the hit window
+	// + the srvdo router, the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the busy
+	// mode gate, the holy sword parry and the hit window
 	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 8;
 }
 
