@@ -44,6 +44,12 @@ namespace {
 using d2r::Unit;
 using namespace pd2::stashstack;
 
+// The deposit function's prologue: it spills argument 2 (the depositing player) with `mov [rsp+0x68],rdx`, which DepositorIsLocal reads
+sigscan::Entry DepositPrologue {"StashTabDepositPrologue", "stash tabs", sigscan::Kind::Code, 0, 0,
+                                "55 53 56 57 41 54 41 55 41 56 41 57 48 8d 6c 24 f8 48 81 ec 08 01 00 00 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 45 f8 8b 45 70 "
+                                "48 89 54 24 68"};
+bool g_prologueOk = false;  // false: the depositor is unknown, so every deposit keeps the old all-or-nothing rule
+
 sigscan::Entry CountCheckSite {"StashTabCountCheck", "stash tabs", sigscan::Kind::Code, 0, 0,
                                "45 84 e4 0f 84 ?? ?? ?? ?? 48 8b c8 e8 ?? ?? ?? ?? 3c 63 0f 82"};
 constexpr uint32_t CountCheckCall = 12;
@@ -130,6 +136,7 @@ void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
 	}
 }
 
+// server and client unit ids match, in a local or a hosted game
 auto LocalPlayerId() noexcept -> uint32_t {
 	using namespace d2r::rva;
 	Unit* local = d2r::Engine<Unit* (*)(uint32_t) noexcept>(ClientPlayer)(d2r::Engine<uint32_t (*)() noexcept>(LocalPlayerSlot)());
@@ -189,10 +196,14 @@ auto SlotCount(Unit* slot) noexcept -> uint8_t {
 	return data != nullptr ? d2r::At<uint8_t>(data, CountByte) : 0;
 }
 
-// Whether the deposit is the local player's. The depositing player is the deposit function's own second argument, which it
-// keeps in its frame at rbp-0x98 (the game is at rbp-0x78 and the player's slot sits 0x20 below it, as in the decompile);
-// the item's own owner id reads -1 by then. Only the local player's rest can be made again.
+// Whether the deposit is the local player's. The depositing player is the deposit function's own second argument, which its
+// prologue spills to [rsp+0x68] (rsp = rbp-0x100, so rbp-0x98; DepositPrologue checks the bytes at install); the item's own
+// owner id reads -1 by then. Only the local player's rest can be made again.
 auto DepositorIsLocal(const uint8_t* rbp, uint32_t* id) noexcept -> bool {
+	*id = 0xffffffffu;
+	if (!g_prologueOk) {
+		return false;
+	}
 	Unit* player = rbp != nullptr ? *reinterpret_cast<Unit* const*>(rbp - 0x98) : nullptr;
 	*id = player != nullptr ? d2r::At<uint32_t>(player, d2r::rva::UnitIdField) : 0xffffffffu;
 	return player != nullptr && *id == LocalPlayerId();
@@ -277,8 +288,9 @@ auto MakeStub(const void* target) noexcept -> uint64_t {
 }  // namespace
 
 auto InstallStashStacks(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
-	sigscan::Entry* const own[] = {&CountCheckSite, &ServerAddSite, &SetSendingOnCall, &SendItemCall, &SetSendingOffCall};
-	sigscan::Resolve(own, 5, context->exeBase, nullptr, 0);
+	sigscan::Entry* const own[] = {&CountCheckSite, &ServerAddSite, &SetSendingOnCall, &SendItemCall, &SetSendingOffCall,
+	                               &DepositPrologue};
+	sigscan::Resolve(own, 6, context->exeBase, nullptr, 0);
 	for (const sigscan::Entry* e : own) {
 		plog::Info("stash tabs: %s %s (rva 0x%llx)", e->name, sigscan::StateText(e->state), static_cast<unsigned long long>(e->rva));
 	}
@@ -291,6 +303,12 @@ auto InstallStashStacks(const D2RL::PluginContext* context, char* report, size_t
 		std::snprintf(report, reportSize, "stash tabs FAILED (call sites or thunks differ)");
 		return false;
 	}
+	// the prologue must sit shortly before both sites, in the one function
+	const auto before = [](const sigscan::Entry& site) {
+		return DepositPrologue.rva != 0 && site.rva > DepositPrologue.rva && site.rva - DepositPrologue.rva < 0x1000;
+	};
+	g_prologueOk = before(CountCheckSite) && before(ServerAddSite);
+	plog::Info("stash tabs: the deposit prologue check %s", g_prologueOk ? "passed" : "FAILED; deposits stay all-or-nothing");
 	g_context = context;
 	const auto query = [context](const auto*& service, auto has, uint32_t required) {
 		return context->QueryService(&service) == D2RL::ServiceQueryResult::Success && has(service, required);
