@@ -25,8 +25,8 @@ Example: `core-ui`.
 
 `core-ui stash personal|materials|maps|bossing|<n>` : opens the stash (if closed) and selects a tab, so a game check
 needs no clicks. `personal` and `materials` are the stock tabs, `maps` and `bossing` ours, `<n>` is shared page `n`
-(1-20; 16 is the Maps page, 20 the Bossing page). Precondition: in a game; fails with a usage line if the stash tab signatures were not found. Log line:
-`stash tabs: console opened <Personal|Materials|Maps|Bossing|Shared> (page <n>)`. Example: `core-ui stash maps`.
+(1-20; 16 is the Maps page, 20 the Bossing page). Dev only: it opens the stash anywhere, not only in town, so use it in town for checks. Precondition: in a game; fails with a usage line if the stash tab signatures were not found. Log line:
+`stash tabs: console opened <Personal|Materials|Maps|Bossing|Shared> (page <n>)`, or `stash tabs: console open failed (<result>)`. Example: `core-ui stash maps`.
 
 ## core-events
 

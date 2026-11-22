@@ -507,9 +507,9 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 std::atomic<int32_t> g_request {0};
 int32_t g_act = 0, g_actFrame = 0;  // UI thread: the request waiting for the opened stash, and the frame to act on
 
-void DispatchPanel(const char* command, const char* text) noexcept {
+auto DispatchPanel(const char* command, const char* text) noexcept -> Result {
 	const D2RL::Widgets::UiAction action {.structSize = D2RL::Widgets::UiActionSize, .target = "PanelManager", .command = command, .text = text};
-	g_widgets->dispatchUiAction(g_context, &action);
+	return g_widgets->dispatchUiAction(g_context, &action);
 }
 
 void RunRequest() noexcept {
@@ -519,7 +519,11 @@ void RunRequest() noexcept {
 			return;
 		}
 		if (!g_stashOpen) {
-			DispatchPanel("OpenPanel", Panel);
+			if (const Result r = DispatchPanel("OpenPanel", Panel); r != Result::Success) {
+				plog::Warn("stash tabs: console open failed (%u)", static_cast<uint32_t>(r));
+				g_act = 0;
+				return;
+			}
 		}
 		g_actFrame = static_cast<int32_t>(g_frames) + 5;  // the panel needs a few frames to show
 		return;
@@ -529,7 +533,10 @@ void RunRequest() noexcept {
 	}
 	const int32_t what = std::exchange(g_act, 0);
 	if (what == 3 || what == 4) {
-		DispatchPanel("OpenPanel", what == 3 ? "core-ui/StashTabMaps" : "core-ui/StashTabBossing");
+		if (const Result r = DispatchPanel("OpenPanel", what == 3 ? "core-ui/StashTabMaps" : "core-ui/StashTabBossing"); r != Result::Success) {
+			plog::Warn("stash tabs: console open failed (%u)", static_cast<uint32_t>(r));
+			return;
+		}
 	} else if (what == 1 || what == 2) {
 		Leave();
 		g_tab = what == 1 ? 0 : 3;
@@ -555,6 +562,8 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 		g_cycleHeld = false;
 		stash_affinity::ShowBase(0);
 		stash_affinity::SetTabOpen(false);
+		g_request = 0;  // a command typed before the game ended must not fire in the next one
+		g_act = 0;
 	}
 	if (g_panel == D2RL::Widgets::InvalidHandle && g_widgets->findPanel(g_context, Panel, &g_panel) != Result::Success) {
 		g_panel = D2RL::Widgets::InvalidHandle;
