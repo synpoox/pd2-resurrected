@@ -382,6 +382,9 @@ auto FindStored(const D2RL::PluginContext*, const items::ItemInfo* item, void* u
 	return D2RL::Inventory::IterationAction::Stop;
 }
 
+constexpr D2RL::Inventory::ItemFilter Carried {.structSize = D2RL::Inventory::ItemFilterSize,
+                                               .containerMask = items::ContainerBit(C::Inventory) | items::ContainerBit(C::Cube)};
+
 // The client's copy of the cursor item after a consumed 0x21 (#1762). Sending 0x21 marks it pending (0x1c6ac0, state
 // 0x36), and the client then ignores clicks with it (0x2c81d0 returns on 0x1c7360) until an item packet for it arrives
 // (0x1c6a40). A merge's stack move also redraws the client's cursor: the stack's 0x9d action 5 (remove from container,
@@ -391,8 +394,6 @@ auto FindStored(const D2RL::PluginContext*, const items::ItemInfo* item, void* u
 // changing it. No-op when the cursor item is gone (a whole merge destroyed it). #1766: a refused hand drop or quick-move
 // leaves its item pending the same way; a quick-move's item is still in the inventory or Cube, and an item that does not
 // stack (count 0) is edited to its own identified state instead.
-constexpr D2RL::Inventory::ItemFilter Carried {.structSize = D2RL::Inventory::ItemFilterSize,
-                                               .containerMask = items::ContainerBit(C::Inventory) | items::ContainerBit(C::Cube)};
 void ResendCursor(D2RL::PlayerHandle player, uint32_t cursorId) noexcept {
 	D2RL::ItemHandle held {};
 	items::ItemInfo item {.structSize = items::ItemInfoSize};
@@ -421,7 +422,7 @@ void ResendCursor(D2RL::PlayerHandle player, uint32_t cursorId) noexcept {
 	                  (after.stateFlags & items::ItemStateIdentified) == identified;
 	(sent == items::Result::Success && kept ? plog::Info : plog::Warn)(
 	    "affinity: cursor item %08x x%d sent to the client again: result %u%s", item.code, count, static_cast<uint32_t>(sent),
-	    kept ? "" : ", COUNT CHANGED");
+	    kept ? "" : ", ITEM CHANGED");
 }
 
 // Game thread (#1744): a hand drop's 0x21, which D2R cannot resolve on a Maps or Bossing page. The cursor item is
