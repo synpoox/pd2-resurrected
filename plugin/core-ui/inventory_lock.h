@@ -74,6 +74,12 @@ constexpr auto TouchesCharmRows(const uint8_t* packet, size_t size, RowOf rowOf)
 // clicked cell +0x11, where the cursor item goes, each packed y << 16 | x (client 0x2c81d0, server 0x4c0230; #1744: read as two
 // plain ints, a same-item drop on its own cell was refused); swap(a, b, x, y) says whether the cursor item may stand there. Any other page (inventory, cube) is not filtered. The page number of a shared tab is not in the message,
 // so the open tab says which page the stash shows.
+// #1749: a swap on a shared page is 0x14, not 0x1f (client 0x2c81d0 sends 0x14 when the grid's owner is not the player; server
+// 0x4b4de0): 0x15 bytes, ids +1 (the cursor item) and +5, the page's owner unit id +9, the cells +0x0d and +0x11 as in 0x1f, the
+// stash grid implied. Unfiltered, D2R swapped the stored item onto the cursor, where the client never drew it. A put there is
+// 0x45, not 0x18 (client 0x15f8b0, server 0x4c5570): 0x0d bytes, the cursor item's id +1, the owner's id +5, the cell +9 packed.
+// A refusal sends nothing back, as D2R's own failure branches of 0x18, 0x1f and 0x14 do (telemetry only): the client moved
+// nothing before the server's answer (it only marks the cursor item pending, 0x1c6ac0), so it stays in sync.
 template <class Put, class Swap>
 constexpr auto MisplacedOnTab(const uint8_t* packet, size_t size, uint32_t viewPage, Put put, Swap swap) noexcept -> bool {
 	if (packet == nullptr || size == 0 || viewPage == 0) {
@@ -83,8 +89,12 @@ constexpr auto MisplacedOnTab(const uint8_t* packet, size_t size, uint32_t viewP
 	case 0x18:
 		return size >= 17 && ReadU32(packet + 13) == 4 &&
 		       !put(ReadU32(packet + 1), static_cast<int32_t>(ReadU32(packet + 5)), static_cast<int32_t>(ReadU32(packet + 9)));
+	case 0x45:
+		return size >= 0x0d &&
+		       !put(ReadU32(packet + 1), static_cast<int32_t>(ReadU32(packet + 9) & 0xffff), static_cast<int32_t>(ReadU32(packet + 9) >> 16));
+	case 0x14:
 	case 0x1f:
-		return size >= 0x15 && ReadU32(packet + 9) == 4 &&
+		return size >= 0x15 && (packet[0] == 0x14 || ReadU32(packet + 9) == 4) &&
 		       !swap(ReadU32(packet + 1), ReadU32(packet + 5), static_cast<int32_t>(ReadU32(packet + 0x11) & 0xffff),
 		             static_cast<int32_t>(ReadU32(packet + 0x11) >> 16));
 	default:

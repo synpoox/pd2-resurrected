@@ -139,6 +139,20 @@ static_assert(!MisplacedOnTab(PutInv, sizeof PutInv, aff::MapsPage, GemPut, Nop)
 static_assert(MisplacedOnTab(SwapStash, sizeof SwapStash, aff::MapsPage, GemPut, Never) && !MisplacedOnTab(SwapStash, sizeof SwapStash, aff::MapsPage, GemPut, Nop));
 static_assert(!MisplacedOnTab(SwapIn, sizeof SwapIn, aff::MapsPage, GemPut, Never));  // a swap on the inventory (page 0) is never filtered
 static_assert(!MisplacedOnTab(SwapStash, 0x14, aff::MapsPage, GemPut, Never));  // too short
+// #1749: a shared page's swap is 0x14, its +9 the page owner's unit id (here 0x31), not a grid
+constexpr uint8_t SwapShared[] = {0x14, 9, 0, 0, 0, 7, 0, 0, 0, 0x31, 0, 0, 0, 0, 0, 2, 0, 1, 0, 2, 0};
+static_assert(MisplacedOnTab(SwapShared, sizeof SwapShared, aff::MapsPage, GemPut, Never));   // a scroll onto a map's cell 1,2
+static_assert(!MisplacedOnTab(SwapShared, sizeof SwapShared, aff::MapsPage, GemPut, Nop));
+static_assert(!MisplacedOnTab(SwapShared, sizeof SwapShared, 0, GemPut, Never));  // no tab open
+static_assert(!MisplacedOnTab(SwapShared, 0x14, aff::MapsPage, GemPut, Never));   // too short
+static_assert(MisplacedOnTab(SwapShared, sizeof SwapShared, aff::MapsPage, GemPut,
+                             [](uint32_t, uint32_t, int32_t x, int32_t y) { return x != 1 || y != 2; }));  // reads +0x11 packed
+// and its put is 0x45: the cursor item +1, the owner +5, the cell +9 packed (here 1,3)
+constexpr uint8_t PutShared[] = {0x45, 7, 0, 0, 0, 0x31, 0, 0, 0, 1, 0, 3, 0};
+constexpr auto At13 = [](uint32_t id, int32_t x, int32_t y) { return id == 7 && x == 1 && y == 3; };
+static_assert(MisplacedOnTab(PutShared, sizeof PutShared, aff::MapsPage, GemPut, Nop));  // a gem onto a map cell
+static_assert(!MisplacedOnTab(PutShared, sizeof PutShared, aff::MapsPage, At13, Nop));
+static_assert(!MisplacedOnTab(PutShared, sizeof PutShared, 0, GemPut, Nop) && !MisplacedOnTab(PutShared, 0x0c, aff::MapsPage, GemPut, Nop));
 // a currency onto its own stacked cell (0,4) as a 0x1f: the cells are packed y << 16 | x (#1744)
 constexpr uint8_t SwapOwnCell[] = {0x1f, 9, 0, 0, 0, 7, 0, 0, 0, 4, 0, 0, 0, 0, 0, 4, 0, 0, 0, 4, 0};
 static_assert(!MisplacedOnTab(SwapOwnCell, sizeof SwapOwnCell, aff::MapsPage, GemPut,
@@ -300,20 +314,15 @@ auto PutOk(void* game, uint32_t id, uint32_t page, int32_t x, int32_t y) noexcep
 	return HomeCell(CodeOf(game, UnitOf(game, id)), stash_affinity::WantedBase(), page, x, y);
 }
 
-// 0x1f: the cursor item (mode 4) goes to the message's cell (x, y)
+// 0x1f / 0x14: the cursor item (mode 4) goes to the message's cell (x, y); only it is needed, so a stored item this lookup
+// cannot find (a shared page's) does not let the swap through
 auto SwapOk(void* game, uint32_t a, uint32_t b, int32_t x, int32_t y, uint32_t page) noexcept -> bool {
-	Unit* first = UnitOf(game, a);
-	Unit* second = UnitOf(game, b);
-	if (first == nullptr || second == nullptr) {
-		return true;
+	const auto held = [](Unit* u) noexcept { return u != nullptr && d2r::At<int32_t>(u, d2r::rva::UnitMode) == 4; };
+	Unit* item = UnitOf(game, a);
+	if (!held(item)) {
+		item = UnitOf(game, b);
 	}
-	const bool firstHeld = d2r::At<int32_t>(first, d2r::rva::UnitMode) == 4;
-	Unit* held = firstHeld ? first : second;
-	Unit* stored = firstHeld ? second : first;
-	if (d2r::At<int32_t>(held, d2r::rva::UnitMode) != 4 || d2r::At<int32_t>(stored, d2r::rva::UnitMode) != 0) {
-		return true;
-	}
-	return HomeCell(CodeOf(game, held), stash_affinity::WantedBase(), page, x, y);
+	return !held(item) || HomeCell(CodeOf(game, item), stash_affinity::WantedBase(), page, x, y);
 }
 
 // The client's cell test (#1745). D2R's inventory widget asks two D2Common functions about the cursor item over a grid

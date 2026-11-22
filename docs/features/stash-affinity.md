@@ -70,6 +70,16 @@ page .. cell x,y: the plugin stacks it`, then `affinity: .. merged with the stac
 full inventory, a sum past 50), the item stays on the cursor: it is destroyed only after the stack holds the sum. The tidy pass stays as the net for what skips the message (the list forms 0x22 and 0x60 are not checked). Log: `stash tabs:
 refused message 0x.., not the item's own cell`.
 
+Shared pages ([#1749](https://github.com/synpoox/pd2-resurrected/issues/1749)): the Maps and Bossing tabs are shared pages,
+whose grid belongs to another unit, so the client does not send 0x18 or 0x1f there. A swap is 0x14 (client `0x2c81d0`, server
+`0x4b4de0`; 0x15 bytes: the cursor item +1, the stored item +5, the page owner's unit id +9, the cells +0x0d and +0x11 as in
+0x1f) and a put is 0x45 (client `0x15f8b0`, server `0x4c5570`; 0x0d bytes: the cursor item +1, the owner +5, the cell +9
+packed). Before #1749 neither was filtered: a wrong put landed and the tidy pass moved it back, and a wrong swap put the stored
+item on the server's cursor, which the client never drew (it showed after a rejoin). The filter now refuses both by the same
+rule. A refusal sends nothing back, like D2R's own failure branches of these handlers (they only write telemetry): the client
+moves nothing before the server answers (it marks the cursor item pending, `0x1c6ac0`), so the item stays on the cursor and in
+sync. The swap test needs only the cursor item, so a stored item the lookup cannot find does not let the swap through.
+
 Red cells ([#1745](https://github.com/synpoox/pd2-resurrected/issues/1745)): the client asks the same rule first. Two
 D2Common cell tests are hooked by signature (`inventory_lock.cpp`): 93847 `0x38a250` (the cursor item's cells are free: green
 tint, the click sends 0x18) and `0x38a5d0` (the one stored item under it: the swap highlight, the click sends 0x1f). While the
