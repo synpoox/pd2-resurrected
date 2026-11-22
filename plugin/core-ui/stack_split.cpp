@@ -136,15 +136,21 @@ auto Quantity(const items::ItemInfo& item) noexcept -> int32_t {
 	return count;
 }
 
-// Game thread: the stored stacks of the held code, before any put-down can merge it
-void NoteNow(const D2RL::PluginContext*, void*) noexcept {
+// The stored stacks of the held code, before any put-down can merge it. The UI thread notes them first, with the SDK's
+// counts (0 for a shared stash stack), so a fast put-down cannot beat the note; the game job then reads the true counts.
+// shortcut: g_stored is written from both threads without a lock, the game job's write is queued right after, upgrade if it tears.
+void NoteStored(uint32_t code, D2RL::PlayerHandle player, bool game) noexcept {
 	static Listed listed;
-	listed = {.code = g_noteCode.load()};
-	g_stored = {.code = listed.code};
-	g_inventory->forEachInventoryItem(g_context, g_notePlayer.load(), &StoredFilter, ListCode, &listed);
+	listed = {.code = code};
+	g_stored = {.code = code};
+	g_inventory->forEachInventoryItem(g_context, player, &StoredFilter, ListCode, &listed);
 	for (uint32_t i = 0; i < listed.count; ++i) {
-		g_stored.stack[g_stored.count++] = {listed.item[i].runtimeId, Quantity(listed.item[i])};
+		g_stored.stack[g_stored.count++] = {listed.item[i].runtimeId, game ? Quantity(listed.item[i]) : listed.item[i].quantity};
 	}
+}
+
+void NoteNow(const D2RL::PluginContext*, void*) noexcept {
+	NoteStored(g_noteCode.load(), g_notePlayer.load(), true);
 }
 
 // What the job found: the held stack itself, whole, or the noted stack it merged into
@@ -253,7 +259,7 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 		                              : items::Result::Unsupported;
 		if (out != items::Result::Success) {
 			++g_failed;
-			plog::Info("split: refused, no room in the inventory for the shared stash split (%u), %d stays whole on page %u cell %d,%d",
+			plog::Info("split: refused, could not move it to the inventory (%u), %d stays whole on page %u cell %d,%d",
 			           static_cast<uint32_t>(out), found.quantity, home.sharedStashPage, home.x, home.y);
 			return;
 		}
@@ -280,6 +286,7 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 	if (shared) {
 		// What stays down goes home: the one item, or the whole stack when the split failed
 		const items::Result returned = Move(player, placed.handle, BackTo(home));
+		g_failed += returned == items::Result::Success ? 0 : 1;
 		plog::Info("split: shared stash page %u cell %d,%d via the inventory, back home %u%s", home.sharedStashPage, home.x,
 		           home.y, static_cast<uint32_t>(returned), returned == items::Result::Success ? "" : " (left in the inventory)");
 	}
@@ -347,7 +354,10 @@ void Watch(const D2RL::PluginContext*, void*) noexcept {
 		if (g_held.quantity > 1 && (g_held.runtimeId != was.runtimeId || g_held.quantity != was.quantity)) {
 			g_notePlayer = player;
 			g_noteCode = g_held.code;
-			g_threads->runOnGameThread(g_context, NoteNow, nullptr);  // queued before any split job of this stack
+			NoteStored(g_noteCode, player, false);
+			if (const auto queued = g_threads->runOnGameThread(g_context, NoteNow, nullptr); queued != D2RL::Threads::Result::Success) {
+				plog::Info("split: could not queue the note (%u)", static_cast<uint32_t>(queued));  // queued before any split job of this stack
+			}
 		}
 		UpdateLegend(Splittable(g_held.code, g_held.quantity));
 		return;
