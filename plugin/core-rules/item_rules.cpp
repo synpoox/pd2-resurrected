@@ -1758,6 +1758,32 @@ static auto PatchTelekinesisArrows(const D2RL::PluginContext* context) noexcept 
 	return true;
 }
 
+// --- Shrine potions: Poison drops tpgs, Exploding drops tpfs (#1851) ----------------------------------------------
+// PD2 rewrites the item code pushed by its shrine potion makers (1.13c D2Game +0x6c281 in +0x6c200, +0x6c601 in
+// +0x6c580) from `gpm ` to `tpgs` and from `opm ` to `tpfs`. D2R's makers (93847: 0x591a90, 0x591700) pass the code as
+// `mov edx,imm32` to the item-code lookup 0x313ef0; these are its only code uses. No SDK service covers a code
+// constant in code, hence the byte patches; the imm32 sits 4 bytes into each match.
+constexpr const char* ShrineGasCode = "48 8b 07 ba 67 70 6d 20 0f b6 88 06 01 00 00 e8 ?? ?? ?? ?? 8b d8 83 f8 ff 75 0f";
+constexpr const char* ShrineFireCode = "48 8b 07 ba 6f 70 6d 20 0f b6 88 06 01 00 00 e8 ?? ?? ?? ?? 8b d8 83 f8 ff 75 0f";
+constexpr int ShrineCodeAt = 4;
+
+static auto PatchShrinePotions(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t gas = 0;
+	uint64_t fire = 0;
+	static constexpr uint8_t GasStock[] = {'g', 'p', 'm', ' '};
+	static constexpr uint8_t FireStock[] = {'o', 'p', 'm', ' '};
+	static constexpr uint8_t Tpgs[] = {'t', 'p', 'g', 's'};
+	static constexpr uint8_t Tpfs[] = {'t', 'p', 'f', 's'};
+	if (sigscan::ScanUnique(context->exeBase, ShrineGasCode, ShrineCodeAt, &gas) != 1 ||
+	    sigscan::ScanUnique(context->exeBase, ShrineFireCode, ShrineCodeAt, &fire) != 1 ||
+	    !PatchBytes(context, gas, GasStock, Tpgs, sizeof(Tpgs)) || !PatchBytes(context, fire, FireStock, Tpfs, sizeof(Tpfs))) {
+		return false;
+	}
+	plog::Info("shrine potions: tpgs at 0x%llx, tpfs at 0x%llx", static_cast<unsigned long long>(gas),
+	           static_cast<unsigned long long>(fire));
+	return true;
+}
+
 // --- Dim Vision and Terror full length; hit blind takes blinddimvision (#1837) ------------------------------------
 // PD2 NOPs 1.13c srvdo 30's AiCurseDivisor call (D2Game +0x506a8), so Dim Vision and Terror (and item procs of them)
 // keep their full length in Nightmare and Hell. D2R's srvdo 30 (93847: 0x55c840) divides at 0x55ca27 only for
@@ -2385,6 +2411,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool unlimited = PatchUnlimitedBooks(context);
 	const bool charms = InstallCharmRows(context);
 	const bool telekinesis = PatchTelekinesisArrows(context);
+	const bool shrinePotions = PatchShrinePotions(context);
 	const bool curseLength = PatchCurseLength(context);
 	const char* const dye = InstallDyeTint(context);
 	const bool mapStack = sigscan::HookBySignature(
@@ -2405,7 +2432,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
@@ -2415,15 +2442,16 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              charms ? "" : " FAILED (signature or bytes differ)", dye, mapStack ? "" : " FAILED (bytes differ)",
 	              noMagicMaps ? " (hooked when tables load)" : " FAILED (no table listener)", mapMakerLog ? "" : " FAILED (signature or bytes differ)",
 	              telekinesis ? "" : " FAILED (signature or bytes differ)",
-	              curseLength ? "" : " FAILED (signature, bytes or states.txt)");
+	              curseLength ? "" : " FAILED (signature, bytes or states.txt)",
+	              shrinePotions ? "" : " FAILED (signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
 	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0) +
-	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0);
+	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (shrinePotions ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 17;
+	return 18;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
