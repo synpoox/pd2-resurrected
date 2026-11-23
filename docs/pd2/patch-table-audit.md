@@ -701,7 +701,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 |---|---|---|---|---|---|
 | 2: D2Game `+0xab26e`: `00` -> `01`<br>D2Game `+0xab494`..`+0xab4b1`: `6a0253e8f2f1f5ff85c00f85..` -> `909090909090909090909090..` | `+0xab070`, `+0xab360` | CycleOfLife flag (+0xab26e) and the Vines poisoned/immune skip (+0xab494) | ported | plugin/core-rules/summon_ai.cpp ([#1802](https://github.com/synpoox/pd2-resurrected/issues/1802), origin/main 2eede0a4) | - |
 | 7: D2Game call `+0xab66e`, `+0xab939` (to `0x1e140`) -> PD2 `0x10360d40`<br>D2Game `+0xab865`: `75` -> `eb`<br>D2Game `+0xab8e2`: `74` -> `eb`<br>D2Game `+0xab99d`: `74` -> `eb`<br>D2Game `+0xabb48`: `7e` -> `eb`<br>D2Game `+0xac337`: `74` -> `eb` | - | ShadowMaster think: PD2's leash and five branch patches | ported | plugin/core-rules/summon_ai.cpp ([#1790](https://github.com/synpoox/pd2-resurrected/issues/1790)) | 0x5cd740 |
-| 1: D2Game call `+0xac550` (to `0x1e140`) -> PD2 `0x1036e9a0` | `+0xac410` | ShadowWarrior think (+0xac410): the leash call is skipped for a player-owned Shadow Warrior (0x1036e9a0) | missing | [#1800](https://github.com/synpoox/pd2-resurrected/issues/1800) | - |
+| 1: D2Game call `+0xac550` (to `0x1e140`) -> PD2 `0x1036e9a0` | `+0xac410` | ShadowWarrior think (+0xac410): the leash call is skipped for a player-owned Shadow Warrior (0x1036e9a0) | not needed | dead code: row 105 is the only AI row with this think and PD2 replaces it (`0x10360240`), ported in plugin/core-rules/summon_ai.cpp ([#1800](https://github.com/synpoox/pd2-resurrected/issues/1800)) | 0x5ceea0 |
 
 ### Skill while equipped
 

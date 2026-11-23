@@ -13,7 +13,7 @@ patch table (20-byte records at file offset `0x49b028`-`0x4a0744`, [plrmodes](pl
 | monai row | PD2 change | Ported |
 |---|---|---|
 | 106 ShadowMaster (Valkyrie, Decoy `dopplezonnew`, Shadow Master) | think kept, 7 patches (below); init replaced by `0x10360af0` | think: yes (core-rules `summons`); init: no |
-| 105 ShadowWarrior | init and think replaced (`0x10360a10`, `0x10360240`) | no |
+| 105 ShadowWarrior | init and think replaced (`0x10360a10`, `0x10360240`, PD2.gpr's build) | yes (core-rules `summons`, [#1800](https://github.com/synpoox/pd2-resurrected/issues/1800): init wrapped, think replaced; [core-rules](../features/core-rules.md)) |
 | 110 Vines (Poison Creeper) | 30 bytes NOPed at `+0xab494`: its "target already poisoned / poison immune" skip | yes (core-rules `summons`, below) |
 | 111 CycleOfLife (Carrion Vine, Solar Creeper) | one byte at `+0xab26e` (a flag stored 0 becomes 1) | yes (core-rules `summons`, below) |
 | 61 Hireable (mercenaries) | think replaced (`0x1035a270`) | no |
