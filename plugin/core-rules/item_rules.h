@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 namespace d2r {
 struct Unit;
@@ -30,6 +31,9 @@ auto SwapThunkSlot(const D2RL::PluginContext* context, const sigscan::Entry& ent
 // byte patch with the stock call as expected bytes; the call's old target goes to `original` first.
 auto RedirectCall(const D2RL::PluginContext* context, const char* pattern, uint32_t callAt, uint64_t entry,
                   uint64_t* original) noexcept -> bool;
+
+// The row of state `name` in the mod's states.txt (D2R numbers states by row under the header), or -1.
+auto StateRow(const D2RL::PluginContext* context, std::string_view name) noexcept -> int32_t;
 
 // PD2's 0x103749f0(unit, 1): a player is itself; a monster gives its AI owner (and that owner's, when a monster), a
 // missile with flag 0x400 its owner; no owner: the unit itself (item_rules.cpp, the stun refresh rule).
