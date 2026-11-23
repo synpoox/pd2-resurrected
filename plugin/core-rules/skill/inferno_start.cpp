@@ -8,7 +8,8 @@
 // D2R's srvst 11 (93847 0x555300) calls 0x551b00 (game, unit, skill, level, srvmissilea): state 12 created, or
 // refreshed with the frame events re-timed from frame 8 (0x4914e0), and no missile at all. So the redirect runs D2R's
 // step, then, when the state was already on and the skill's srvdofunc is 182, srvdo slot 182 (W21's SrvDoChannel,
-// skill_functions.cpp, read from the table so a failed W21 install leaves D2R's start alone).
+// skill_functions.cpp, read from the table so a failed W21 install leaves D2R's start alone). The start keeps D2R's
+// result: 1.13c returns 1 after the call (+0x4453e), so PD2 drops srvdo 182's.
 // Server only: clients draw the flames from cltdo 111, and PD2 leaves cltst 15 as 1.13c has it.
 #include "common.h"
 #include "../item_rules.h"
@@ -57,7 +58,7 @@ auto InfernoStart(Game* game, Unit* unit, int32_t skillId, int32_t level, int32_
 		plog::Info("inferno-start: skill %d level %d: srvdo 182 at the channel's next start: %lld, %u so far", skillId,
 		           level, static_cast<long long>(ran), g_lines.load());
 	}
-	return ran;
+	return stock;  // 1.13c +0x4453e returns 1 whatever the flame step did; PD2 keeps that
 }
 
 }  // namespace
