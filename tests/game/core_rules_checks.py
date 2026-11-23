@@ -275,15 +275,17 @@ def split_throw_client_cast(ctx):
 @check("split-throw-temp-buff", tags=["core-rules"])
 def split_throw_temp_buff(ctx):
     """srvstfunc 79 put the skill's aurastate on the caster at the start frame with PD2's aurastat1 attackrate =
-    aurastatcalc1 par4 (Param4 10). The length is approximated (docs/features/core-rules.md)."""
-    buffs = re.findall(r"temp buff: skill \d+ level (\d+) state (\d+) for (\d+) frames, stat (\d+) \+(-?\d+)", _log(ctx))
+    aurastatcalc1 par4 (Param4 10), on a flag-4 list the next mode change frees: a first cast finds none (#2045)."""
+    buffs = re.findall(r"temp buff: skill \d+ level (\d+) state (\d+) on a (new|kept) flag-4 list, stat (\d+) \+(-?\d+)",
+                       _log(ctx))
     if not buffs:
         ctx.skip("no temp buff in the log yet (cast Split Throw, then run again)")
-    level, state, frames, stat, value = (int(v) for v in buffs[0])
-    assert state > 0 and frames > 0, buffs[0]
+    level, state, kind, stat, value = buffs[0]
+    level, state, stat, value = int(level), int(state), int(stat), int(value)
+    assert state > 0 and kind == "new", buffs[0]
     assert stat == ATTACKRATE, f"aurastat1 is stat {stat}, PD2 gives attackrate ({ATTACKRATE})"
     assert value == 10, f"attack rate +{value}, PD2's par4 is 10"
-    return f"level {level}: state {state} for {frames} frames, attackrate +{value}"
+    return f"level {level}: state {state} on a new flag-4 list, attackrate +{value}"
 
 
 @check("split-throw-return", tags=["core-rules"])
