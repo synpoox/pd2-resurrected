@@ -2059,7 +2059,7 @@ constexpr const char* AiCurseDivide =
 constexpr const char* HitBlindState = "41 0f bf 85 a2 00 00 00 48 8d 55 ?? 48 8b 4d ?? 89 45 ?? e8";
 
 // The row of state `name` in the mod's states.txt (D2R numbers states by row under the header), or -1.
-static auto StateRow(const D2RL::PluginContext* context, std::string_view name) noexcept -> int32_t {
+auto StateRow(const D2RL::PluginContext* context, std::string_view name) noexcept -> int32_t {
 	if (context->modDirectory == nullptr || context->activeMod == nullptr) {
 		return -1;
 	}

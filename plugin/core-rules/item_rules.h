@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 namespace d2r {
 struct Unit;
@@ -30,6 +31,9 @@ auto SwapThunkSlot(const D2RL::PluginContext* context, const sigscan::Entry& ent
 // byte patch with the stock call as expected bytes; the call's old target goes to `original` first.
 auto RedirectCall(const D2RL::PluginContext* context, const char* pattern, uint32_t callAt, uint64_t entry,
                   uint64_t* original) noexcept -> bool;
+
+// The row of state `name` in the mod's states.txt (D2R numbers states by row under the header), or -1.
+auto StateRow(const D2RL::PluginContext* context, std::string_view name) noexcept -> int32_t;
 
 // Gold within 3 of a player picks itself up, as in PD2 (#1863, gold_pickup.cpp); the count for the status line.
 auto InstallGoldPickup(const D2RL::PluginContext* context) noexcept -> bool;
