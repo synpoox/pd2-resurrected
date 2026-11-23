@@ -1385,7 +1385,9 @@ constexpr int BossCurseHostileCall = 0x23;  // e8 rel32: (game, caster, target) 
 // mov [rsp+0x20],r9d / push rbp / push rsi / push r12 / push r14 / push r15 / mov rbp,rsp
 constexpr uint8_t BossCurseEntry[] = {0x44, 0x89, 0x4c, 0x24, 0x20, 0x55, 0x56, 0x41,
                                       0x54, 0x41, 0x56, 0x41, 0x57, 0x48, 0x8b, 0xec};
-constexpr int32_t SkillAmplifyDamage = 66;  // the skill the callback reads (1.13c reads the same row)
+// PD2's callback casts MonAmplifyDamage (PD2 424, merged 494; test_boss_curse.py checks the row); the level stays the
+// handler's, from row 66
+constexpr int32_t SkillMonAmplifyDamage = 494;
 constexpr int SkAuraTargetState = 0xa2;     // int16 auratargetstate: the state the callback puts
 
 // ApplyCurse reads past CurseParams: 0x60 and 0x68 hold the skill's +0xa4 and +0xac, which its state send reads
@@ -1406,7 +1408,7 @@ auto BossCurse(Game* game, Unit* caster, Unit* target, int32_t level) noexcept -
 	if (game == nullptr || caster == nullptr || target == nullptr || g_bossCurseHostile(game, caster, target) == 0) {
 		return;  // the callback's own first check, ahead of MakeRoom touching the target's curses
 	}
-	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), SkillAmplifyDamage);
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), SkillMonAmplifyDamage);
 	if (skill == nullptr || At<int16_t>(skill, SkAuraTargetState) < 0) {
 		return;
 	}
@@ -1414,14 +1416,14 @@ auto BossCurse(Game* game, Unit* caster, Unit* target, int32_t level) noexcept -
 	d2r::CurseParams& c = p.curse;
 	c.game = game;
 	c.caster = caster;
-	c.skill = SkillAmplifyDamage;
+	c.skill = SkillMonAmplifyDamage;
 	c.level = level;
 	c.key = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(caster);
-	c.frames = d2r::EvalCalc(game, caster, skill, SkAuraLenCalc, SkillAmplifyDamage, level);
+	c.frames = d2r::EvalCalc(game, caster, skill, SkAuraLenCalc, SkillMonAmplifyDamage, level);
 	for (int i = 0; i < 6; ++i) {
 		const int16_t stat = At<int16_t>(skill, SkAuraStat1 + 2 * i);
 		c.stats[i] = stat < 0 ? -1 : stat;
-		c.values[i] = stat < 0 ? 0 : d2r::EvalCalc(game, caster, skill, SkAuraStatCalc1 + 4 * i, SkillAmplifyDamage, level);
+		c.values[i] = stat < 0 ? 0 : d2r::EvalCalc(game, caster, skill, SkAuraStatCalc1 + 4 * i, SkillMonAmplifyDamage, level);
 	}
 	c.state = At<int16_t>(skill, SkAuraTargetState);
 	p.sendA = At<uint64_t>(skill, SkSendStateA);
