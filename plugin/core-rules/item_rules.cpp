@@ -1872,6 +1872,61 @@ static auto PatchHalfFreeze(const D2RL::PluginContext* context) noexcept -> bool
 	return true;
 }
 
+// --- Chill also slows leap and faster cast rate (#1861) ------------------------------------------------------------
+// PD2 routes the chill list's attackrate add (1.13c D2Game +0xdc88d in +0xdc780) through ProjectDiablo.dll 0x1036e4a0
+// (installed 0x1036e510): attackrate (68) by the chill value v (negative), stat 423 by 3v, and, when the chilled unit's
+// total item_fastercastrate (105) is >= 0, 105 by max(v, -FCR) on the same list. Stat 423 is a PD2 raw row:
+// `item_leap_speed`, row 476 in our itemstatcost (Leap's calc2 adds item_leap_speed / 4). D2R's chill apply (93847:
+// 0x4509b0, from the hit apply 0x44ce80: every unit) makes the new list with 67, 68 and 69 only, then recomputes the
+// unit's rates (0x350b40, unit, file, line). That one call goes to ChillRates, which adds the two stats to the unit's
+// state 11 list first. No SDK service reaches a chill's stat list, hence the call redirect.
+constexpr const char* ChillRatesCall =
+    "45 8d 46 44 45 8b cf 90 44 89 74 24 20 48 8b d3 e8 ?? ?? ?? ?? 0f b6 8d 06 01 00 00 45 8d 46 45 45 8b cf 90 "
+    "44 89 74 24 20 48 8b d3 e8 ?? ?? ?? ?? 41 b8 ?? ?? ?? ?? 48 8d 15 ?? ?? ?? ?? 48 8b cf e8";
+constexpr uint32_t ChillRatesCallAt = 65;
+constexpr int32_t StateCold = 11, StatAttackRate = 68, StatFasterCast = 105, StatLeapSpeed = 476;
+
+// PD2's FCR add: none below 0 FCR, else v but never past 0
+constexpr auto ChillCastAdd(int32_t fcr, int32_t v) noexcept -> int32_t {
+	return fcr < 0 ? 0 : fcr > -v ? v : -fcr;
+}
+static_assert(ChillCastAdd(40, -25) == -25 && ChillCastAdd(10, -25) == -10 && ChillCastAdd(0, -25) == 0 &&
+              ChillCastAdd(-5, -25) == 0);
+
+using RatesFn = void (*)(Unit*, const char*, int32_t) noexcept;
+RatesFn g_chillRates = nullptr;
+
+void ChillRates(Unit* unit, const char* file, int32_t line) noexcept {
+	void* list = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(d2r::sig::UnitStateList)(unit, StateCold);
+	if (list != nullptr) {
+		const uint8_t flag = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::sig::UnitDataFlag)(unit);
+		const auto set = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(d2r::sig::SetListStat);
+		const int32_t v = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(d2r::sig::ListStatValue)(
+			flag, list, StatAttackRate, 0);
+		set(flag, list, StatLeapSpeed, v * 3, 0);
+		const int32_t fcr = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(unit, StatFasterCast, 0);
+		if (const int32_t add = ChillCastAdd(fcr, v); add != 0) {
+			set(flag, list, StatFasterCast, add, 0);
+		}
+	}
+	g_chillRates(unit, file, line);
+}
+
+static auto PatchChillRates(const D2RL::PluginContext* context) noexcept -> bool {
+	for (const sigscan::Entry* e : {&d2r::sig::UnitStateList, &d2r::sig::UnitDataFlag, &d2r::sig::SetListStat,
+	                                &d2r::sig::ListStatValue, &d2r::sig::UnitStat}) {
+		if (e->state != sigscan::State::Ok) {
+			return false;
+		}
+	}
+	if (!RedirectCall(context, ChillRatesCall, ChillRatesCallAt, reinterpret_cast<uint64_t>(&ChillRates),
+	                  reinterpret_cast<uint64_t*>(&g_chillRates))) {
+		return false;
+	}
+	plog::Info("chill: leap speed and faster cast rate added to the cold list (rate call redirected)");
+	return true;
+}
+
 // --- Dim Vision and Terror full length; hit blind takes blinddimvision (#1837) ------------------------------------
 // PD2 NOPs 1.13c srvdo 30's AiCurseDivisor call (D2Game +0x506a8), so Dim Vision and Terror (and item procs of them)
 // keep their full length in Nightmare and Hell. D2R's srvdo 30 (93847: 0x55c840) divides at 0x55ca27 only for
@@ -2596,6 +2651,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool shrinePotions = PatchShrinePotions(context);
 	const bool curseLength = PatchCurseLength(context);
 	const bool halfFreeze = PatchHalfFreeze(context);
+	const bool chillRates = PatchChillRates(context);
 	// One rule, ok only with both halves: a client roll capped apart from the server's draws the missile stopping early.
 	// Both sites are scanned before either hook goes in, so a build that moved one leaves both rolls stock.
 	// shortcut: if the loader refuses the second hook after the first went in, the first stays; undo it if that ever happens.
@@ -2630,7 +2686,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s; boss curse%s; half freeze%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s; boss curse%s; half freeze%s; chill rates%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
@@ -2644,16 +2700,17 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              shrinePotions ? "" : " FAILED (signature or bytes differ)",
 	              pierceCap ? "" : " FAILED (signature or bytes differ)",
 	              bossCurse ? "" : " FAILED (curse hook, signature or bytes differ)",
-	              halfFreeze ? "" : " FAILED (signature or bytes differ)");
+	              halfFreeze ? "" : " FAILED (signature or bytes differ)",
+	              chillRates ? "" : " FAILED (signature, call or relay)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
 	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0) +
 	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (shrinePotions ? 1 : 0) + (pierceCap ? 1 : 0) + (bossCurse ? 1 : 0) +
-	       (halfFreeze ? 1 : 0);
+	       (halfFreeze ? 1 : 0) + (chillRates ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 21;
+	return 22;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
