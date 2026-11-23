@@ -1221,7 +1221,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvdofunc | 104 | `0x103b0210` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode |
 | `0x1036ba20` | srvdofunc | 112 | `0x103b02d0` | missing | [#2003](https://github.com/synpoox/pd2-resurrected/issues/2003): PD2 casts one of 4 Mon curses, D2R `0x5794b0` one of 5 player curses |
 | `0x1036ba20` | srvdofunc | 113 | `0x103b0580` | documented | [core-rules](../features/core-rules.md), [w37-server-rules](../research/pd2/w37-server-rules.md) |
-| `0x1036ba20` | srvdofunc | 114 | `0x103b06c0` | missing | [#2002](https://github.com/synpoox/pd2-resurrected/issues/2002): PD2 casts calc3 ravens, D2R `0x576f70` one |
+| `0x1036ba20` | srvdofunc | 114 | `0x103b06c0` | ported | `plugin/core-rules/skill_functions.cpp` (SrvDoRaven, [#2002](https://github.com/synpoox/pd2-resurrected/issues/2002)): calc3 ravens per cast at jittered spots, PD2's hits |
 | `0x1036ba20` | srvdofunc | 115 | `0x103b0930` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode |
 | `0x1036ba20` | srvdofunc | 118 | `0x103b0a50` | unclear | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: reschedules the unit's timer event 12 by skill `+0x15c` |
 | `0x1036ba20` | srvdofunc | 119 | `0x103b0b90` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): druid-w24.md, skill_functions.cpp |
