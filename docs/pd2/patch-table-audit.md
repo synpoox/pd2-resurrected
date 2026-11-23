@@ -985,7 +985,7 @@ Added by [#1874](https://github.com/synpoox/pd2-resurrected/issues/1874). Static
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
 | 1: D2Game `+0x67508`: `85` -> `33` | `+0x674a0` | cow portal (0x674a0) no longer refuses once the Cow King quest bit (quest 4 bit 10) is set | not needed | D2R cow portal 0x5da2a0 has no Cow King check | 0x5da2a0 |
-| 1: D2Game `+0xb695f`: `57` -> `51` | `+0xb6840` | +0xb6840: level arg of calc1 missile eval 0xb32e0 changes from edi (skill level) to ecx (value left by 0x6f930) | unclear | what ecx holds after 0x6f930 not settled; no callers of +0xb6840 found | - |
+| 1: D2Game `+0xb695f`: `57` -> `51` | `+0xb6840` | +0xb6840: level arg of calc1 missile eval 0xb32e0 changes from edi (skill level) to ecx (value left by 0x6f930) | unclear | what ecx holds after 0x6f930 not settled; no callers of +0xb6840 found; it is 1.13c srvdo slot 152 (table entry D2Game `+0x107708`), the function of DiabLight and UberDiabLight | - |
 | 1: D2Game `+0x267ec`: `1f` -> `20` | - | monster corpse explode (missile 117, MonsterCEDamagePercent): Nightmare multiplier x2/3 -> x1/3 (shr 0x1f -> 0x20) | unclear | D2R corpse-explode damage site not located | - |
 | 1: D2Game `+0x26801`: `03` -> `03` | - | `+0x26801`: no change (`03` over `03`) | not needed | no change | - |
 | 1: D2Game `+0x43b17`: `38` -> `40` | - | nova srvdo 22 range adds calc3 instead of calc1 (only the one nova function: D2R's srvdo 152 `0x57a2f0` reads calc3 already) | ported | data route ([#2013](https://github.com/synpoox/pd2-resurrected/issues/2013)): the radius formulas of Howl, War Cry and Howl Monster move from calc3 to calc1 in `skills.txt`; D2R reads calc1 (+0x190) at 0x553e01 | 0x553cf0, 0x57a2f0 |
