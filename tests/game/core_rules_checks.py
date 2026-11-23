@@ -739,7 +739,7 @@ def splash_current_skill(ctx):
     _, _, _, _, _, _, _, skill, level, percent, srcdam, units = frenzy[0]
     assert level > 0, f"Frenzy at level {level}"
     assert percent > 0, f"Frenzy's damage% {percent}: calc1 not read"
-    victims = re.findall(rf"splash hit: current skill {FRENZY}: phys (-?\d+) fire (-?\d+) light (-?\d+) magic (-?\d+) "
+    victims = re.findall(rf"splash unit in range: current skill {FRENZY}: phys (-?\d+) fire (-?\d+) light (-?\d+) magic (-?\d+) "
                          r"cold (-?\d+) poison (-?\d+) \(1/256\), damage% (-?\d+)", _log(ctx))
     if not victims:
         ctx.skip("no Frenzy splash hit logged (the log keeps a game's first splash: restart, Frenzy first, run again)")
