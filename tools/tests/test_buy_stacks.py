@@ -18,7 +18,7 @@ class BuyStacks(unittest.TestCase):
         types = [t for t in data_tables.rows("itemtypes") if t["ItemType"] != "Expansion"]
         self.assertEqual(types[scroll]["Code"], "scro")
         self.assertEqual([types[r]["Code"] for r in rows],
-                         ["box", "imma", "imrn", "imra", "rera", "scou", "upma", "ubor", "mgen", "rng"])
+                         ["imma", "imrn", "imra", "rera", "scou", "upma", "upmp", "pvpm", "fort", "pvpd"])
 
 
 if __name__ == "__main__":

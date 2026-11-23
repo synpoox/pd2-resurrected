@@ -30,13 +30,12 @@ namespace {
 using d2r::At;
 using d2r::Unit;
 
-// PD2's list (0x10384d60's switch) as PD2 raw itemtypes rows, resolved by name in the raw table and given D2R's row
-// (the game skips the "Expansion" divider): 0x16 scro (22, D2R's own tome case), 0x76 box (123), 0x77 imma (124),
-// 0x78 imrn (125), 0x79 imra (126), 0x7a rera (127), 0x7b scou (128), 0x7c upma (129), 199 ubor (204), 0xcf mgen (212),
-// 0xe3 rng (232). No item has ubor, mgen or rng as its primary type in PD2's tables or ours (organs are ubr), so those
-// three never match, in PD2 as here. tools/tests/test_buy_stacks.py checks the rows against files/data.
+// PD2's list (0x10384d60's switch) as PD2 type numbers, which skip the raw table's "Expansion" divider as D2R's do,
+// resolved by name and given D2R's number: 0x16 scro (22, D2R's own tome case), 0x76 imma (124), 0x77 imrn (125),
+// 0x78 imra (126), 0x79 rera (127), 0x7a scou (128), 0x7b upma (129), 0x7c upmp (130), 199 pvpm (205), 0xcf fort (213),
+// 0xe3 pvpd (233). tools/tests/test_buy_stacks.py checks the rows against files/data.
 constexpr int32_t ScrollType = 22;
-constexpr int32_t MergeTypes[] = {123, 124, 125, 126, 127, 128, 129, 204, 212, 232};
+constexpr int32_t MergeTypes[] = {124, 125, 126, 127, 128, 129, 130, 205, 213, 233};
 constexpr int32_t StatQuantity = 70;
 constexpr int32_t UnitItem = 4;
 
@@ -135,7 +134,6 @@ auto InstallBuyStacks(const D2RL::PluginContext* context, char* report, size_t r
 	                RedirectCall(context, BuyPattern, TypeCallAt, reinterpret_cast<uint64_t>(&BuyIsType),
 	                             reinterpret_cast<uint64_t*>(&g_isType));
 	std::snprintf(report, reportSize, "buy merges stacks%s", ok ? "" : found ? " FAILED (call sites)" : " FAILED (signature)");
-	plog::Info("buy stacks: %s", ok ? "on" : "off");
 	return ok;
 }
 
