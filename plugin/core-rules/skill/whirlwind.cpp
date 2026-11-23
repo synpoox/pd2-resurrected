@@ -184,7 +184,8 @@ auto InstallWhirlwindStart(const D2RL::PluginContext* context, char* report, siz
 		g_serverReturn = CallReturn(context, ServerStartCall, ServerCallAt, d2r::sig::SkillTargetXY.rva);
 		g_clientReturn = CallReturn(context, ClientStartCall, ClientCallAt, d2r::sig::ClientSkillTargetXY.rva);
 		// No SDK service sets a skill's target point, so the two target-point functions are hooked; only the
-		// Whirlwind-start call sites act.
+		// Whirlwind-start call sites act. Both call sites are scanned first; if the client hook then fails, the server
+		// hook stays live while the line says FAILED.
 		on = g_serverReturn != 0 && g_clientReturn != 0 &&
 		     context->InstallInlineHook(d2r::sig::SkillTargetXY.rva, ServerTargetEntry, sizeof(ServerTargetEntry),
 		                                &ServerTarget, &g_serverTarget) &&
