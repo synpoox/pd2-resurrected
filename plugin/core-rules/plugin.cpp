@@ -121,7 +121,7 @@ void InstallLoot(const D2RL::PluginContext* context, char* report, size_t size) 
 }
 
 void InstallSummons(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "";
+	char rules[256] = "";
 	const int installed = InstallSummonAi(context, rules, sizeof(rules));
 	std::snprintf(report, size, "%d/%d installed: %s", installed, SummonAiCount(), rules);
 }

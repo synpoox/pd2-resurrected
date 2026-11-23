@@ -911,7 +911,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 102 BladeCreeper think | `0x1035fd10` | missing | [#1869](https://github.com/synpoox/pd2-resurrected/issues/1869) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 105 ShadowWarrior init | `0x10360a10` | documented | [summon-ai](summon-ai.md) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 105 ShadowWarrior think | `0x10360240` | documented | [summon-ai](summon-ai.md) |
-| `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 106 ShadowMaster init | `0x10360af0` | documented | [summon-ai](summon-ai.md) |
+| `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 106 ShadowMaster init | `0x10360af0` | ported | `plugin/core-rules/summon_ai.cpp` |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 114 ReanimatedHorde think | `0x1035da60` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 115 SiegeBeast think | `0x1035f820` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 120 Overseer think | `0x1035dca0` | ported | `plugin/core-events/lane-c/invaders.cpp`, `plugin/core-events/lucion_ai.cpp` |

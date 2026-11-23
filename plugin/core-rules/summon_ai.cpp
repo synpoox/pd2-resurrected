@@ -418,6 +418,75 @@ auto ShadowWarriorInit(Game* game, Unit* pet, Tick* tick) noexcept -> void {
 	}
 }
 
+// --- ShadowMaster init (monai row 106, #1801) ------------------------------------------------------------------------
+// PD2 replaces 1.13c's init (D2Game +0xa4320) with its own (ProjectDiablo.dll 0x10360af0). D2R's row-106 init
+// (0x5cec80, live in the AI table at 0x2397bd8) is 1.13c's code. Both copy the owner's class skills through the same
+// filter and level (PD2 calls 1.13c's +0xa3d60 and +0xa3d00 through pointers; D2R's 0x5cc810 and its inlined level).
+// PD2 adds two things:
+// - the left and right skill are the pet's first skill when it has one (D2R and 1.13c: Attack);
+// - sumskill1-5 of the summoning skill (monstats aip8: Valkyrie 32, Dopplezon 28, Shadow Master 279) at their
+//   sumskcalc for the owner. D2R's srvdo 16 already applies them for the Valkyrie (0x55ef80); srvdo 49 (Decoy, Shadow
+//   Master) does not. Shadow Master's skill has none.
+// The init is wrapped (D2R's, then PD2's additions); no SDK service runs an AI, so it is an inline hook.
+using SmSetSkillFn = void (*)(Unit*, int32_t id, int32_t flags) noexcept;  // (unit, id, -1), D2R's init
+using SmCalcFn = int32_t (*)(uint8_t dataFlag, Unit* owner, int32_t calc, int32_t skillId, int32_t level) noexcept;
+constexpr int SkSumSkill = 0x118, SkSumCalc = 0x124;  // skills record: sumskill1-5 (shorts), sumsk1calc-5 (D2R 0x55f446)
+
+SmSetSkillFn g_smSetSkill[2] {};
+SmCalcFn g_smCalc = nullptr;
+SwAiFn g_smInitOriginal = nullptr;
+std::atomic<uint32_t> g_smInits {0};
+
+auto ShadowMasterInit(Game* game, Unit* pet, Tick* tick) noexcept -> void {
+	// PD2 reads the first skill before it adds Attack
+	void* first = pet != nullptr ? FirstSkill(pet) : nullptr;
+	const int32_t firstId = first != nullptr ? g_sw.skillId(first, SwFile, __LINE__) : -1;
+	g_smInitOriginal(game, pet, tick);
+	if (game == nullptr || pet == nullptr || tick == nullptr) {
+		return;
+	}
+	Unit* owner = g_sw.owner(pet);
+	const uint8_t* mon = d2r::At<uint8_t*>(tick, TickMonStats);
+	if (owner == nullptr || d2r::At<int32_t>(owner, d2r::rva::UnitType) != 0 || mon == nullptr) {
+		return;
+	}
+	if (firstId >= 0) {
+		g_smSetSkill[0](pet, firstId, -1);
+		g_smSetSkill[1](pet, firstId, -1);
+	}
+	const uint8_t dataFlag = static_cast<uint8_t>(d2r::DataFlag(game));
+	const int32_t skillId = d2r::At<int16_t>(mon, MonAip8);
+	const int32_t level = d2r::At<int32_t>(Ai(tick), AiLevel);  // the owner's level in it, set by D2R's init
+	const uint8_t* rec = g_sw.record(dataFlag, skillId);
+	for (int i = 0; rec != nullptr && i < 5; ++i) {
+		const int32_t id = d2r::At<int16_t>(rec, SkSumSkill + 2 * i);
+		if (id <= 0) {
+			continue;
+		}
+		const int32_t sumLevel = g_smCalc(dataFlag, owner, d2r::At<int32_t>(rec, SkSumCalc + 4 * i), skillId, level);
+		g_sw.addSkill(pet, id, sumLevel > 0 ? sumLevel : 0, 0, SwFile, __LINE__);
+	}
+	if (pd2::HotSample(g_smInits)) {
+		char list[256] = {};
+		for (void* skill = FirstSkill(pet); skill != nullptr; skill = NextSkill(skill)) {
+			const size_t used = std::strlen(list);
+			std::snprintf(list + used, sizeof(list) - used, " %d:%d", g_sw.skillId(skill, SwFile, __LINE__),
+			              g_sw.level(pet, skill, 1, 0));
+		}
+		plog::Info("summon ai: shadowmaster init: skill %d level %d, left/right %d, skills (id:level)%s", skillId, level,
+		           firstId, list);
+	}
+}
+
+// D2R's row-106 init (0x5cec80): its entry, to the owner call; the left / right setters (0x33ec70, 0x33ef10, E8 at
+// +0xb, +0x1b); in D2R's summon setup 0x55ef80 the sumskcalc call (0x3b5160, E8 at +0x1a)
+constexpr uint8_t SmInitEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x55, 0x56, 0x57, 0x41, 0x56, 0x41, 0x57, 0x48, 0x83, 0xec, 0x30};
+constexpr const char* SmInitPattern = "48 89 5C 24 18 55 56 57 41 56 41 57 48 83 EC 30 49 8B 28 4C 8B F9 33 FF 48 8B CA 4D 8B "
+                                      "F0 48 8B F2 48 89 7D 44 C7 45 4C 01 00 00 00 E8";
+constexpr const char* SmSettersPattern = "33 D2 41 B8 FF FF FF FF 48 8B CE E8 ?? ?? ?? ?? 33 D2 41 B8 FF FF FF FF 48 8B CE E8 "
+                                         "?? ?? ?? ?? 41 B8 70 0C 00 00";
+constexpr const char* SmCalcPattern = "8B 45 60 45 8B CF 45 8B 04 24 48 8B 55 48 41 0F B6 8E 06 01 00 00 89 44 24 20 E8";
+
 // The leash's entry: mov [rsp+10],rbx / mov [rsp+18],rbp / mov [rsp+20],rsi
 constexpr uint8_t LeashEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x6c, 0x24, 0x18, 0x48, 0x89, 0x74, 0x24, 0x20};
 constexpr const char* LeashPattern = "48 89 5C 24 10 48 89 6C 24 18 48 89 74 24 20 48 89 4C 24 08 57 41 54 41 55 41 56 41 57 "
@@ -639,23 +708,38 @@ auto InstallSummonAi(const D2RL::PluginContext* context, char* report, size_t re
 		plog::Info("summon ai: Shadow Warrior init 0x%llx, think 0x%llx%s", static_cast<unsigned long long>(swInit),
 		           static_cast<unsigned long long>(swThink), swHooked ? "" : " (think not hooked)");
 	}
-	std::snprintf(report, reportSize, "ShadowMaster leash%s; ShadowMaster branches%s; vines%s; Shadow Warrior AI%s",
+	// The ShadowMaster init uses g_sw's engine functions
+	uint64_t smInit = 0, smSetters = 0, smCalc = 0;
+	const bool smFound = swFound && Scan(context, "ShadowMaster init", SmInitPattern, 0, &smInit) &&
+	                     Scan(context, "ShadowMaster init setters", SmSettersPattern, 0, &smSetters) &&
+	                     Scan(context, "sumskill calc", SmCalcPattern, 0, &smCalc);
+	bool smHooked = false;
+	if (smFound) {
+		const uint64_t base = context->exeBase;
+		g_smSetSkill[0] = reinterpret_cast<SmSetSkillFn>(base + CallTarget(base, smSetters + 0xb));
+		g_smSetSkill[1] = reinterpret_cast<SmSetSkillFn>(base + CallTarget(base, smSetters + 0x1b));
+		g_smCalc = reinterpret_cast<SmCalcFn>(base + CallTarget(base, smCalc + 0x1a));
+		smHooked = context->InstallInlineHook(smInit, SmInitEntry, sizeof(SmInitEntry), &ShadowMasterInit, &g_smInitOriginal);
+		plog::Info("summon ai: ShadowMaster init 0x%llx%s", static_cast<unsigned long long>(smInit), smHooked ? "" : " (not hooked)");
+	}
+	std::snprintf(report, reportSize, "ShadowMaster leash%s; ShadowMaster branches%s; vines%s; Shadow Warrior AI%s; ShadowMaster init%s",
 	              !found ? " FAILED (signature)" : hooked ? "" : " FAILED (bytes differ)",
 	              !found ? " FAILED (signature)" : patched ? "" : " FAILED (bytes differ)",
 	              !vinesFound ? " FAILED (signature)" : vinesPatched ? "" : " FAILED (bytes differ)",
-	              !swFound ? " FAILED (signature)" : swHooked ? "" : " FAILED (bytes differ)");
-	return (hooked ? 1 : 0) + (patched ? 1 : 0) + (vinesPatched ? 1 : 0) + (swHooked ? 1 : 0);
+	              !swFound ? " FAILED (signature)" : swHooked ? "" : " FAILED (bytes differ)",
+	              !smFound ? " FAILED (signature)" : smHooked ? "" : " FAILED (bytes differ)");
+	return (hooked ? 1 : 0) + (patched ? 1 : 0) + (vinesPatched ? 1 : 0) + (swHooked ? 1 : 0) + (smHooked ? 1 : 0);
 }
 
 auto SummonAiCount() noexcept -> int {
-	return 4;
+	return 5;
 }
 
 auto SummonAiCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size,
 	              "summon leash calls %u: stay %u, walk back %u, warp %u, wander %u, step aside %u; shadow warrior inits "
-	              "%u, thinks %u: buff %u, cast %u, walk %u, idle %u",
+	              "%u, thinks %u: buff %u, cast %u, walk %u, idle %u; shadowmaster inits %u",
 	              g_leashCalls.load(), g_moves[MoveNone].load(), g_moves[MoveBack].load(), g_moves[MoveWarp].load(),
 	              g_moves[MoveWander].load(), g_moves[MoveAside].load(), g_swInits.load(), g_swThinks.load(),
-	              g_swBuffs.load(), g_swCasts.load(), g_swWalks.load(), g_swIdles.load());
+	              g_swBuffs.load(), g_swCasts.load(), g_swWalks.load(), g_swIdles.load(), g_smInits.load());
 }
