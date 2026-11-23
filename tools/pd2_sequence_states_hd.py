@@ -8,6 +8,7 @@ the skill runs while the body plays no clip. Each new state copies a D2R state w
   Blade Dance (452, seq 10) <- Whirlwind (151, seq 10): the only Assassin state on sequence 10, a claw spin clip.
   Talic's MonWhirlwind (495) <- Whirlwind (151): D2R's Talic spins with Whirlwind (#1858).
   Korlic's Leap Attack Korlic (602) <- MonLeapAttack (367): D2R's Korlic leaps with MonLeapAttack, four steps (#1858).
+  Decoy's DoppleZonStrafe (557) <- the rogue's Attack1 (mode 4), looped: D2R's rogue has no sequence state (#1964).
 The skill ids are merged skills.txt rows (tools/tests/test_sequence_states_hd.py checks them by name).
 
     py -3 tools/pd2_sequence_states_hd.py [--d2r D2R_DATA_ROOT]   (default: the toolkit cache, as pd2_merge.py)
@@ -31,22 +32,27 @@ def hd(kind: str, unit: str) -> Path:
 D2R_DATA = Path(os.environ.get("MODKIT_CACHE") or pd2_table.toolkit(ROOT) / "d2r-data") / "93847" / "data"
 PLAYER_SEQUENCE_MODE = 18
 MONSTER_SEQUENCE_MODE = 14
-# (folder, unit) -> (sequence mode, new skill id, source skill id, state name, transition-name suffix)
+# (folder, unit) -> (sequence mode, new skill id, source skill id, state name, transition-name suffix[, source mode])
 STATES = {
     ("player", "sorceress"): (PLAYER_SEQUENCE_MODE, 64, 53, "FrozenOrb_Cast", "_frozenorb"),
     ("player", "barbarian"): (PLAYER_SEQUENCE_MODE, 152, 147, "Berserk_Sequence", "_berserk"),
     ("player", "assassin"): (PLAYER_SEQUENCE_MODE, 452, 151, "BladeDance_Sequence", "_bladedance"),
     ("enemy", "ancientbarb1"): (MONSTER_SEQUENCE_MODE, 495, 151, "Seq_MonWhirlwind", "_monwhirlwind"),
     ("enemy", "ancientbarb3"): (MONSTER_SEQUENCE_MODE, 602, 367, "Skill_LeapAttackKorlic", "_leapattackkorlic"),
+    # Decoy (dopplezonnew) draws the rogue merc's model; its Strafe sequence repeats A1 frames
+    ("enemy", "roguehire"): (MONSTER_SEQUENCE_MODE, 557, -1, "Seq_DoppleZonStrafe", "_dopplestrafe", 4),
 }
 
 
-def build(sm: dict, mode: int, new_skill: int, src_skill: int, name: str, suffix: str) -> dict:
-    """A copy of every state of src_skill in `mode` (one per step) under new_skill, wired like its source."""
+def build(sm: dict, mode: int, new_skill: int, src_skill: int, name: str, suffix: str, src_mode: int | None = None) -> dict:
+    """A copy of every state of src_skill in src_mode (one per step) as a `mode` state under new_skill, wired like its source.
+
+    A source from another mode (a plain attack) becomes a looping sequence state."""
     sm = copy.deepcopy(sm)
-    srcs = [s for s in sm["states"] if s["modeId"] == mode and s["skillIndex"] == src_skill]
+    src_mode = mode if src_mode is None else src_mode
+    srcs = [s for s in sm["states"] if s["modeId"] == src_mode and s["skillIndex"] == src_skill]
     if not srcs:
-        raise ValueError(f"state machine has no sequence state for skill {src_skill}")
+        raise ValueError(f"state machine has no mode {src_mode} state for skill {src_skill}")
     if any(s["skillIndex"] == new_skill and s["modeId"] == mode for s in sm["states"]):
         raise ValueError(f"state machine already has a sequence state for skill {new_skill}")
     next_id = max(s["stateId"] for s in sm["states"]) + 1
@@ -54,7 +60,10 @@ def build(sm: dict, mode: int, new_skill: int, src_skill: int, name: str, suffix
     for k, src in enumerate(srcs):
         new_ids[src["stateId"]] = next_id + k
         state = copy.deepcopy(src)
-        state.update(stateId=next_id + k, skillIndex=new_skill, _name=name if len(srcs) == 1 else f"{name}_{src['stepIndex']}")
+        state.update(stateId=next_id + k, modeId=mode, skillIndex=new_skill,
+                     _name=name if len(srcs) == 1 else f"{name}_{src['stepIndex']}")
+        if src_mode != mode:
+            state["loopCount"] = 0
         sm["states"].append(state)
     owns = []
     for g in list(sm["transitions"]):
