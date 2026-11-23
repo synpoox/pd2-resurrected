@@ -21,6 +21,7 @@
 #include "merc_rules.h"
 
 #include "pd2_engine.h"
+#include "hot_log.h"
 #include "log.h"
 #include "sig.h"
 
@@ -148,7 +149,7 @@ auto PetIcon(void* panel, int32_t petType, int32_t unitId, bool* flag, int32_t* 
 			if (slot != nullptr) {
 				*slot = lightSlot;
 			}
-			if (plog::Sample(g_lightIcons)) {
+			if (pd2::HotSample(g_lightIcons)) {
 				plog::Info("light ascendant icon: unit %d, %u so far", unitId, g_lightIcons.load());
 			}
 			return index;
