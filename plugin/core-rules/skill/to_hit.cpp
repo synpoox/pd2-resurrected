@@ -6,6 +6,7 @@
 // copy, so the inline block is replaced with a call to PD2's math, keeping D2R's AR, defense and levels. No SDK service
 // covers the to-hit roll; the block goes through the MutationService (PatchBytes).
 #include "common.h"
+#include "registry.h"
 
 #include "hot_log.h"
 #include "log.h"
@@ -119,3 +120,5 @@ auto InstallToHit(const D2RL::PluginContext* context, char* report, size_t repor
 	}
 	return on;
 }
+
+PD2R_RULE(InstallToHit, 20)

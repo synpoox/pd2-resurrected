@@ -6,6 +6,7 @@
 // chest operate 0x58e2f0 and the door operate 0x58e090 only; D2RCore jumps neither it nor them. No SDK service answers
 // "may this lock open", so its entry is hooked: the rkey test first, then D2R's own key use.
 #include "common.h"
+#include "registry.h"
 
 #include "hot_log.h"
 #include "log.h"
@@ -87,3 +88,5 @@ auto InstallSkeletonKey(const D2RL::PluginContext* context, char* report, size_t
 	}
 	return on;
 }
+
+PD2R_RULE(InstallSkeletonKey, 100)

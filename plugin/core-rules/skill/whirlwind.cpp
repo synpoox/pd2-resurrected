@@ -7,6 +7,7 @@
 // 2-hit loop. So only that delay is replaced, for players: Param3 for each hand makes the dual-wield average
 // ((p + 1) + p) / 2 = p, as in PD2. Monsters and mercs keep D2R's roll (docs/deviations.md).
 #include "common.h"
+#include "registry.h"
 
 #include "pd2_engine.h"
 #include "hot_log.h"
@@ -81,3 +82,5 @@ auto InstallWhirlwind(const D2RL::PluginContext* context, char* report, size_t r
 	}
 	return on;
 }
+
+PD2R_RULE(InstallWhirlwind, 90)

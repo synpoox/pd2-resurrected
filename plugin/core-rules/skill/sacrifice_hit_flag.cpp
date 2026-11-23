@@ -15,6 +15,7 @@
 // No SDK service reaches a call argument: a byte patch found by signature. 6 bytes for `mov r9d,1` do not fit in the
 // 3 of the xor, so `push 1 / pop r9` and `push rbx / pop rdx` free them inside the argument set-up.
 #include "common.h"
+#include "registry.h"
 
 #include "log.h"
 #include "sig.h"
@@ -46,3 +47,5 @@ auto InstallSacrificeHitFlag(const D2RL::PluginContext* context, char* report, s
 	}
 	return on;
 }
+
+PD2R_RULE(InstallSacrificeHitFlag, 70)

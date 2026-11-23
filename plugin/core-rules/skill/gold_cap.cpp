@@ -7,6 +7,7 @@
 // `mov eax, 5000000; ret`. No SDK service reaches this rule: a byte patch of the function's first 6 bytes, found by
 // the signature of the bytes after them (so it still finds the function once patched).
 #include "common.h"
+#include "registry.h"
 
 #include "log.h"
 #include "sig.h"
@@ -39,3 +40,5 @@ auto InstallGoldCap(const D2RL::PluginContext* context, char* report, size_t rep
 	}
 	return on;
 }
+
+PD2R_RULE(InstallGoldCap, 50)

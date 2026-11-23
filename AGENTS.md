@@ -60,6 +60,8 @@ Single-context: one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agen
 
 ## Plugin code
 
+- **New core-rules rule = one file.** Put it in `plugin/core-rules/skill/<rule>.cpp`: define `Install<Rule>(context, report, reportSize)` and end the file with `PD2R_RULE(Install<Rule>, <order>)` (`skill/registry.h`; a unique order, the next free multiple of 10). CMake globs `skill/*.cpp` and the registry runs the installs, so no other file changes (`tools/tests/test_rule_registry.py` checks it).
+
 - **Always use D2RLoader's PluginSDK (the toolkit's `third_party/PluginSDK`; `toolkit_path.py` prints the toolkit) before a native hook.** Read its `README.md` and
   `include/D2RLPlugin/` for a service that does the job (items: `createItem`, `executeTransaction`,
   `executeExistingItemTransaction`, `splitStack`; inventory; game rules; and others). Hook D2R code only when no service

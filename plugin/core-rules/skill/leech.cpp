@@ -15,6 +15,7 @@
 // the flag for the call (nested hits from its event dispatch keep their own), the leech's entry applies the rule.
 // Leech runs on the server only; life and mana sync to clients as stats.
 #include "common.h"
+#include "registry.h"
 
 #include "hot_log.h"
 #include "log.h"
@@ -110,3 +111,5 @@ auto InstallLeech(const D2RL::PluginContext* context, char* report, size_t repor
 	}
 	return on;
 }
+
+PD2R_RULE(InstallLeech, 30)

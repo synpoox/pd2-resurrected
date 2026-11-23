@@ -1,5 +1,5 @@
-// Shared surface of core-rules' per-rule skill files (plugin/core-rules/skill/*.cpp): installs called once from
-// InstallSkillFunctions (skill_functions.cpp), and rules other core-rules code calls into (item_rules.cpp's HitEvent relay).
+// Shared surface of core-rules' per-rule skill files (plugin/core-rules/skill/*.cpp): rules other core-rules code calls
+// into (item_rules.cpp's HitEvent relay). The installs register themselves (registry.h), so they are not declared here.
 #pragma once
 
 #include <D2RLPlugin/api.h>
@@ -12,38 +12,13 @@ struct Game;
 struct Unit;
 }
 
-// Monster curse cast (#2003), monster_curse.cpp: true when installed; appends its part to `report`.
-auto InstallMonsterCurse(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
-
-// PD2's to-hit chance (#2010), to_hit.cpp: true when installed; appends its part to `report`.
-auto InstallToHit(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
-
 // --- PD2's leech reductions (#2009, leech.cpp) ---
-// Missile and area hits halve life and mana leech; a Leap Attack hit divides life leech by 3. True when installed;
-// appends its part to `report`.
-auto InstallLeech(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
+// Missile and area hits halve life and mana leech; a Leap Attack hit divides life leech by 3.
 // Names the victim of the one Leap Attack hit about to run (skill_functions.cpp LeapHitOne); nullptrs after it.
 auto LeapAttackLeech(d2r::Unit* unit, d2r::Unit* victim) noexcept -> void;
 
-// Baal's throne wave delay (#2014), baal_wave_delay.cpp: true when installed; appends its part to `report`.
-auto InstallBaalWaveDelay(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
-
-// Inventory gold cap 5,000,000 (#2027), gold_cap.cpp: true when installed; appends its part to `report`.
-auto InstallGoldCap(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
-// The cap function's RVA (D2R's max inventory gold of a unit, `int32_t (*)(Unit*)`), 0 when its signature is not found.
+// Inventory gold cap (#2027, gold_cap.cpp): the cap function's RVA (D2R's max inventory gold of a unit, `int32_t (*)(Unit*)`), 0 when its signature is not found.
 auto GoldCapRva(const D2RL::PluginContext* context) noexcept -> uint64_t;
-// Monster life per extra player, PD2's 70% steps (#2025), monster_life_per_player.cpp; appends its part to `report`.
-auto InstallMonsterLifePerPlayer(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
-// Sacrifice's self-hit flag (#2018), sacrifice_hit_flag.cpp: true when installed; appends its part to `report`.
-auto InstallSacrificeHitFlag(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
-// Just-portaled state lasts 15 frames (#2022), portal_state_time.cpp: true when installed; appends its part to `report`.
-auto InstallPortalStateTime(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
-
-// Whirlwind hit rate (#2015), whirlwind.cpp: a player's Whirlwind hits every Param3 frames; appends its part to `report`.
-auto InstallWhirlwind(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
-
-// Skeleton Key Unlimited (#2030), skeleton_key.cpp: an rkey on page 0 or 3 opens a lock without using a key.
-auto InstallSkeletonKey(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
 // --- Slow skips the prime evils (#2004, slow_prime_evil.cpp) ---
 // Hides the attacker's item_slow event nodes for one event 5/6 dispatch (item_rules.cpp's HitEvent relay) when the

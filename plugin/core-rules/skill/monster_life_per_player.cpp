@@ -8,6 +8,7 @@
 // stays as is. So the table is patched in place, which reaches both readers.
 // No SDK service reaches this table: a byte patch, the table found through the reader's rip-relative operand.
 #include "common.h"
+#include "registry.h"
 
 #include "log.h"
 #include "sig.h"
@@ -45,3 +46,5 @@ auto InstallMonsterLifePerPlayer(const D2RL::PluginContext* context, char* repor
 	}
 	return on;
 }
+
+PD2R_RULE(InstallMonsterLifePerPlayer, 60)

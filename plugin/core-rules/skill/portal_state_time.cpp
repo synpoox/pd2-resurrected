@@ -8,6 +8,7 @@
 // would end at different frames. D2RCore holds no copy of either. No SDK service reaches the state's duration: a byte
 // patch of each imm8, found by signature.
 #include "common.h"
+#include "registry.h"
 
 #include "log.h"
 #include "sig.h"
@@ -42,3 +43,5 @@ auto InstallPortalStateTime(const D2RL::PluginContext* context, char* report, si
 	}
 	return on;
 }
+
+PD2R_RULE(InstallPortalStateTime, 80)
