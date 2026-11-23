@@ -2076,7 +2076,7 @@ constexpr const char* DualWieldAverage =
     "45 84 ed 75 09 48 85 ff 75 21 84 c0 74 1d 44 38 75 18 75 09 48 85 db 75 12 84 c0 74 0e "
     "8b 45 d0 03 45 d4 99 2b c2 d1 f8 44 8b f8 48 8b ce e8";
 constexpr int DualWieldAverageAt = 29;  // `mov eax,[rbp-0x30]; add eax,[rbp-0x2c]; cdq; sub; sar; mov r15d,eax`
-constexpr int32_t StatAttackRate = 68, StatFasterAttack = 93;  // attackrate, item_fasterattackrate (same rows in PD2)
+constexpr int32_t StatFasterAttack = 93;  // item_fasterattackrate; StatAttackRate (68) is above (same rows in PD2)
 constexpr int32_t BodyLocRightArm = 4;
 
 // PD2's pick (0x102fc0e0): the right weapon's rate when its 68 + 93 is the higher, else the left's
