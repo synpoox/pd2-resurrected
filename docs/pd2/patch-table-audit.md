@@ -24,13 +24,7 @@ Status is one of four:
 
 ## Summary
 
-| Status | Records | Units |
-|---|---|---|
-| ported | 128 | 73 |
-| deviation | 338 | 84 |
-| missing | 154 | 103 |
-| not needed | 495 | 261 |
-| **total** | **1115** | **521** |
+The status counts are not kept here: every PR that changes a row would conflict on them. The totals are 1115 records in 521 units. To count a status, count the rows in the tables below whose status column holds it (for example `grep -c "| missing |"`, adjusting for the table's column), and the records and units by summing the rows' record and unit cells.
 
 By module: D2Game 615 records, D2Client 410, D2Common 86, D2Lang 3, D2Win 1. A few features account for most of the records:
 - PD2's client sound engine: 261 D2Client records. It is a deviation: D2R's sound tables are kept.

@@ -235,6 +235,8 @@ sigscan::Entry* const MercAiUses[11] = {&d2r::sig::AiUseSkill,  &d2r::sig::UnitH
                                         &d2r::sig::RecordOffsets, &d2r::sig::UnitRoom,   &d2r::sig::RoomLevelId,
                                         &d2r::sig::UnitId,       &d2r::sig::AiIdle};
 
+static int g_mercAiTotal = 0;
+
 auto InstallMercAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	const uint64_t base = context->exeBase;
 	uint64_t ownerSite = 0, roll = 0, auraStart = 0, rowSite = 0, petSite = 0;
@@ -264,13 +266,30 @@ auto InstallMercAi(const D2RL::PluginContext* context, char* report, size_t repo
 	plog::Info("merc ai: think hook %s, aura start at 0x%llx %s, attack call %s, search roll at 0x%llx %s",
 	           hooked ? "on" : "off", static_cast<unsigned long long>(auraStart), restart ? "on" : "off",
 	           redirected ? "on" : "off", static_cast<unsigned long long>(roll), patched ? "on" : "off");
-	std::snprintf(report, reportSize, "battle orders%s; aura restart%s; whirlwind and amp%s; target search%s",
-	              hooked ? "" : " FAILED", restart ? "" : " FAILED", redirected ? "" : " FAILED", patched ? "" : " FAILED");
-	return (hooked ? 1 : 0) + (restart ? 1 : 0) + (redirected ? 1 : 0) + (patched ? 1 : 0);
+	int installed = 0;
+	int total = 0;  // every rule below: MercAiCount() reports it, so there is no literal to keep
+	size_t used = 0;
+	const auto rule = [&](bool ok, const char* name) {
+		installed += ok ? 1 : 0;
+		++total;
+		if (used < reportSize) {
+			const int n = std::snprintf(report + used, reportSize - used, "%s%s%s", used ? "; " : "", name, ok ? "" : " FAILED");
+			used += n > 0 ? static_cast<size_t>(n) : 0;
+		}
+	};
+	if (reportSize > 0) {
+		report[0] = 0;
+	}
+	rule(hooked, "battle orders");
+	rule(restart, "aura restart");
+	rule(redirected, "whirlwind and amp");
+	rule(patched, "target search");
+	g_mercAiTotal = total;
+	return installed;
 }
 
 auto MercAiCount() noexcept -> int {
-	return 4;
+	return g_mercAiTotal;  // set by InstallMercAi, which every caller runs first
 }
 
 auto MercAiCounters(char* out, size_t size) noexcept -> void {

@@ -5606,9 +5606,18 @@ const SlotFunction Functions[] = {
 
 }  // namespace
 
+static int g_skillTotal = 0;
+
 auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	static constexpr uint8_t Empty[8] = {};  // the slot must still be a null pointer
 	int installed = 0;
+	int total = 0;  // every rule tried below: SkillFunctionCount() reports it, so there is no literal to keep
+	const auto count = [&](std::initializer_list<bool> oks) {
+		for (const bool ok : oks) {
+			installed += ok ? 1 : 0;
+			++total;
+		}
+	};
 	size_t used = 0;
 	for (const SlotFunction& f : Functions) {
 		bool ok = f.slot >= f.table.firstFree && f.slot < f.table.slots;
@@ -5616,7 +5625,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 			const uint64_t rva = f.table.rva + static_cast<uint64_t>(f.slot) * 8;
 			ok = context->PatchWriteU64(rva, Empty, sizeof(Empty), reinterpret_cast<uint64_t>(f.function));
 		}
-		installed += ok ? 1 : 0;
+		count({ok});
 		if (used < reportSize) {
 			const int n = std::snprintf(report + used, reportSize - used, "%s %s %d %s%s", used ? ";" : "",
 			                            f.table.name, f.slot, f.name, ok ? "" : " FAILED (slot not empty or out of range)");
@@ -5626,7 +5635,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	AddSkillRoutes();
 	char routerReport[160];
 	const bool router = skill_router::InstallRouter(context, routerReport, sizeof(routerReport));
-	installed += router ? 1 : 0;
+	count({router});
 	if (used < reportSize) {
 		const int n = std::snprintf(report + used, reportSize - used, "; %s", routerReport);
 		used += n > 0 ? static_cast<size_t>(n) : 0;
@@ -5635,7 +5644,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	// client draw everyone's strikes, as PD2 does.
 	static constexpr uint8_t Je[1] = {0x74};
 	const bool strike = context->PatchWriteU8(d2r::rva::CltDoStrikeLocalOnly, Je, sizeof(Je), 0xeb);
-	installed += strike ? 1 : 0;
+	count({strike});
 	if (used < reportSize) {
 		const int n = std::snprintf(report + used, reportSize - used, "; cltdofunc 22 strike for all%s",
 		                            strike ? "" : " FAILED (bytes differ)");
@@ -5648,7 +5657,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	const bool revive = context->PatchWriteU64(
 		d2r::rva::AuraEventTable + static_cast<uint64_t>(d2r::rva::AuraEventUnused) * 8, expected, sizeof(expected),
 		reinterpret_cast<uint64_t>(static_cast<AuraEventFn>(AuraEventReviveSplash)));
-	installed += revive ? 1 : 0;
+	count({revive});
 	if (used < reportSize) {
 		const int n = std::snprintf(report + used, reportSize - used, "; auraeventfunc %d revive splash%s",
 		                            d2r::rva::AuraEventUnused, revive ? "" : " FAILED (slot is not D2R's event 32)");
@@ -5663,7 +5672,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	                   context->PatchWriteU64(d2r::rva::SrvDoTable + static_cast<uint64_t>(d2r::rva::SrvDoSmite) * 8,
 	                                          expected, sizeof(expected),
 	                                          reinterpret_cast<uint64_t>(static_cast<SrvDoFn>(SrvDoSmite)));
-	installed += smite ? 1 : 0;
+	count({smite});
 	if (used < reportSize) {
 		const int n = std::snprintf(report + used, reportSize - used, "; srvdofunc %d smite crushing blow%s",
 		                            d2r::rva::SrvDoSmite, smite ? "" : " FAILED (slot or hit queue bytes differ)");
@@ -5675,7 +5684,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	const bool reviveDo = context->PatchWriteU64(
 		d2r::rva::SrvDoTable + static_cast<uint64_t>(d2r::rva::SrvDoRevive) * 8, expected, sizeof(expected),
 		reinterpret_cast<uint64_t>(static_cast<SrvDoFn>(SrvDoRevive)));
-	installed += reviveDo ? 1 : 0;
+	count({reviveDo});
 	if (used < reportSize) {
 		const int n = std::snprintf(report + used, reportSize - used, "; srvdofunc %d revive events%s",
 		                            d2r::rva::SrvDoRevive, reviveDo ? "" : " FAILED (slot is not D2R's Revive)");
@@ -5692,7 +5701,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		allyBuff = own != 0 && context->PatchWriteU64(slotRva, &own, sizeof(own),
 		                                              reinterpret_cast<uint64_t>(static_cast<SrvDoFn>(SrvDoAllyBuff)));
 	}
-	installed += allyBuff ? 1 : 0;
+	count({allyBuff});
 	used = std::strlen(report);
 	if (used < reportSize) {
 		const int n = std::snprintf(report + used, reportSize - used, "; srvdofunc %d ally buff%s", AllyBuffSlot,
@@ -5705,7 +5714,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		g_collisionRefresh = 0;
 	}
 	plog::Info("revive: size cap %s", g_collisionRefresh != 0 ? "on" : "FAILED (collision refresh signature)");
-	installed += (valkyrieThink ? 1 : 0) + (reviveThink ? 1 : 0) + (g_collisionRefresh != 0 ? 1 : 0);
+	count({valkyrieThink, reviveThink, g_collisionRefresh != 0});
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; first think valkyrie%s revive%s, revive size cap%s",
@@ -5719,7 +5728,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	                    RedirectCall(context, FrenzyHelperCall, FrenzyHelperCallAt, reinterpret_cast<uint64_t>(&FrenzyHelper),
 	                                 reinterpret_cast<uint64_t*>(&g_frenzyHelper));
 	plog::Info("frenzy: PD2 stacks %s", frenzy ? "on" : "FAILED (srvdo 9 helper call or attack reschedule signature)");
-	installed += frenzy ? 1 : 0;
+	count({frenzy});
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; frenzy stacks%s", frenzy ? "" : " FAILED");
@@ -5733,7 +5742,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	                  RedirectCall(context, KickBuilder, KickFillCallAt, reinterpret_cast<uint64_t>(&KickFill),
 	                               reinterpret_cast<uint64_t*>(&g_kickFill));
 	plog::Info("dragon talon: PD2 kick damage calc2, no knockback %s", kick ? "on" : "FAILED (srvdo 42 builder signature or bytes)");
-	installed += kick ? 1 : 0;
+	count({kick});
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; dragon talon kick%s", kick ? "" : " FAILED");
@@ -5749,7 +5758,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	                                                       reinterpret_cast<uint64_t>(static_cast<SrvDoFn>(SrvDoUnsummon)));
 	plog::Info("unsummon: PD2 iron golem item drop %s",
 	           golemItem ? "on" : found ? "FAILED (srvdo 4 slot is not D2R's)" : "FAILED (signature)");
-	installed += golemItem ? 1 : 0;
+	count({golemItem});
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; unsummon golem item%s", golemItem ? "" : " FAILED");
@@ -5773,7 +5782,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	plog::Info("mind blast: damage only, no convert %s; unit mask 0x8583 %s",
 	           noConvert ? "on" : "FAILED (srvdo 51 callback signature or bytes)",
 	           mask ? "on" : "FAILED (srvdo 51 area call signature or bytes)");
-	installed += (mindBlast ? 1 : 0) + (noConvert ? 1 : 0) + (mask ? 1 : 0);
+	count({mindBlast, noConvert, mask});
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; mind blast stacks%s, no convert%s, mask%s",
@@ -5781,7 +5790,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	}
 	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
 	                                             sizeof(d2r::rva::BusyModeGateEntry), BusyModeGate, &g_gateOriginal);
-	installed += gate ? 1 : 0;
+	count({gate});
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; mode gate busy take-over%s",
@@ -5789,7 +5798,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	}
 	sigscan::Resolve(SpinOwn, std::size(SpinOwn), context->exeBase, nullptr, 0);
 	g_castOnHit = ItemSkillTarget.state == sigscan::State::Ok && ItemSkillSend.state == sigscan::State::Ok;
-	installed += g_castOnHit ? 1 : 0;
+	count({g_castOnHit});
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; spin skill on hit%s", g_castOnHit ? "" : " FAILED (signature)");
@@ -5797,7 +5806,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	const bool parry = sigscan::HookBySignature(context, "AvoidRoll", AvoidPattern, 0, AvoidD2REntry, sizeof(AvoidD2REntry),
 	                                               reinterpret_cast<void*>(&AvoidWithParry),
 	                                               reinterpret_cast<void**>(&g_avoidOriginal));
-	installed += parry ? 1 : 0;
+	count({parry});
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; holy sword parry%s", parry ? "" : " FAILED (signature)");
@@ -5819,7 +5828,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 			(void)context->PatchWriteU8(d2r::rva::HitRecoveryWindowBuffer, PD2Window, sizeof(PD2Window), 0x01);
 		}
 	}
-	installed += window ? 1 : 0;
+	count({window});
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; mode gate hit window%s",
@@ -5828,7 +5837,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	sigscan::Resolve(SentinelOwn, std::size(SentinelOwn), context->exeBase, nullptr, 0);
 	const bool sentinel = InstallBladeSentinel(context);
 	const bool sentinelOwner = sentinel && InstallSentinelOwner(context);
-	installed += (sentinel ? 1 : 0) + (sentinelOwner ? 1 : 0);
+	count({sentinel, sentinelOwner});
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used,
@@ -5836,15 +5845,12 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		              BladeCreeperRow, sentinel ? "" : " FAILED (signature or slot)", SentinelSrvDo,
 		              sentinelOwner ? "" : " FAILED (signature or slot)");
 	}
+	g_skillTotal = total;
 	return installed;
 }
 
 auto SkillFunctionCount() noexcept -> int {
-	// + the srvdo router, the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the two first-think patches and the
-	// revive size cap, Frenzy's stacks, Dragon Talon's kick, Unsummon's golem item, the busy mode gate, the spin skill on
-	// hit, the holy sword parry, the hit window, srvdo 25's ally buff, Mind Blast's stacks, its no-convert patch and its
-	// unit mask, Blade Sentinel's think and its monster-caster owner (srvdo 44 and the row 102 init)
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 21;
+	return g_skillTotal;  // set by InstallSkillFunctions, which every caller runs first
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
