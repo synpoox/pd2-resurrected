@@ -184,8 +184,8 @@ auto CreateItem(Unit* unit, int32_t row, Game* game, int32_t mode, int32_t quali
 	*reinterpret_cast<int32_t*>(req + ReqA11) = a11;
 	if (g_forceExact) {
 		// PD2's request +0x2c (D2R +0x3c): ItemSpawn takes the row as is (0x443910) and, the row's code not being the
-		// base's, puts none of its properties on. That path seeds the item from +0x58 and +0x5c, which PD2 leaves 0
-		// (so its rolls never vary); here they are random (docs/deviations.md)
+		// base's, puts none of its properties on. That path seeds the item from +0x58 and +0x5c; PD2 leaves them 0
+		// but then seeds the item from the game's seed (D2Game +0xe0110, +0xe00c0), so random seeds here match it
 		*reinterpret_cast<int32_t*>(req + ReqForce) = 1;
 		*reinterpret_cast<int32_t*>(req + ReqA10) = (Rand() << 16) ^ Rand();
 		*reinterpret_cast<int32_t*>(req + ReqA11) = (Rand() << 16) ^ Rand();
@@ -431,7 +431,7 @@ auto BuildStock(Game* game, Unit* npc) noexcept -> bool {
 	char rows[MaxUniques * 12] = "";
 	int32_t made = 0;
 	// PD2 rolls the Heirloom first; placed, it is one of the 5 (0x103846d0 starts its count at 1)
-	if (Rand() % HeirloomOdds == 0 && MakeHeirloom(game, npc, view) != nullptr) {
+	if (d2r::sig::ApplyCubeMod.state == sigscan::State::Ok && Rand() % HeirloomOdds == 0 && MakeHeirloom(game, npc, view) != nullptr) {
 		made = 1;
 		std::snprintf(rows, sizeof(rows), "heirloom");
 	}
@@ -501,7 +501,7 @@ auto InstallGheedStore(const D2RL::PluginContext* context, char* report, size_t 
 	const bool found = d2r::sig::UnitRoom.state == sigscan::State::Ok && d2r::sig::RoomLevelId.state == sigscan::State::Ok &&
 	                   d2r::sig::ItemSpawn.state == sigscan::State::Ok && d2r::sig::SetItemFlag.state == sigscan::State::Ok &&
 	                   d2r::sig::ItemQuality.state == sigscan::State::Ok && d2r::sig::AiIdle.state == sigscan::State::Ok &&
-		                   d2r::sig::UnitStat.state == sigscan::State::Ok && d2r::sig::ApplyCubeMod.state == sigscan::State::Ok &&
+		                   d2r::sig::UnitStat.state == sigscan::State::Ok &&
 	                   sigscan::ScanUnique(context->exeBase, MakerPattern, 0, &maker) == 1 &&
 	                   sigscan::ScanUnique(context->exeBase, NpcThinkPattern, 0, &think) == 1 &&
 	                   sigscan::ScanUnique(context->exeBase, FillPattern, 0, &fill) == 1;
