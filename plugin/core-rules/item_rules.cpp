@@ -2970,6 +2970,8 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	rule(noMagicMaps, noMagicMaps ? "no magic maps (hooked when tables load)" : "no magic maps", " FAILED (no table listener)");
 	rule(mapMakerLog, "map maker log", " FAILED (signature or bytes differ)");
+	const bool goldPickup = InstallGoldPickup(context);
+	rule(goldPickup, "gold pickup range", " FAILED (signature or bytes differ)");
 	g_itemTotal = total;
 	return installed;
 }
@@ -2983,9 +2985,9 @@ auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
 	              "ormus rolls %u, strike rolls %u, crits %u, "
 	              "deadly strikes %u, equipped_eth changes %u, life steal cap checks %u (blocked %u), crushing blow rolls %u, "
 	              "crushing blows %u, curses %u, resisted %u, gated %u, skill on equip changes %u, ticks %u, phasing %u, "
-	              "charges replenished %u, map stacks refused %u, magic maps refused %u",
+	              "charges replenished %u, map stacks refused %u, magic maps refused %u, gold picked up near %u",
 	              g_rolls.load(), g_strikeRolls.load(), g_crits.load(), g_deadlyStrikes.load(), g_ethReads.load(),
 	              g_capChecks.load(), g_capBlocks.load(), g_blowRolls.load(), g_blows.load(),
 	              g_curses.load(), g_curseResisted.load(), g_curseGate.load(), g_equipCallbacks.load(), g_equipTicks.load(), g_phasing.load(),
-	              g_chargesReplenished.load(), g_mapStackRefused.load(), g_mapMagicRefused.load());
+	              g_chargesReplenished.load(), g_mapStackRefused.load(), g_mapMagicRefused.load(), GoldPickupCount());
 }

@@ -31,6 +31,10 @@ auto SwapThunkSlot(const D2RL::PluginContext* context, const sigscan::Entry& ent
 auto RedirectCall(const D2RL::PluginContext* context, const char* pattern, uint32_t callAt, uint64_t entry,
                   uint64_t* original) noexcept -> bool;
 
+// Gold within 3 of a player picks itself up, as in PD2 (#1863, gold_pickup.cpp); the count for the status line.
+auto InstallGoldPickup(const D2RL::PluginContext* context) noexcept -> bool;
+auto GoldPickupCount() noexcept -> uint32_t;
+
 // Installs the item rules; `report` gets one entry per rule. Returns how many were installed.
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
 auto ItemRuleCount() noexcept -> int;
