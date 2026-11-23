@@ -10,6 +10,7 @@
 #include "../core-events/arena_spots.h"  // the "arena" part: Royal Fire reads the arena centre (#962)
 #include "almanac.h"
 #include "boss_aura.h"
+#include "buy_stacks.h"
 #include "shrine_rules.h"
 #include "crash_guard.h"
 #include "property_ids.h"
@@ -94,9 +95,10 @@ void InstallShrinesPart(const D2RL::PluginContext* context, char* report, size_t
 }
 
 void InstallStacks(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char rules[200] = "", stash[100] = "";
-	const int installed = InstallCubeStacks(context, rules, sizeof(rules)) + (InstallStashStacks(context, stash, sizeof(stash)) ? 1 : 0);
-	std::snprintf(report, size, "%d/2 installed: %s, %s", installed, rules, stash);
+	char rules[200] = "", stash[100] = "", buy[60] = "";
+	const int installed = InstallCubeStacks(context, rules, sizeof(rules)) + (InstallStashStacks(context, stash, sizeof(stash)) ? 1 : 0) +
+	                      (InstallBuyStacks(context, buy, sizeof(buy)) ? 1 : 0);
+	std::snprintf(report, size, "%d/3 installed: %s, %s, %s", installed, rules, stash, buy);
 }
 
 void InstallPrices(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
@@ -252,6 +254,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	StashStackCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	BuyStackCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	ItemPriceCounters(line, sizeof(line));
