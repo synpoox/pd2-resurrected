@@ -10,8 +10,11 @@
 //                    is Split Throw's missile count); PD2's Split Throw one-hand branch is what the two-hand line
 //                    prints with one weapon (SrcDam 128, no skill damage)
 //   15 Dragon Talon  0x103ad7b0: PD2's damage% (ddam calc1, as the kick deals it: core-rules, #1862; D2R's is
-//                    Param1 + (lvl-1) x Param2) on D2R's base, the skill's + the boots' damage: D2R's server kick
-//                    fill 0x573af0 deals that base, not PD2's (stat 21/22 less the weapon's, + 111; deviations.md)
+//                    Param1 + (lvl-1) x Param2) on D2R's base, the skill's + the boots' damage, which our
+//                    server kick (D2R's fill 0x573af0) deals. PD2's server kick deals PD2's base (stat 21/22 less
+//                    the weapon's, + 111 + boots) through its own fill (0x103022c0, patched over D2Game +0x92c82);
+//                    the port's server does not yet (#2051), so the tooltip keeps D2R's base to match the damage
+//                    dealt (deviations.md)
 //   25 charge-ups    0x103ade80: weapon at calc1 x (charges + 1) % + the p<charges+1>dm line, coloured by its element
 //   26 arrows        0x103ae000: (weapon + the skill's elemental) x SrcDam / 128, coloured by EType
 // Slots are written with PatchWriteU64, each expecting the pointer it holds at install (D2R's function).
