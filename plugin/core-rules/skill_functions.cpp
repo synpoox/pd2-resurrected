@@ -14,6 +14,7 @@
 // another plugin already uses is refused and logged, never overwritten. Slots keep PD2's own numbers where free (docs/features/core-rules.md).
 #include "skill_functions.h"
 
+#include "ai_registry.h"
 #include "pd2_engine.h"
 #include "item_rules.h"
 #include "log.h"
@@ -966,6 +967,14 @@ struct SplashHit {
 	uint16_t resultFlags;
 	int32_t hitClass;
 	int64_t victims;
+	// The same callback's other block fields, as Blade Sentinel's think (0x1035fd10) sets them; the splash keeps these
+	// defaults. attacker: the unit that hits (null: the area's unit); roll: a to-hit roll with toHit instead of a sure
+	// hit; the life leech divisor; the damage percent each damage type is scaled to.
+	Unit* attacker = nullptr;
+	bool roll = false;
+	int32_t toHit = 0;
+	uint32_t leechDivisor = 2;
+	int32_t damagePercent = 100;
 };
 
 // D2R's area apply (0x436e90) with a melee hit's events: PD2's apply (0x10305880, its event step 0x10305c30) fires
@@ -1027,7 +1036,8 @@ void AddSkillPhys(Game* game, Unit* unit, uint8_t* damage, int32_t skillId, int3
 
 // One unit in range (PD2's callback 0x10303190): a hit with no to-hit roll and the current skill's flags, damage% and
 // hit class, the skill's elemental and physical damage, weapon damage at SrcDam, life leech halved (at least 1). Counts
-// the units the hit lands on.
+// the units the hit lands on. Blade Sentinel's block (SentinelHit) sets the callback's other fields: another attacker,
+// a to-hit roll, full leech and a damage percent.
 // shortcut: PD2 also writes the skill id to a player victim's data (+0x194 of 1.13c's), not decoded; upgrade with
 // the deviation row.
 auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
@@ -1037,10 +1047,15 @@ auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 		return 0;
 	}
 	auto* game = static_cast<Game*>(area->game);
-	Unit* attacker = area->unit;
+	Unit* attacker = hit->attacker != nullptr ? hit->attacker : area->unit;
 	d2r::LeapKnockback damage;
 	auto* block = reinterpret_cast<uint8_t*>(&damage);
-	damage.resultFlags = ResultHit | hit->resultFlags;
+	uint16_t rolled = ResultHit;
+	if (hit->roll) {  // PD2 rolls with its own 0x10305130; D2R's melee roll with no always-hit stands in
+		using RollFn = uint16_t (*)(Game*, Unit*, Unit*, int32_t, uint8_t, int32_t) noexcept;
+		rolled = d2r::Engine<RollFn>(d2r::sig::MeleeRoll)(game, attacker, victim, hit->toHit, 0, 0) & ResultHit;
+	}
+	damage.resultFlags = rolled | hit->resultFlags;
 	damage.hitFlags = hit->hitFlags;
 	*reinterpret_cast<int32_t*>(block + DmgPercent) = hit->percent;
 	*reinterpret_cast<int32_t*>(block + DmgHitClass) = hit->hitClass;
@@ -1063,9 +1078,16 @@ auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	AddSkillPhys(game, attacker, block, hit->skillId, hit->level);
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*, int32_t, uint8_t) noexcept>(WeaponDamage)(game, attacker, victim,
 	                                                                                          &damage, 0, hit->srcDam);
+	if (hit->damagePercent != 100) {  // PD2's 12-type table: the 9 types D2R's DamageEffects flags (TypeMirrored)
+		for (const int offset : {DmgPhys, DmgFire, DmgLight, DmgMagic, DmgCold, DmgPoison, DamageLifeLeech,
+		                         DamageManaLeech, DamageManaLeech + 4}) {  // + 4: stamina leech
+			auto& field = *reinterpret_cast<int32_t*>(block + offset);
+			field = static_cast<int32_t>(static_cast<int64_t>(field) * hit->damagePercent / 100);
+		}
+	}
 	auto& leech = *reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(&damage) + DamageLifeLeech);
 	if (leech != 0) {
-		leech = std::max(leech / 2, 1u);
+		leech = std::max(leech / hit->leechDivisor, 1u);
 	}
 	if (pd2::HotSample(g_splashVictims)) {
 		const auto field = [block](int offset) { return *reinterpret_cast<const int32_t*>(block + offset); };
@@ -1074,7 +1096,7 @@ auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 		           field(DmgMagic), field(DmgCold), field(DmgPoison), field(DmgPercent), kick != nullptr ? 1 : 0,
 		           g_splashVictims.load());
 	}
-	DealSplash(game, area->unit, victim, damage);
+	DealSplash(game, attacker, victim, damage);
 	hit->victims += (damage.resultFlags & ResultHit) != 0 ? 1 : 0;
 	ReleaseDamage(damage);
 	return 1;
@@ -1182,6 +1204,125 @@ auto SrvDoSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		           current != nullptr ? UnitSkillIdOf(current) : -1);
 	}
 	return Splash(game, unit, struck, skillId, level);
+}
+
+// --- Blade Sentinel's think (PD2 monai row 102, BladeCreeper: 0x1035fd10; #1869) ----------------------------------
+// D2R's think (0x5c7900, found by its signature) keeps what PD2's keeps: it lives out calc4, makes the blade creeper
+// missile once with the owner's attack rating and to-hit percent on the sentinel, and runs it between its two path
+// points (stuck time 15, run 20). PD2's think adds, around D2R's:
+// - a monster owner (a Shadow Warrior's or Master's sentinel) gives the sentinel tohit = its tohit + 5 x dexterity;
+// - 6 frames after the missile, then at most every 12 frames, on a think where the sentinel reached a path point: an
+//   area hit within aurarangecalc of the sentinel through PD2's callback 0x10303190 (SplashOne). The owner hits with
+//   Blade Sentinel's damage and its weapon at SrcDam, after a to-hit roll with the skill's ToHit, full leech, 75% of
+//   each damage type.
+// PD2 keeps the next hit's frame in the think's missile flag (1.13c +0x1c); D2R's flag is the same field (+0x4c), which
+// its think only tests for 0, so the frame goes there too. No PluginSDK service runs code on a monster's AI tick: the
+// think registers on row 102 for bladecreeper only, through ai_registry (one table write).
+constexpr int32_t BladeCreeperRow = 102;  // monai.txt BladeCreeper (PD2 raw 102)
+constexpr int32_t BladeCreeper = 413;     // monstats bladecreeper (PD2 raw 413)
+constexpr int SentinelLeg = d2r::rva::AiControlParams + 4, SentinelNext = d2r::rva::AiControlParams + 8;
+constexpr int32_t SentinelPercent = 75;
+constexpr int32_t StatToHit = 19, StatDexterity = 2;  // the same rows in PD2's and our itemstatcost
+std::atomic<uint32_t> g_sentinelHits {0};
+std::atomic<uint32_t> g_sentinelUnits {0};
+
+// 93847: 0x5c7900, monai row 102's think, read from the AI table; it calls the pet's owner (0x4a53c0) at +0x10f and +0x312
+sigscan::Entry AiBladeCreeper {"AiBladeCreeper", "ai", sigscan::Kind::Code, 0, 0,
+                               "40 53 55 57 41 55 41 56 41 57 48 83 ec 48 49 8b 40 28 48 8b da 49 8b 28 48 8b f9 0f b6 89 "
+                               "06 01 00 00 44 0f bf a8 c4 01 00 00 41 8b d5 e8 ?? ?? ?? ?? 4c 8b f8 48 85 c0 0f 84 ?? ?? "
+                               "?? ?? 45 33 c0 41 8b d5 48 8b cb e8"};
+sigscan::Entry* const SentinelOwn[] = {&AiBladeCreeper};
+constexpr int SentinelOwnerCall = 0x10f, SentinelOwnerCall2 = 0x312;
+using PetOwnerFn = Unit* (*)(Unit* pet) noexcept;
+PetOwnerFn g_petOwner = nullptr;
+
+// One think's cadence: the next hit frame (0 until the missile's think) and whether this think hits
+struct SentinelStep {
+	int32_t next;
+	bool hit;
+};
+constexpr auto SentinelCadence(int32_t before, int32_t after, bool arrived, int32_t frame) noexcept -> SentinelStep {
+	if (before == 0) {
+		return {after != 0 ? frame + 6 : 0, false};  // D2R's think set the flag: the missile's think
+	}
+	return arrived && frame >= before ? SentinelStep {frame + 12, true} : SentinelStep {before, false};
+}
+static_assert(SentinelCadence(0, 1, false, 100).next == 106 && !SentinelCadence(0, 1, false, 100).hit);
+static_assert(SentinelCadence(0, 0, true, 100).next == 0 && !SentinelCadence(0, 0, true, 100).hit);
+static_assert(!SentinelCadence(106, 106, true, 105).hit && SentinelCadence(106, 106, true, 105).next == 106);
+static_assert(SentinelCadence(106, 106, true, 106).hit && SentinelCadence(106, 106, true, 106).next == 118);
+static_assert(!SentinelCadence(106, 106, false, 200).hit);
+
+void SentinelHit(Game* game, Unit* unit, Unit* owner, const uint8_t* monstats) noexcept {
+	using namespace d2r::rva;
+	const int32_t skillId = At<int16_t>(monstats, MonSkills);  // Skill1, as both thinks read it
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), skillId);
+	void* uskill = d2r::Engine<void* (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::GetUnitSkill)(unit, skillId, 0);
+	int32_t x = 0, y = 0;
+	if (skill == nullptr || uskill == nullptr || !d2r::UnitXY(unit, &x, &y)) {
+		return;
+	}
+	const int32_t level = d2r::Engine<int32_t (*)(Unit*, void*, int32_t) noexcept>(d2r::sig::UnitSkillLevel)(unit, uskill, 1);
+	const int32_t radius = d2r::EvalCalc(game, owner, skill, SkAuraRangeCalc, skillId, level);
+	SplashHit hit {.struck = nullptr, .srcDam = At<uint8_t>(skill, SkSrcDam), .skillId = skillId, .level = level,
+	               .percent = 0, .hitFlags = At<uint32_t>(skill, SkHitFlags), .resultFlags = At<uint16_t>(skill, SkResultFlags),
+	               .hitClass = At<int32_t>(skill, SkHitClass), .victims = 0, .attacker = owner, .roll = true,
+	               .toHit = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::SkillToHit)(owner, skillId, level),
+	               .leechDivisor = 1, .damagePercent = SentinelPercent};
+	d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::UnitRoom)(unit), x, y};
+	if (radius > 0 && center.room != nullptr) {
+		d2r::Engine<AreaFn>(d2r::sig::AreaUnits)(game, unit, &center, radius, AreaUnitMask, SplashOne, &hit, 0);
+	}
+	g_sentinelUnits.fetch_add(static_cast<uint32_t>(hit.victims));
+	if (pd2::HotSample(g_sentinelHits)) {
+		plog::Info("blade sentinel: skill %d level %d, owner type %d: radius %d, to-hit %d, units hit %lld (hit %u)", skillId,
+		           level, At<int32_t>(owner, UnitType), radius, hit.toHit, static_cast<long long>(hit.victims),
+		           g_sentinelHits.load());
+	}
+}
+
+void SentinelThink(Game* game, Unit* unit, uint8_t* tick) noexcept {
+	using namespace d2r::rva;
+	uint8_t* control = tick != nullptr ? At<uint8_t*>(tick, AiTickControl) : nullptr;
+	const int32_t leg = control != nullptr ? At<int32_t>(control, SentinelLeg) : 0;
+	const int32_t before = control != nullptr ? At<int32_t>(control, SentinelNext) : 0;
+	ai_registry::Vanilla(BladeCreeperRow)(game, unit, tick);
+	if (control == nullptr || d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::UnitDead)(unit) != 0) {
+		return;
+	}
+	auto& next = *reinterpret_cast<int32_t*>(control + SentinelNext);
+	const SentinelStep step = SentinelCadence(before, next, At<int32_t>(control, SentinelLeg) != leg, At<int32_t>(game, GameFrame));
+	next = step.next;
+	Unit* owner = g_petOwner(unit);
+	owner = owner != nullptr ? owner : unit;  // as both thinks fall back
+	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat);
+	if (before == 0 && step.next != 0 && At<int32_t>(owner, UnitType) == UnitMonster) {
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(d2r::sig::SetUnitStat)(
+			unit, StatToHit, stat(owner, StatToHit, 0) + 5 * stat(owner, StatDexterity, 0), 0);
+	}
+	if (step.hit) {
+		SentinelHit(game, unit, owner, At<const uint8_t*>(tick, AiTickMonStats));
+	}
+}
+
+// Finds D2R's think and the owner call in it, then registers the think on row 102; false (nothing written) on a miss
+auto InstallBladeSentinel(const D2RL::PluginContext* context) noexcept -> bool {
+	sigscan::Resolve(SentinelOwn, std::size(SentinelOwn), context->exeBase, nullptr, 0);
+	if (AiBladeCreeper.state != sigscan::State::Ok) {
+		return false;
+	}
+	const auto callee = [](uint64_t at) -> uint64_t {
+		const auto* code = reinterpret_cast<const uint8_t*>(at);
+		int32_t rel = 0;
+		std::memcpy(&rel, code + 1, sizeof(rel));
+		return code[0] == 0xe8 ? at + 5 + rel : 0;
+	};
+	const uint64_t owner = callee(AiBladeCreeper.address + SentinelOwnerCall);
+	if (owner == 0 || owner != callee(AiBladeCreeper.address + SentinelOwnerCall2)) {
+		return false;
+	}
+	g_petOwner = reinterpret_cast<PetOwnerFn>(owner);
+	return ai_registry::RegisterAt(context, BladeCreeperRow, AiBladeCreeper.address, BladeCreeper, &SentinelThink);
 }
 
 // --- Holy Light (PD2 srvdofunc 176) ---------------------------------------------------------------------------------
@@ -5332,14 +5473,21 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		std::snprintf(report + used, reportSize - used, "; mode gate hit window%s",
 		              window ? "" : " FAILED (bytes differ)");
 	}
+	const bool sentinel = InstallBladeSentinel(context);
+	installed += sentinel ? 1 : 0;
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; blade sentinel think (monai %d)%s", BladeCreeperRow,
+		              sentinel ? "" : " FAILED (signature or slot)");
+	}
 	return installed;
 }
 
 auto SkillFunctionCount() noexcept -> int {
 	// + the srvdo router, the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the two first-think patches and the
 	// revive size cap, Frenzy's stacks, Dragon Talon's kick, the busy mode gate, the spin skill on hit, the holy sword
-	// parry, the hit window and srvdo 25's ally buff
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 15;
+	// parry, the hit window, srvdo 25's ally buff and Blade Sentinel's think
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 16;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
@@ -5354,7 +5502,7 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "novas %u, client %u, item novas %u, static fields %u, vengeances %u, links %u, jousts %u, fire claws %u, hits %u, "
 	              "client %u, wolf starts %u, refused %u, dragon flights %u, hits %u, holy sword starts %u, "
 	              "smite starts %u, smite events %u, gate logs %u, poison egg spawns %u, client %u, nest spawns %u, "
-	              "nests full %u, cycler starts %u, frenzy hits %u, ally buffs %u, %s",
+	              "nests full %u, cycler starts %u, frenzy hits %u, ally buffs %u, blade sentinel hits %u, units %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
@@ -5368,5 +5516,6 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              g_fireClawClients.load(), g_wolfStarts.load(), g_wolfRefusals.load(), g_dragonFlights.load(),
 	              g_dragonFlightHits.load(), g_holySwordStarts.load(), g_smiteStarts.load(), g_smiteEvents.load(),
 	              g_gateLogs.load(), g_eggSpawns.load(), g_eggSpawnClients.load(), g_nestSpawns.load(), g_nestFull.load(),
-	              g_cyclerStarts.load(), g_frenzyHits.load(), g_allyBuffs.load(), missiles);
+	              g_cyclerStarts.load(), g_frenzyHits.load(), g_allyBuffs.load(), g_sentinelHits.load(),
+	              g_sentinelUnits.load(), missiles);
 }
