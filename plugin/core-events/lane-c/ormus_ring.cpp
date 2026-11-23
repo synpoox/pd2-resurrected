@@ -3,6 +3,7 @@
 // (0x103649d0, flag 0) on it. D2R makes the ring in a deferred event's execute (0x5e9ba0 in build 93847: FindUnit, then
 // QuestCreateItem(game, player, 'rin ', ilvl, quality 6, drop 1)) whose tail returns QuestCreateItem's result, so the
 // wrapped execute returns the ring. The signature pins the whole function, that tail included.
+// No SDK service reports a quest reward or a newly made item, so the grant itself is wrapped.
 #include "ormus_ring.h"
 
 #include "corruption_roll.h"
@@ -49,9 +50,9 @@ auto OrmusRing(void* closure, void* arg) noexcept -> Unit* {
 	Unit* player = d2r::Engine<FindUnitFn>(d2r::sig::FindUnit)(game, 0, At<uint32_t>(closure, ClosureGuid));
 	if (player != nullptr && At<int32_t>(ring, UnitMode) == ItemModeStored) {
 		d2r::Engine<void (*)(Game*, Unit*, Unit*, uint32_t, uint32_t, int32_t, uint8_t, uint8_t, uint32_t) noexcept>(SendItem)(
-		    game, player, ring, 1, 0, ItemModeStored, d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemPage)(ring),
+		    game, player, ring, 1, 0, ItemModeStored, d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::sig::ItemPage)(ring),
 		    d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemStorePage)(ring),
-		    d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitPackedXY)(ring));
+		    d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::sig::UnitPackedXY)(ring));
 	}
 	return ring;
 }
@@ -59,7 +60,8 @@ auto OrmusRing(void* closure, void* arg) noexcept -> Unit* {
 }  // namespace
 
 auto InstallOrmusRing(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
-	const bool on = d2r::sig::FindUnit.state == sigscan::State::Ok &&
+	const bool on = d2r::sig::FindUnit.state == sigscan::State::Ok && d2r::sig::ItemPage.state == sigscan::State::Ok &&
+	                d2r::sig::UnitPackedXY.state == sigscan::State::Ok &&
 	                sigscan::HookBySignature(context, "OrmusRingExecute", RingPattern, 0, RingEntry, sizeof(RingEntry), OrmusRing,
 	                                         &g_original);
 	std::snprintf(report, reportSize, "ormus ring hook%s", on ? "" : " FAILED (signature)");

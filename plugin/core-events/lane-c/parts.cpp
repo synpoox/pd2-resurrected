@@ -116,7 +116,7 @@ void InstallOrmusRingPart(const D2RL::PluginContext* context, char* report, size
 sigscan::Entry* const MapBossTcUses[] = {&d2r::sig::TcDrop, &d2r::sig::TcIndexByName, &d2r::sig::TcRecord, &d2r::sig::DataTables};
 
 sigscan::Entry* const AnyamapsUses[] = {&d2r::sig::FindUnit, &d2r::sig::ItemRecord};
-sigscan::Entry* const OrmusRingUses[] = {&d2r::sig::FindUnit};
+sigscan::Entry* const OrmusRingUses[] = {&d2r::sig::FindUnit, &d2r::sig::ItemPage, &d2r::sig::UnitPackedXY};
 
 PartReg r240(240, "anyamaps", InstallAnyamapsPart, AnyamapsUses);
 CountersReg c240(240, AnyaMapsCounters);
