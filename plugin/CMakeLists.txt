@@ -56,6 +56,7 @@ modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/cube_rules.cpp
 	core-rules/cube_stacks.cpp
 	core-rules/stash_stacks.cpp
+	core-rules/buy_stacks.cpp
 	core-rules/item_prices.cpp
 	core-rules/almanac.cpp
 	core-rules/shrine_rules.cpp
