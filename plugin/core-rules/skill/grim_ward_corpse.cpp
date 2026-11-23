@@ -3,9 +3,10 @@
 // 1.13c: Grim Ward's srvdo 75 (D2Game +0x27c90) tests its corpse at +0x27cf7 with D2Common #10096: a dead monster
 // (mode 12) not in the used-corpse state, with monstats2 flag bit 7 (corpseSel) and bit 12 (soft). PD2 points that one
 // call at its stub 0x1030b610 (installed; PD2.gpr 0x1030b520), which resolves #10678: the same test without bit 12.
-// On the client, PD2 does the same to Grim Ward's cltst 28 (D2Client +0xc49da, #10096 -> #10678) and bytes cltdo 41's
-// bit 12 test (#10338 at D2Client +0xc7083, `push esi; call` -> `nop; mov eax,1`): the client draws the ward for any
-// corpse. 1.13c's other #10096 and #10338 callers keep their tests.
+// On the client, PD2 bytes cltdo 41's bit 12 test (#10338 at D2Client +0xc7083, `push esi; call` -> `nop; mov eax,1`):
+// the client draws the ward for any corpse. 1.13c cltst 28 (D2Client +0xc6350) already calls #10678 (+0xc638f), as D2R's
+// cltst 28 0x230440 calls 0x33a5c0: nothing needed. PD2's client swap at +0xc49da is cltst 51 (+0xc4990, Hunger and
+// fenris rage), not Grim Ward's: D2R's cltst 51 0x2b97a0 calls 0x33a510 at 0x2b97d5; out of scope, follow-up issue.
 //
 // D2R 93847: 0x33a510 is #10096 (bit 7 and, through 0x34fa60, bit 12), 0x33a5c0 is #10678 (bit 7 only). Grim Ward's
 // srvdo 75 (0x5682e0) calls 0x33a510 at 0x568356: that call is redirected to 0x33a5c0. Its starts (srvst 34 0x569c00,
