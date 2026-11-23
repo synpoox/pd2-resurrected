@@ -160,3 +160,11 @@ struct SlowNodes {
 };
 auto SlowPrimeEvilBegin(d2r::Game* game, int32_t event, d2r::Unit* unit, d2r::Unit* target, SlowNodes& nodes) noexcept -> void;
 auto SlowPrimeEvilEnd(const SlowNodes& nodes) noexcept -> void;
+
+// --- D2R's corpse test without monstats2 `soft` (grim_ward_corpse.cpp #2019, hunger_corpse.cpp #2067) ---
+// 0x33a5c0, the corpse test without bit 12 (#10678); 0x33a510 differs only in its tail (call 0x34fa60, not mov eax,1)
+inline constexpr const char* CorpseSelPattern =
+    "40 57 48 83 ec 20 48 8b f9 48 85 c9 74 6e e8 ?? ?? ?? ?? 83 f8 01 75 64 48 8b cf e8 ?? ?? ?? ?? 83 f8 0c 75 57 "
+    "48 8b cf e8 ?? ?? ?? ?? 85 c0 75 4b 41 b8 cb 0e 00 00 48 89 5c 24 38 48 8d 15 ?? ?? ?? ?? 48 8b cf e8 ?? ?? ?? ?? "
+    "48 8b cf 8b d8 e8 ?? ?? ?? ?? 8b d3 0f b6 c8 e8 ?? ?? ?? ?? 48 8b 5c 24 38 48 85 c0 75 1b 48 8d 4c 24 30 88 44 "
+    "24 30 e8 ?? ?? ?? ?? 84 c0 74 01 cc 33 c0 48 83 c4 20 5f c3 0f b6 40 04 23 05 ?? ?? ?? ?? 74 ec b8 01 00 00 00";
