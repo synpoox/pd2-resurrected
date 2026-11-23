@@ -502,7 +502,7 @@ auto BlowDivisor(Game* game, Unit* target) noexcept -> double {
 		divisor = (100.0 - lifePercent) * 10.0 + 70.0;
 	}
 	const int32_t players = std::max(Stat(target, StatPlayerCount), 1);
-	const int32_t bonus = players < 9 ? (players > 1 ? (players - 1) * 50 : 0) : (players - 2) * 50;  // D2Game 0xaf5f0
+	const int32_t bonus = players < 9 ? (players > 1 ? (players - 1) * 70 : 0) : (players - 2) * 50;  // D2Game 0xaf5f0 as PD2 patches it (#2025)
 	return divisor + bonus / 50.0;
 }
 

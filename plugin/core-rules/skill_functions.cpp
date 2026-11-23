@@ -6336,6 +6336,9 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	count({InstallToHit(context, report, reportSize)});
 	count({InstallLeech(context, report, reportSize)});
 	count({InstallBaalWaveDelay(context, report, reportSize)});
+	count({InstallGoldCap(context, report, reportSize)});
+	count({InstallMonsterLifePerPlayer(context, report, reportSize)});
+	count({InstallSacrificeHitFlag(context, report, reportSize)});
 	count({InstallPortalStateTime(context, report, reportSize)});
 	count({InstallWhirlwind(context, report, reportSize)});
 	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
