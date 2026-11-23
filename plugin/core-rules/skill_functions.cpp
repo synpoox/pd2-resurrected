@@ -3359,6 +3359,14 @@ constexpr const char* AttackRescheduleEntry =
 using AttackRescheduleFn = void (*)(Game*, Unit*, int32_t, int32_t) noexcept;
 AttackRescheduleFn g_attackReschedule = nullptr;
 std::atomic<uint32_t> g_frenzyHits {0};
+// Every swing (#1904): 1.13c's srvdo 9 (+0x29600) calls the helper at +0x2966e / +0x296af before the attack, with no
+// hit test, and PD2's helper reads no hit either (its exits are null checks). D2R's srvdo 9 calls it at 0x567fd6 only
+// when its attack (0x568010, called at 0x567fbc) returns the hit roll's bit 0 (0x44b720: 0 on a miss, block or evade).
+// No SDK service gates it, so the attack call is redirected and returns non-zero for a player's swing.
+constexpr const char* FrenzySwingCall =
+    "e8 ?? ?? ?? ?? 85 c0 74 ?? 45 8b cf 48 89 74 24 20 45 8b c4 48 8b d3 48 8b cd e8 ?? ?? ?? ?? b8 01 00 00 00";
+using FrenzySwingFn = int32_t (*)(Game*, Unit*, Unit*, int32_t, int32_t) noexcept;
+FrenzySwingFn g_frenzySwing = nullptr;
 
 // --- Dragon Talon kick damage (#1862) ------------------------------------------------------------------------------
 // PD2 patches 1.13c's Dragon Talon hit builder (D2Game +0x92bb0, srvdo 42's; only Dragon Talon has srvdo 42): at
@@ -3445,6 +3453,16 @@ auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* 
 		plog::Info("frenzy: skill %d level %d stacks %d/%d%s", skillId, level, stacks, calc4, values);
 	}
 	return result;
+}
+
+// The return only gates the helper. Monsters keep D2R's hit gate; a missing skill row keeps 0 (the helper reads it).
+auto FrenzySwing(Game* game, Unit* unit, Unit* target, int32_t skillId, int32_t level) noexcept -> int32_t {
+	const int32_t hit = g_frenzySwing(game, unit, target, skillId, level);
+	using namespace d2r::rva;
+	if (hit != 0 || game == nullptr || unit == nullptr || At<int32_t>(unit, UnitType) == UnitMonster) {
+		return hit;
+	}
+	return d2r::api.getSkillRecord(d2r::DataFlag(game), skillId) != nullptr ? 1 : 0;
 }
 
 // --- Mind Blast's stacks and damage only (#1946) ---------------------------------------------------------------------
@@ -5826,10 +5844,14 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	                    RedirectCall(context, FrenzyHelperCall, FrenzyHelperCallAt, reinterpret_cast<uint64_t>(&FrenzyHelper),
 	                                 reinterpret_cast<uint64_t*>(&g_frenzyHelper));
 	plog::Info("frenzy: PD2 stacks %s", frenzy ? "on" : "FAILED (srvdo 9 helper call or attack reschedule signature)");
-	count({frenzy});
+	const bool swing = frenzy && RedirectCall(context, FrenzySwingCall, 0, reinterpret_cast<uint64_t>(&FrenzySwing),
+	                                          reinterpret_cast<uint64_t*>(&g_frenzySwing));
+	plog::Info("frenzy: every swing %s", swing ? "on" : "FAILED (srvdo 9 attack call signature)");
+	count({frenzy, swing});
 	used = std::strlen(report);
 	if (used < reportSize) {
-		std::snprintf(report + used, reportSize - used, "; frenzy stacks%s", frenzy ? "" : " FAILED");
+		std::snprintf(report + used, reportSize - used, "; frenzy stacks%s, every swing%s", frenzy ? "" : " FAILED",
+		              swing ? "" : " FAILED");
 	}
 	// shortcut: if the redirect fails after the flag patch, the flag stays PD2's; undo it if that ever happens.
 	static constexpr uint8_t KickKnockback[] = {0x0c}, KickGetHit[] = {0x04};
