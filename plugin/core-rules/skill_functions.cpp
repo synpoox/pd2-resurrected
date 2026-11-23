@@ -24,6 +24,7 @@
 #include "line_spread.h"
 #include "sig_hook.h"
 #include "parry_roll.h"
+#include "skill/common.h"
 #include <D2RLPlugin/mutations.h>
 #include "../core-events/arena_spots.h"  // Lucion's arena centre (#962): core-rules reads the same arena service
 
@@ -6328,6 +6329,8 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		std::snprintf(report + used, reportSize - used, "; mind blast stacks%s, no convert%s, mask%s",
 		              mindBlast ? "" : " FAILED", noConvert ? "" : " FAILED", mask ? "" : " FAILED");
 	}
+	const bool monCurse = InstallMonsterCurse(context, report, reportSize);
+	count({monCurse});
 	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
 	                                             sizeof(d2r::rva::BusyModeGateEntry), BusyModeGate, &g_gateOriginal);
 	count({gate});

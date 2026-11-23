@@ -1,12 +1,19 @@
-// Shared declarations for the core-rules skill rules that live in their own files under skill/.
+// Shared surface of core-rules' per-rule skill files (plugin/core-rules/skill/*.cpp): installs called once from
+// InstallSkillFunctions (skill_functions.cpp), and rules other core-rules code calls into (item_rules.cpp's HitEvent relay).
 #pragma once
 
+#include <D2RLPlugin/api.h>
+
+#include <cstddef>
 #include <cstdint>
 
 namespace d2r {
 struct Game;
 struct Unit;
 }
+
+// Monster curse cast (#2003), monster_curse.cpp: true when installed; appends its part to `report`.
+auto InstallMonsterCurse(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
 // --- Slow skips the prime evils (#2004, slow_prime_evil.cpp) ---
 // Hides the attacker's item_slow event nodes for one event 5/6 dispatch (item_rules.cpp's HitEvent relay) when the
