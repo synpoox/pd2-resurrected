@@ -147,4 +147,4 @@ auto InstallDecoy(const D2RL::PluginContext* context, char* report, size_t repor
 	return on;
 }
 
-PD2R_RULE(InstallDecoy, 210)
+PD2R_RULE(InstallDecoy, 240)
