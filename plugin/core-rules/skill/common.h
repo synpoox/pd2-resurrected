@@ -42,6 +42,9 @@ auto InstallPortalStateTime(const D2RL::PluginContext* context, char* report, si
 // Whirlwind hit rate (#2015), whirlwind.cpp: a player's Whirlwind hits every Param3 frames; appends its part to `report`.
 auto InstallWhirlwind(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
+// Skeleton Key Unlimited (#2030), skeleton_key.cpp: an rkey on page 0 or 3 opens a lock without using a key.
+auto InstallSkeletonKey(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
+
 // --- Slow skips the prime evils (#2004, slow_prime_evil.cpp) ---
 // Hides the attacker's item_slow event nodes for one event 5/6 dispatch (item_rules.cpp's HitEvent relay) when the
 // target is a prime evil, and shows them again for a splash hit on another unit inside an outer call that hid them.
