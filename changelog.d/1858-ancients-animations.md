@@ -1,3 +1,3 @@
-#### Monsters
+#### Bug Fixes
 
-- Talic's Whirlwind and Korlic's Leap play their HD animations again (#1858).
+- Talic's Whirlwind and Korlic's Leap now play their HD animations (#1858).
