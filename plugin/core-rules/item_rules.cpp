@@ -1927,6 +1927,73 @@ static auto PatchChillRates(const D2RL::PluginContext* context) noexcept -> bool
 	return true;
 }
 
+// --- Stun length: Mind Blast's fixed stun, Smite's player-vs-player cap (#1865) -----------------------------------
+// PD2 replaces the stun apply (1.13c D2Game +0xdcc20, called at +0xde287 in the hit apply +0xde0c0) with
+// ProjectDiablo.dll 0x10302a20 (attacker, target, frames). Against 1.13c's it adds, before the stock checks and caps:
+// - the attacker's current skill (D2Common #10511) is Mind Blast (273) with 1 hard point (skill +0x28 == 1): the stun
+//   is 50 frames whatever the hit passed (33 on PD2's PvP levels 157, 159, 166, which our data does not have);
+// - a player hits a player: Smite (97) is capped at 63 frames.
+// The stock rest stays the same in D2R's copy (93847: 0x451c30, the one call at 0x44d11c in the hit apply 0x44ce80):
+// a unique monster skips 90%, hirelings cap at difficultylevels' MercenaryMaxStunLength (13, PD2's 13), all at 250.
+// That call goes to StunLength. No SDK service reaches a hit's stun length, hence the call redirect.
+constexpr const char* StunApplyCall =
+    "44 8b 87 2c 01 00 00 48 8b d6 49 8b ce e8 ?? ?? ?? ?? 44 8b 87 18 01 00 00 48 8b d6 49 8b ce e8";
+constexpr uint32_t StunApplyCallAt = 13;
+constexpr int32_t SkillMindBlast = 273;  // SkillSmite (97) is the crushing blow's, above
+
+// PD2's stun length before the stock caps: Mind Blast at 1 hard point 50, Smite between players at most 63
+constexpr auto Pd2StunLength(int32_t frames, int32_t skill, int32_t hardPoints, bool playerVsPlayer) noexcept -> int32_t {
+	if (skill == SkillMindBlast && hardPoints == 1) {
+		return 50;
+	}
+	return playerVsPlayer && skill == SkillSmite && frames > 63 ? 63 : frames;
+}
+static_assert(Pd2StunLength(0, SkillMindBlast, 1, false) == 50);   // Mind Blast, monster target, no stun passed
+static_assert(Pd2StunLength(200, SkillMindBlast, 1, true) == 50);  // Mind Blast between players
+static_assert(Pd2StunLength(40, SkillMindBlast, 2, false) == 40);  // Mind Blast at 2 hard points: the hit's own
+static_assert(Pd2StunLength(100, SkillSmite, 20, true) == 63);     // Smite, player vs player
+static_assert(Pd2StunLength(100, SkillSmite, 20, false) == 100);   // Smite on a monster or hireling
+static_assert(Pd2StunLength(30, SkillSmite, 20, true) == 30);      // Smite under the cap
+static_assert(Pd2StunLength(100, 0, 1, true) == 100);              // any other skill
+
+using StunFn = void (*)(Unit* attacker, Unit* target, int32_t frames) noexcept;
+StunFn g_stunApply = nullptr;
+std::atomic<uint32_t> g_stunChanged {0};
+
+void StunLength(Unit* attacker, Unit* target, int32_t frames) noexcept {
+	void* skill = attacker != nullptr && target != nullptr ? d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::CurrentSkill)(attacker)
+	                                                         : nullptr;
+	if (skill != nullptr) {
+		const int32_t id = d2r::Engine<int32_t (*)(void*, const char*, int32_t) noexcept>(d2r::sig::UnitSkillId)(skill, __FILE__,
+		                                                                                                         __LINE__);
+		const int32_t hard = id == SkillMindBlast
+		                         ? d2r::Engine<int32_t (*)(Unit*, void*, int32_t) noexcept>(d2r::sig::UnitSkillLevel)(attacker, skill, 0)
+		                         : 0;
+		const bool pvp = At<int32_t>(attacker, d2r::rva::UnitType) == 0 && At<int32_t>(target, d2r::rva::UnitType) == 0;
+		if (const int32_t pd2 = Pd2StunLength(frames, id, hard, pvp); pd2 != frames) {
+			if (pd2::HotSample(g_stunChanged)) {
+				plog::Info("stun: skill %d hard %d, %d -> %d frames", id, hard, frames, pd2);
+			}
+			frames = pd2;
+		}
+	}
+	g_stunApply(attacker, target, frames);
+}
+
+static auto PatchStunLength(const D2RL::PluginContext* context) noexcept -> bool {
+	for (const sigscan::Entry* e : {&d2r::sig::CurrentSkill, &d2r::sig::UnitSkillId, &d2r::sig::UnitSkillLevel}) {
+		if (e->state != sigscan::State::Ok) {
+			return false;
+		}
+	}
+	if (!RedirectCall(context, StunApplyCall, StunApplyCallAt, reinterpret_cast<uint64_t>(&StunLength),
+	                  reinterpret_cast<uint64_t*>(&g_stunApply))) {
+		return false;
+	}
+	plog::Info("stun length: Mind Blast 50 frames, Smite 63 player vs player (stun apply call redirected)");
+	return true;
+}
+
 // --- Dim Vision and Terror full length; hit blind takes blinddimvision (#1837) ------------------------------------
 // PD2 NOPs 1.13c srvdo 30's AiCurseDivisor call (D2Game +0x506a8), so Dim Vision and Terror (and item procs of them)
 // keep their full length in Nightmare and Hell. D2R's srvdo 30 (93847: 0x55c840) divides at 0x55ca27 only for
@@ -2775,6 +2842,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool curseLength = PatchCurseLength(context);
 	const bool halfFreeze = PatchHalfFreeze(context);
 	const bool chillRates = PatchChillRates(context);
+	const bool stunLength = PatchStunLength(context);
 	// One rule, ok only with both halves: a client roll capped apart from the server's draws the missile stopping early.
 	// Both sites are scanned before either hook goes in, so a build that moved one leaves both rolls stock.
 	// shortcut: if the loader refuses the second hook after the first went in, the first stays; undo it if that ever happens.
@@ -2810,7 +2878,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s; boss curse%s; half freeze%s; chill rates%s; dual wield rate%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s; boss curse%s; half freeze%s; chill rates%s; stun length%s; dual wield rate%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
@@ -2826,16 +2894,17 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              bossCurse ? "" : " FAILED (curse hook, signature or bytes differ)",
 	              halfFreeze ? "" : " FAILED (signature or bytes differ)",
 	              chillRates ? "" : " FAILED (signature, call or relay)",
+	              stunLength ? "" : " FAILED (signature, call or relay)",
 	              dualWield ? "" : " FAILED (signature, bytes or relay)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
 	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0) +
 	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (shrinePotions ? 1 : 0) + (pierceCap ? 1 : 0) + (bossCurse ? 1 : 0) +
-	       (halfFreeze ? 1 : 0) + (chillRates ? 1 : 0) + (dualWield ? 1 : 0);
+	       (halfFreeze ? 1 : 0) + (chillRates ? 1 : 0) + (stunLength ? 1 : 0) + (dualWield ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 23;
+	return 24;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
