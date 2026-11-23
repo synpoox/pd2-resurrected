@@ -52,7 +52,7 @@ owner-path-end distance are not ported.
 ## The ShadowMaster init (#1801; 1.13c `+0xa4320`, D2R `0x5cec80`)
 
 D2R's row-106 init is 1.13c's code and is the one the live AI table points at (`0x2397bd8` in the 93847 dump). PD2's
-`0x10360af0` (PD2.gpr and the installed DLL agree at this address) keeps 1.13c's steps: the owner's level in the
+`0x10360af0` (PD2.gpr's build; installed `0x10360b60`) keeps 1.13c's steps: the owner's level in the
 summoning skill (monstats `aip8`: Valkyrie 32, Dopplezon 28, Shadow Master 279) into the AI block, then every skill of
 the owner's class list (D2Common's list, not PD2's own `0x1037fd70`) through 1.13c's filter `+0xa3d60` (PD2 calls it
 through `0x103a2490`; D2R `0x5cc810`: not the skill that summons this pet, pet type in range) at 1.13c's level

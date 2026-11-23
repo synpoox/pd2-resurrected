@@ -460,7 +460,7 @@ auto ShadowMasterInit(Game* game, Unit* pet, Tick* tick) noexcept -> void {
 	const uint8_t* rec = g_sw.record(dataFlag, skillId);
 	for (int i = 0; rec != nullptr && i < 5; ++i) {
 		const int32_t id = d2r::At<int16_t>(rec, SkSumSkill + 2 * i);
-		if (id < 0) {
+		if (id <= 0) {
 			continue;
 		}
 		const int32_t sumLevel = g_smCalc(dataFlag, owner, d2r::At<int32_t>(rec, SkSumCalc + 4 * i), skillId, level);
