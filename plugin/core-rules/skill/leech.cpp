@@ -11,10 +11,13 @@
 // with D2R's Leap Attack hit (skill_functions.cpp LeapHitOne), which names the victim here for that one hit.
 //
 // D2R: HitEvents (93847 0x44ce80) has the same 4th argument (missile 1, melee 0) and calls its leech 0x450c90 once,
-// with no halving. Neither has an SDK service, so both are inline hooks found by signature: HitEvents' entry keeps
-// the flag for the call (nested hits from its event dispatch keep their own), the leech's entry applies the rule.
+// with no halving. Neither has an SDK service, so both are found by signature: an inline hook on HitEvents' entry keeps
+// the flag for the call (nested hits from its event dispatch keep their own), and HitEvents' one call to the leech
+// (0x44d038, its only caller) is redirected to the rule. Not a hook on the leech's entry: Cartographer hooks that
+// entry (part LeechStep, map life steal), so its bytes are a jmp in the live image; the call chains through it (#2061).
 // Leech runs on the server only; life and mana sync to clients as stats.
 #include "common.h"
+#include "../item_rules.h"
 #include "registry.h"
 
 #include "hot_log.h"
@@ -39,8 +42,11 @@ constexpr const char* HitEventsPattern =
     "00 01 00 00 48 8b bd 70 01 00 00 41 8b d9";
 constexpr uint8_t HitEventsEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x41, 0x56, 0x41, 0x57,
                                       0x48, 0x8d, 0xac, 0x24, 0xe8, 0xfe, 0xff, 0xff};
-// The leech (game, attacker, target, &damage), by its entry bytes (one match in 93847)
-constexpr const char* LeechPattern = "40 55 56 57 41 56 48 83 ec 58 41 83 b9 20 01 00 00 00 49 8b f1 49 8b f8";
+// HitEvents' call to the leech (game, attacker, target, &damage): and [rdi+4],0xfffd / jmp / mov r9,rdi / mov r8,rsi /
+// mov rdx,r14 / mov rcx,r15 / call 0x450c90 / cmp r13d,1 (one match in 93847, the call at +26)
+constexpr const char* LeechCallPattern =
+    "b9 fd ff 00 00 66 21 4f 04 e9 ?? ?? ?? ?? 4c 8b cf 4c 8b c6 49 8b d6 49 8b cf e8 ?? ?? ?? ?? 41 83 fd 01";
+constexpr uint32_t LeechCallAt = 26;
 constexpr uint32_t LeapLifeDivisor = 3;
 
 using HitEventsFn = void (*)(Game*, Unit*, Unit*, int32_t, void*) noexcept;
@@ -97,14 +103,13 @@ auto LeapAttackLeech(Unit* unit, Unit* victim) noexcept -> void {
 }
 
 auto InstallLeech(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
-	// The leech first: until both are in, the HitEvents hook only keeps the flag
-	const bool on = sigscan::HookBySignature(context, "Leech", LeechPattern, 0, d2r::rva::LeechEntry,
-	                                         sizeof(d2r::rva::LeechEntry), reinterpret_cast<void*>(&Leech),
-	                                         reinterpret_cast<void**>(&g_leech)) &&
+	// The leech call first: until both are in, the HitEvents hook only keeps the flag
+	const bool on = RedirectCall(context, LeechCallPattern, LeechCallAt, reinterpret_cast<uint64_t>(&Leech),
+	                             reinterpret_cast<uint64_t*>(&g_leech)) &&
 	                sigscan::HookBySignature(context, "HitEvents", HitEventsPattern, 0, HitEventsEntry,
 	                                         sizeof(HitEventsEntry), reinterpret_cast<void*>(&HitEvents),
 	                                         reinterpret_cast<void**>(&g_hitEvents));
-	plog::Info("leech: pd2 reductions %s", on ? "on" : "FAILED (leech or HitEvents signature or bytes)");
+	plog::Info("leech: pd2 reductions %s", on ? "on" : "FAILED (leech call or HitEvents signature or bytes)");
 	const size_t used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; leech reductions%s", on ? "" : " FAILED");
