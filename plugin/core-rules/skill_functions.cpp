@@ -6333,7 +6333,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		              mindBlast ? "" : " FAILED", noConvert ? "" : " FAILED", mask ? "" : " FAILED");
 	}
 	// the skill/*.cpp rules register themselves (skill/registry.h): sorted by (order, name), the old call order
-	std::vector<pd2r::RuleEntry> rules = pd2r::Rules();
+	std::vector<pd2r::RuleEntry>& rules = pd2r::Rules();  // sorted in place: this runs once
 	std::sort(rules.begin(), rules.end(), [](const pd2r::RuleEntry& x, const pd2r::RuleEntry& y) {
 		return x.order != y.order ? x.order < y.order : std::strcmp(x.name, y.name) < 0;
 	});

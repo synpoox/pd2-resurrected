@@ -21,6 +21,19 @@ class RuleRegistry(unittest.TestCase):
                 orders[order] = name
         self.assertTrue(orders)
 
+    def test_no_shared_list_names_a_registered_rule(self):
+        names = [n for path in SKILL.glob("*.cpp") for n, _ in RULE.findall(path.read_text(encoding="utf-8"))]
+        for shared in (SKILL.parent / "skill_functions.cpp", SKILL / "common.h"):
+            text = shared.read_text(encoding="utf-8")
+            for name in names:
+                self.assertNotIn(name + "(", text, f"{shared.name} still names {name}")
+
+    def test_cmake_lists_skill_sources_only_by_glob(self):
+        lines = [l for l in (SKILL.parents[1] / "CMakeLists.txt").read_text(encoding="utf-8").splitlines()
+                 if "core-rules/skill/" in l and not l.lstrip().startswith("#")]
+        self.assertEqual(len(lines), 1, lines)
+        self.assertIn("GLOB", lines[0])
+
 
 if __name__ == "__main__":
     unittest.main()
