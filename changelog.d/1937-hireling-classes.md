@@ -1,3 +1,3 @@
 #### Bug Fixes
 
-- Fixed act 5 and act 4 mercenaries missing half-strength Frozen Armor and Enchant from allies and the hireling Static Field rule (#1937).
+- Fixed act 4 and 5 mercenaries missing hireling rules for ally buffs and Static Field (#1937).
