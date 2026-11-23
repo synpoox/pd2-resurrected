@@ -1,1 +1,1 @@
-Added optional Dark and Light Ascendant assets, animations and HUD portraits from RuffnecKk.
+- New HD models and mercenary portraits for the Dark and Light Ascendant, by RuffnecKk.
