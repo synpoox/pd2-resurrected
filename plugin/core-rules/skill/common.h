@@ -15,6 +15,9 @@ struct Unit;
 // Monster curse cast (#2003), monster_curse.cpp: true when installed; appends its part to `report`.
 auto InstallMonsterCurse(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
+// Baal's throne wave delay (#2014), baal_wave_delay.cpp: true when installed; appends its part to `report`.
+auto InstallBaalWaveDelay(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
+
 // Whirlwind hit rate (#2015), whirlwind.cpp: a player's Whirlwind hits every Param3 frames; appends its part to `report`.
 auto InstallWhirlwind(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
