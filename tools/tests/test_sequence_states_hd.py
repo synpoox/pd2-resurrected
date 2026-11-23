@@ -42,12 +42,30 @@ class SequenceStates(unittest.TestCase):
         self.assertEqual(checked, {"sorceress", "barbarian", "assassin"})
 
     def test_monster_states_follow_their_skill_rows(self):
-        # #1858, #1964, #2083: the HD clip is picked by skill id, so the copied states must carry the merged row of PD2's skill
+        # #1858, #1964, #2083, #2092: the HD clip is picked by skill id, so the copied states must carry the merged row of PD2's skill
         rows = list(csv.reader((FILES / "global/excel/skills.txt").open(encoding="utf-8-sig"), delimiter="\t"))
         ids = {row[0]: int(row[1]) for row in rows[1:]}
         for unit, skill, steps in (("ancientbarb1", "MonWhirlwind", 1), ("ancientbarb3", "Leap Attack Korlic", 4),
                                   ("roguehire", "DoppleZonStrafe", 1), ("duriel", "MonCharge", 1),
-                                  ("duriel", "MonJab", 1), ("duriel", "MonSmite", 1)):
+                                  ("duriel", "MonJab", 1), ("duriel", "MonSmite", 1),
+                                  # #2092
+                                  ("ancientbarb1", "UberTalicWhirlwind", 1), ("ancientbarb3", "Leap Attack", 4),
+                                  ("blunderbore1", "MonSmite", 1), ("scarab1", "MonJab", 1), ("cr_lancer1", "MonJab", 1),
+                                  ("siegebeast1", "MonCharge", 1), ("reanimatedhorde1", "MonCharge", 2),
+                                  ("clawviper1", "MonCharge", 1), ("bloodraven", "BloodRavenImmo", 1),
+                                  ("frozenhorror1", "Horror Arctic Blast Boss", 1), ("maggotegg1", "PoisonEggSpawn", 1),
+                                  ("act2hire", "TraitorBossBlessedAim", 1), ("act2hire", "TraitorBossVigor", 1),
+                                  ("act2hire", "TraitorBossConeJab", 1), ("act2hire", "TraitorBossStunSpear", 1),
+                                  ("deathmauler1", "EruptionDemonRoadBoss", 2), ("deathmauler1", "MonDecrepify", 2),
+                                  ("deathmauler1", "RathmaPrison", 2), ("fallenshaman1", "Blink", 1),
+                                  ("fallenshaman1", "ChargedBoltImperialMiniBoss", 1),
+                                  ("fallenshaman1", "ImperialMiniBossBlast", 1), ("fallenshaman1", "SiegeBeastBuffNova", 1),
+                                  ("radament", "Blade Shield", 1), ("radament", "Blink", 1), ("radament", "Combustion", 1),
+                                  ("radament", "DiabWall", 1), ("radament", "FingerMageSpiderTombEvent", 1),
+                                  ("radament", "Frozen OrbTombEvent", 1), ("radament", "Howl Monster", 1),
+                                  ("radament", "Imp Teleport", 1), ("radament", "Molten Boulder", 1),
+                                  ("radament", "RadamentBossMeteor", 1), ("radament", "RadamentBossRoyalFire", 1),
+                                  ("unraveler1", "UnravelerBossMultiShot", 1)):
             sm = json.loads((FILES / f"hd/character/enemy/{unit}/{unit}_state_machine.json").read_text("utf-8"))
             states = [s for s in sm["states"] if s["modeId"] == 14 and s["skillIndex"] == ids[skill]]
             self.assertEqual(len(states), steps, f"{unit}: {skill} ({ids[skill]})")
