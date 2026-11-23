@@ -3484,19 +3484,30 @@ constexpr const char* RedemptionCorpseCall = "8b 43 04 44 8b 0b 89 44 24 20 e8 ?
 constexpr uint32_t RedemptionCorpseCallAt = 10;
 using RedemptionCorpseFn = int32_t (*)(Game*, Unit*, Unit*, int32_t, int32_t, int32_t) noexcept;
 RedemptionCorpseFn g_redemptionCorpse = nullptr;
-std::atomic<uint32_t> g_redemptionSkips {0};
+std::atomic<uint32_t> g_redemptionCorpses {0};
+
+// D2R's summon spawn (0x4350e0, Raise Skeleton's and the other pets') never sets the unit's owner (+0xe8 / +0xec, only
+// some paths call the setter 0x3519e0); it links the pet in the monster's AI block (0x4a5800: +0x68 id, +0x6c type), which
+// the owner getter 0x4a53c0 reads and the death path (0x44db20 -> 0x4a5f70) leaves set. So both are tested.
+auto RedemptionOwned(Unit* corpse) noexcept -> bool {
+	if (OwnedByPlayer(corpse)) {
+		return true;
+	}
+	const uint8_t* data = At<int32_t>(corpse, d2r::rva::UnitType) == d2r::rva::UnitMonster ? At<uint8_t*>(corpse, d2r::rva::UnitData) : nullptr;
+	const uint8_t* ai = data != nullptr ? At<uint8_t*>(data, MonDataAi) : nullptr;
+	const uint32_t id = ai != nullptr ? At<uint32_t>(ai, AiOwnerId) : 0;
+	return ai != nullptr && At<int32_t>(ai, AiOwnerType) == 0 && id != 0 && id != UINT32_MAX;
+}
 
 auto RedemptionCorpse(Game* game, Unit* unit, Unit* corpse, int32_t skillId, int32_t level, int32_t flag) noexcept
     -> int32_t {
-	if (corpse != nullptr && OwnedByPlayer(corpse)) {
-		if (pd2::HotSample(g_redemptionSkips)) {
-			plog::Info("redemption: skipped owned corpse class %d owner %u (%u so far)",
-			           At<int32_t>(corpse, d2r::rva::UnitClassId), At<uint32_t>(corpse, d2r::rva::UnitOwnerId),
-			           g_redemptionSkips.load());
-		}
-		return 0;
+	const bool owned = corpse != nullptr && RedemptionOwned(corpse);
+	const int32_t taken = owned ? 0 : g_redemptionCorpse(game, unit, corpse, skillId, level, flag);
+	if ((owned || taken != 0) && pd2::HotSample(g_redemptionCorpses)) {
+		plog::Info("redemption: %s corpse class %d (%u so far)", owned ? "skipped owned" : "took",
+		           At<int32_t>(corpse, d2r::rva::UnitClassId), g_redemptionCorpses.load());
 	}
-	return g_redemptionCorpse(game, unit, corpse, skillId, level, flag);
+	return taken;
 }
 
 // --- Mind Blast's stacks and damage only (#1946) ---------------------------------------------------------------------
