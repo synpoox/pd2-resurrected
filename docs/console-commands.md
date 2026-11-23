@@ -27,7 +27,7 @@ unique row <n>, item level 87`, or `armageddon: console: <reason>`. Example: `co
 ## core-ui
 
 `core-ui` : the same for the client plugin: version, image, mod, file, off-file words, parts, and the counters (stack
-split, item quantity, level palette, inventory lock, stash affinity, stash tabs, monsters remaining). No arguments.
+split, item quantity, level palette, inventory lock, stash affinity, stash tabs, monsters remaining, corruption markers). No arguments.
 Example: `core-ui`.
 
 `core-ui stash personal|materials|maps|bossing|<n>` : opens the stash (if closed) and selects a tab, so a game check

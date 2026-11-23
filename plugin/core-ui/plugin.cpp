@@ -12,9 +12,11 @@
 //   affinity  stash affinity: quick-moved maps, bossing and map materials go to their reserved shared stash pages (#1553)
 //   tabs      stash tabs: a second tab row with the Maps tab (tiers, bases, the cube) and the Bossing tab (#1553)
 //   monsters  PD2 Monsters Remaining: the level hostile monsters left, in the zone info (#1534)
+//   corrupt   corruption markers: the lines a corruption added or changed are red (#2070)
 //   hotkeys   PD2 inventory hotkeys: Ctrl, Shift and Ctrl+Shift right click drop, stash and Cube, Shift+left click identifies; configurable (#1567)
 #include <D2RLPlugin/api.h>
 
+#include "corruption_marks.h"
 #include "crash_guard.h"
 #include "inventory_lock.h"
 #include "pd2_engine.h"
@@ -64,6 +66,7 @@ parts::Part g_parts[] = {
 	{"affinity", false, stash_affinity::Install},
 	{"tabs", false, stash_tabs::Install},
 	{"monsters", false, monsters_remaining::Install},
+	{"corrupt", true, corruption_marks::Install},
 };
 
 constexpr D2RL::PluginInfo Info {
@@ -128,6 +131,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	monsters_remaining::Counters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	corruption_marks::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
