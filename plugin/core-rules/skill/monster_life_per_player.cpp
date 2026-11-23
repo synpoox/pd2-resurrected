@@ -2,8 +2,10 @@
 //
 // PD2 patches 1.13c D2Game's life-per-player table `+0xfb614` slots 2-8 (50, 100 ... 350 -> 70, 140 ... 490). D2R's
 // reader is 93847 0x543100: `cmp ecx,9; jge ...; lea rcx,[rip+table]; mov eax,[rcx+rax*4]` over int32 {0, 0, 50 ...
-// 350} at 0x1d3d4a8 (players 2-8 at +8..+0x20), else (n-2)*50. Its only caller (0x581c73) scales a monster's life by
-// pct/100; nothing else reads the table (the XP table is separate and stays as is). So the table is patched in place.
+// 350} at 0x1d3d4a8 (players 2-8 at +8..+0x20), else (n-2)*50; its only caller (0x581c73) scales a monster's life by
+// pct/100. The table has a second reader, the player-count bonus struct 0x542f40 (its 0x54306e reads
+// [imagebase+idx*4+0x1d3d4a8]), as PD2 reaches both through 1.13c 0xaf5f0 and 0xaf860. The XP table is separate and
+// stays as is. So the table is patched in place, which reaches both readers.
 // No SDK service reaches this table: a byte patch, the table found through the reader's rip-relative operand.
 #include "common.h"
 
