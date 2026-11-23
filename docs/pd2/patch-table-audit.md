@@ -953,7 +953,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036b9f0` | item spells (D2Game `+0x107238`, 8 bytes {check, use}) | 5 (+4) | `0x10383010` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036b9f0` | item spells (D2Game `+0x107238`, 8 bytes {check, use}) | 12 (+4) | `0x10383060` | ported | `plugin/core-events/map_events.cpp`, `plugin/core-events/map_open.cpp`, `plugin/core-events/uber_entry.cpp` |
 | `0x1036b9f0` | item spells (D2Game `+0x107238`, 8 bytes {check, use}) | 13 (+4) | `0x10383ea0` | ported | `plugin/core-rules/almanac.cpp` |
-| `0x1036ba20` | cltdofunc | 8 | `0x103aaf10` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | cltdofunc | 8 | `0x103aaf10` | ported | `plugin/core-rules/skill_functions.cpp`: Mind Blast's drawn radius with the stacks, D2R's draw calc call `0x2b30b9` redirected ([#1946](https://github.com/synpoox/pd2-resurrected/issues/1946)) |
 | `0x1036ba20` | cltdofunc | 83 | `0x103ab070` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | cltdofunc | 94 | `0x103ab180` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | cltdofunc | 97 | `0x103ab280` | ported | `plugin/core-rules/skill_functions.cpp` |
@@ -991,7 +991,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvdofunc | 48 | `0x103af2f0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W21 gate A (w32-blade-fury.md) |
 | `0x1036ba20` | srvdofunc | 49 | `0x103af450` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 50 | `0x103af640` | documented | [w29-assassin-finishers](../research/skills/w29-assassin-finishers.md) |
-| `0x1036ba20` | srvdofunc | 51 | `0x103af800` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
+| `0x1036ba20` | srvdofunc | 51 | `0x103af800` | ported | `plugin/core-rules/skill_functions.cpp`: Mind Blast's radius stacks, D2R's radius call `0x570801` redirected ([#1946](https://github.com/synpoox/pd2-resurrected/issues/1946)) |
 | `0x1036ba20` | srvdofunc | 54 | `0x103afac0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 55 | `0x103afb40` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 56 | `0x103afea0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W14's golem count rule, the Golem start deviation |

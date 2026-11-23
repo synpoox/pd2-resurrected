@@ -3206,6 +3206,99 @@ auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* 
 	return result;
 }
 
+// --- Mind Blast's stacks (#1946) -------------------------------------------------------------------------------------
+// PD2's srvdo 51 (ProjectDiablo.dll 0x103af800) and cltdo 8 (0x103aaf10). The server reads `had`, aurastat1 on the
+// caster's aurastate list (a new list starts at 0), raises it by 1 while under calc2, sets the list's life to
+// max(had, 1) x auralencalc frames and searches aurarangecalc + (max(had, 1) - 1) x calc1 around the target. The client
+// draws the blast missile at the same radius from its own copy of the list (aurarangecalc alone without one).
+// D2R 93847's srvdo 51 (0x570780) takes its radius from the call at 0x570801 (prgcalc by D2R's progressive flag, which
+// Mind Blast lacks, so 0 and then aurarangecalc) and never stacks; its cltdo 8 (0x2b3020) evaluates aurarangecalc at
+// 0x2b30b9. Both calls are redirected by signature: no SDK service reaches a skill's area radius.
+constexpr const char* MindBlastRangeCall =
+    "4c 89 a4 24 10 02 00 00 44 8b c6 48 8b d7 48 8b cb e8 ?? ?? ?? ?? 44 8b e0 85 c0 75 ?? 45 8b 86 84 00 00 00";
+constexpr uint32_t MindBlastRangeCallAt = 17;
+constexpr const char* MindBlastDrawCall =
+    "44 8b 83 84 00 00 00 44 8b cd 48 8b d6 44 89 7c 24 20 41 0f b6 ce e8 ?? ?? ?? ?? 0f 57 c0";
+constexpr uint32_t MindBlastDrawCallAt = 22;
+using MindBlastRangeFn = int32_t (*)(Game*, Unit*, int32_t, int32_t) noexcept;
+using CalcFn = int32_t (*)(uint32_t, Unit*, int32_t, int32_t, int32_t) noexcept;
+MindBlastRangeFn g_mindBlastRange = nullptr;  // D2R's, unused: PD2's do never reads prgcalc
+CalcFn g_mindBlastDrawCalc = nullptr;
+std::atomic<uint32_t> g_mindBlasts {0};
+
+constexpr auto MindBlastRadius(int32_t range, int32_t had, int32_t perStack) noexcept -> int32_t {
+	return range + (std::max(had, 1) - 1) * perStack;
+}
+constexpr auto MindBlastNext(int32_t had, int32_t cap) noexcept -> int32_t {
+	return had < cap ? had + 1 : had;
+}
+// Mind Blast's row: aurarangecalc 4 at 1 hard point, calc1 2, calc2 3. Fast casts: 4, 4, 6, 8, 8 (subtiles).
+static_assert(MindBlastRadius(4, 0, 2) == 4 && MindBlastRadius(4, 1, 2) == 4 && MindBlastRadius(4, 2, 2) == 6 &&
+              MindBlastRadius(4, 3, 2) == 8);
+static_assert(MindBlastNext(0, 3) == 1 && MindBlastNext(2, 3) == 3 && MindBlastNext(3, 3) == 3);
+
+// aurastat1 on the unit's aurastate list, or -1 when the row has no such pair or the unit no list
+auto MindBlastStacks(uint32_t dataFlag, Unit* unit, const uint8_t* skill, void** list) noexcept -> int32_t {
+	const int32_t state = At<int16_t>(skill, d2r::rva::SkAuraState), stat = At<int16_t>(skill, d2r::rva::SkAuraStat1);
+	if (state <= 0 || stat < 0) {
+		return -1;
+	}
+	*list = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(d2r::sig::UnitStateList)(unit, state);
+	return *list != nullptr ? d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(d2r::sig::ListStatValue)(
+	                              dataFlag, *list, stat, 0)
+	                        : 0;
+}
+
+// Server: PD2's stack step, then its radius (D2R takes aurarangecalc when this returns 0).
+// shortcut: NewStateList refuses a recast at a lower level than the running list's, which then keeps its count and
+// life; PD2 raises and extends it. Upgrade if a cast after losing +skills mid-chain matters.
+auto MindBlastRange(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = game != nullptr ? d2r::DataFlag(game) : 0;
+	const uint8_t* skill = game != nullptr && unit != nullptr ? d2r::api.getSkillRecord(dataFlag, skillId) : nullptr;
+	if (skill == nullptr) {
+		return 0;
+	}
+	const int32_t range = d2r::EvalCalc(game, unit, skill, SkAuraRangeCalc, skillId, level);
+	void* old = nullptr;
+	const int32_t had = MindBlastStacks(dataFlag, unit, skill, &old);
+	if (had < 0) {
+		return range;
+	}
+	const int32_t state = At<int16_t>(skill, SkAuraState), stat = At<int16_t>(skill, SkAuraStat1);
+	const int32_t frames = std::max(had, 1) * d2r::EvalCalc(game, unit, skill, SkAuraLenCalc, skillId, level);
+	const int32_t perStack = d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level);
+	const int32_t next = MindBlastNext(had, d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level));
+	d2r::StateListRequest request {unit, unit, skillId, level, frames, -1, 0, state,
+	                               d2r::Engine<void (*)()>(d2r::sig::SkillStateExpired)};
+	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(d2r::sig::NewStateList)(&request);
+	if (list != nullptr) {
+		// set on a new list too: a replaced one (another level) keeps PD2's count
+		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(d2r::sig::SetListStat)(dataFlag, list,
+		                                                                                                stat, next, 0);
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::SetStateGfxFlag)(unit, state, 1);
+	}
+	const int32_t radius = MindBlastRadius(range, had, perStack);
+	if (pd2::HotSample(g_mindBlasts)) {
+		plog::Info("mind blast: skill %d level %d stacks %d -> %d, %d frames, radius %d (base %d)%s", skillId, level, had,
+		           next, frames, radius, range, list != nullptr ? "" : ", list refused");
+	}
+	return radius;
+}
+
+// Client: the drawn radius, aurarangecalc plus the stacks the client's copy of the list holds
+auto MindBlastDrawRange(uint32_t dataFlag, Unit* unit, int32_t calc, int32_t skillId, int32_t level) noexcept -> int32_t {
+	const int32_t range = g_mindBlastDrawCalc(dataFlag, unit, calc, skillId, level);
+	const uint8_t* skill = unit != nullptr ? d2r::api.getSkillRecord(dataFlag, skillId) : nullptr;
+	void* list = nullptr;
+	const int32_t had = skill != nullptr ? MindBlastStacks(dataFlag, unit, skill, &list) : -1;
+	if (list == nullptr) {
+		return range;
+	}
+	return MindBlastRadius(range, had, d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, d2r::rva::SkCalc1),
+	                                                          skillId, level));
+}
+
 // --- Leap, Leap Attack, Leap Attack Korlic (PD2 srvdofunc 153 -> 172, cltdofunc 97 -> 115) ------------------------------
 // Read from ProjectDiablo.dll: srvdo 153 at 0x103b1300, cltdo 97 at 0x103ab280 (docs/features/core-rules.md). PD2's leap path is
 // D2R's (path type 9 to the skill's point); PD2 sets its own speed and, on landing, hits every unit within calc3.
@@ -5286,6 +5379,25 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; dragon talon kick%s", kick ? "" : " FAILED");
 	}
+	bool entries = true;
+	for (const sigscan::Entry* e : {&d2r::sig::UnitStateList, &d2r::sig::ListStatValue, &d2r::sig::SetListStat,
+	                                &d2r::sig::NewStateList, &d2r::sig::SetStateGfxFlag, &d2r::sig::SkillStateExpired}) {
+		entries = entries && e->state == sigscan::State::Ok;
+	}
+	// the client draw first: alone (the server's redirect failing) it draws the base radius, as no list is ever made
+	const bool mindBlast = entries &&
+	                       RedirectCall(context, MindBlastDrawCall, MindBlastDrawCallAt,
+	                                    reinterpret_cast<uint64_t>(&MindBlastDrawRange),
+	                                    reinterpret_cast<uint64_t*>(&g_mindBlastDrawCalc)) &&
+	                       RedirectCall(context, MindBlastRangeCall, MindBlastRangeCallAt,
+	                                    reinterpret_cast<uint64_t>(&MindBlastRange),
+	                                    reinterpret_cast<uint64_t*>(&g_mindBlastRange));
+	plog::Info("mind blast: PD2 radius stacks %s", mindBlast ? "on" : "FAILED (srvdo 51 / cltdo 8 call signature or entries)");
+	installed += mindBlast ? 1 : 0;
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; mind blast stacks%s", mindBlast ? "" : " FAILED");
+	}
 	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
 	                                             sizeof(d2r::rva::BusyModeGateEntry), BusyModeGate, &g_gateOriginal);
 	installed += gate ? 1 : 0;
@@ -5338,8 +5450,8 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 auto SkillFunctionCount() noexcept -> int {
 	// + the srvdo router, the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the two first-think patches and the
 	// revive size cap, Frenzy's stacks, Dragon Talon's kick, the busy mode gate, the spin skill on hit, the holy sword
-	// parry, the hit window and srvdo 25's ally buff
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 15;
+	// parry, the hit window, srvdo 25's ally buff and Mind Blast's stacks
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 16;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
