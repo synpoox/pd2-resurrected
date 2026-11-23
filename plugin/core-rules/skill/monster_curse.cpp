@@ -9,6 +9,7 @@
 // service casts a skill's area apply) and the context refilled from PD2's pick. The rows are found by PD2's names
 // through D2R's skills name map (DataTables +0x11c8, the map 0x49fba0 looks "FireGolem" up in), as the merge moved them.
 #include "common.h"
+#include "registry.h"
 
 #include "../item_rules.h"
 #include "pd2_engine.h"
@@ -108,3 +109,5 @@ auto InstallMonsterCurse(const D2RL::PluginContext* context, char* report, size_
 	}
 	return on;
 }
+
+PD2R_RULE(InstallMonsterCurse, 10)

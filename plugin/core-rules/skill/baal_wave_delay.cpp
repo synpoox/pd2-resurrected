@@ -7,6 +7,7 @@
 // as is, as PD2 leaves its own). So the 250 is the taunt-to-wave delay of every stage, the first wave's included.
 // No SDK service reaches a monster AI's timers: a byte patch of the imm32's low byte, found by signature.
 #include "common.h"
+#include "registry.h"
 
 #include "log.h"
 #include "sig.h"
@@ -35,3 +36,5 @@ auto InstallBaalWaveDelay(const D2RL::PluginContext* context, char* report, size
 	}
 	return on;
 }
+
+PD2R_RULE(InstallBaalWaveDelay, 40)

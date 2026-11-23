@@ -80,6 +80,9 @@ modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/plugin.rc  # ABI manifest resource: D2RLoader rejects a plugin DLL without it
 )
 # The per-encounter placement data (#947), one file per encounter: built into every plugin that reads placements.h.
+# Every skill/<rule>.cpp registers itself (skill/registry.h): no list to edit (#2060). Sources go straight into the DLL, so no object file is dropped.
+file(GLOB CORE_RULE_SOURCES CONFIGURE_DEPENDS core-rules/skill/*.cpp)
+target_sources(plugin_core_rules PRIVATE ${CORE_RULE_SOURCES})
 file(GLOB CORE_PLACEMENT_SOURCES CONFIGURE_DEPENDS placements/*.cpp)
 target_sources(plugin_core_rules PRIVATE ${CORE_PLACEMENT_SOURCES})
 target_include_directories(plugin_core_rules PRIVATE "${D2R_TOOLKIT_DIR}/plugin-template/src")
