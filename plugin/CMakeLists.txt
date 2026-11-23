@@ -49,6 +49,7 @@ set(CORE_RULES_VERSION "0.2.4" CACHE STRING "core-rules PluginInfo::version")
 modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/plugin.cpp
 	core-rules/skill_functions.cpp
+	core-rules/skill/monster_curse.cpp
 	core-rules/missile_functions.cpp
 	core-rules/item_rules.cpp
 	core-rules/gold_pickup.cpp
