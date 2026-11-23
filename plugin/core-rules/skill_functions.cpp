@@ -6070,8 +6070,10 @@ auto SacrificeKill(Game* game, Unit* victim, Unit* attacker, uint64_t block) noe
 	const bool life = t_lifeUnit == victim;  // PD2's stat is 0 on a unit no hit apply has reached
 	const int32_t before = life ? t_lifeBefore : 0;
 	t_lifeUnit = nullptr;
-	// shortcut: PD2 also reads a missile attacker's skill (1.13c block +0x5c); no missile that deals damage carries
-	// Sacrifice, and D2R's area apply passes the owner. Upgrade if one does.
+	// The chain (#2043): an explosion's kill arrives here with the killer as attacker (AreaApply -> DealDamage), so a
+	// killer still on Sacrifice queues the next one. PD2's missile case (block +0x5c, skill 96) is the guts missile,
+	// whose hits D2R's missile damage (0x462e60) also credits to its owner, the corpse; PD2 then asks the corpse (or its
+	// pet owner) for Sacrifice, which no monster has. docs/deviations.md "Sacrifice: guts kills of a pet corpse".
 	if (!g_killGetsBlock || game == nullptr || victim == nullptr || attacker == nullptr || g_sacrificeState < 0 ||
 	    At<int32_t>(attacker, UnitType) == UnitMissile) {
 		return;
