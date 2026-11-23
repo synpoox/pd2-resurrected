@@ -14,11 +14,16 @@
 //    place, so skipping it adds nothing, as PD2's `if (quality != 3)`.
 // 4. A repair quote (type 3) is capped at 250000, as PD2's final `min(price, 250000)`: the price function is hooked and its
 //    result clamped for type 3.
-// 5. Runes can't be sold (#1777). ItemIsSellable (0x374370, D2Common Items.cpp: not item flag 0x1000, not a quest item,
-//    not type 0x27) is hooked to answer 0 for an item of the itemtypes `rune` type (its row found by code through the
-//    SDK's DataTableService). Every caller is a sell path: the vendor panel, its tooltip and controller prompts (client),
-//    and the SUnitNpc.cpp sell handlers (server). So the client refuses as it does for a quest item and the rune stays
-//    where it was, and a host refuses a sell message too. Native: no PluginSDK service decides what a vendor takes.
+// 5. Vendors refuse what PD2's refuse (#1777, #2012). ItemIsSellable (0x374370, D2Common Items.cpp: not item flag 0x1000, not a
+//    quest item, not type 0x27) is hooked and, when D2R says yes, PD2's own list is applied (ProjectDiablo.dll 0x1037f760, over
+//    1.13c D2Common #10705): an item whose own items.txt type (an exact compare, as PD2's #11088) is gem, rune or `rung`; a
+//    stackable item unless it is `tbk`, `ibk`, a quiver (`aqv`, `cqv`, `aqv2`, `cqv2`, `aqv3`, `cqv3`), `key`, `rps`, `rpl`,
+//    `bps`, `bpl` or of a throwing type (`tpot`, `tkni`, `taxe`, `jave`, `thro`, `misl`, `ajav`); a non-stackable item with
+//    the code `ubtm`, `dcma`, `rtma`, `uba`, `llmr`, `lsvl`, `rkey`, `rid` or `rtp`; a unique `cm1`, `cm2` or of type `t5m`.
+//    Codes are compared as item codes and types are found by code in the itemtypes table (the SDK's DataTableService), so no
+//    id is hard-coded. Every caller is a sell path: the vendor panel, its tooltip and controller prompts (client), and the
+//    SUnitNpc.cpp sell handlers (server). So the client refuses as it does for a quest item and the item stays where it was,
+//    and a host refuses a sell message too. Native: no PluginSDK service decides what a vendor takes.
 #include "item_prices.h"
 
 #include "item_price.h"
@@ -33,12 +38,15 @@
 
 #include <intrin.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdio>
 #include <cstring>
+#include <iterator>
 
 namespace {
 
+using d2r::At;
 using d2r::Unit;
 using namespace pd2::itemprice;
 
@@ -146,50 +154,101 @@ constexpr const char* SellablePattern =
     "40 57 48 83 ec 20 48 8b f9 48 85 c9 74 0a e8 ?? ?? ?? ?? 83 f8 04 74 19 48 8d 4c 24 30 c6 44 24 30 00 e8 ?? ?? ?? ?? "
     "84 c0 74 01 cc 48 85 ff 74 39 48 8b cf e8 ?? ?? ?? ?? 83 f8 04 75 2c 48 8b cf e8 ?? ?? ?? ?? 48 85 c0 75 15 48 8d 4c "
     "24 30 88 44 24 30 e8 ?? ?? ?? ?? 84 c0 74 0d cc eb 0a 8b 40 18 25 00 10 00 00";
-constexpr uint32_t RuneCode = 'r' | 'u' << 8 | 'n' << 16 | 'e' << 24;  // itemtypes code `rune`, as D2R keys it
+
+using D2RL::DataTables::MakeFourCC;
+// PD2's item types by itemtypes code, as D2R keys it: the first three are always refused, `t5m` when unique, the rest are the
+// throwing types whose stackable items still sell
+constexpr uint32_t TypeCodes[] = {MakeFourCC('g', 'e', 'm'),      MakeFourCC('r', 'u', 'n', 'e'), MakeFourCC('r', 'u', 'n', 'g'),
+                                  MakeFourCC('t', '5', 'm'),      MakeFourCC('t', 'p', 'o', 't'), MakeFourCC('t', 'k', 'n', 'i'),
+                                  MakeFourCC('t', 'a', 'x', 'e'), MakeFourCC('j', 'a', 'v', 'e'), MakeFourCC('t', 'h', 'r', 'o'),
+                                  MakeFourCC('m', 'i', 's', 'l'), MakeFourCC('a', 'j', 'a', 'v')};
+constexpr size_t TypeGem = 0, TypeRune = 1, TypeRung = 2, TypeT5m = 3, TypeFirstThrowing = 4;
+// items.txt codes (four characters, space padded, as ItemCode returns them)
+constexpr uint32_t StackExemptCodes[] = {MakeFourCC('t', 'b', 'k', ' '), MakeFourCC('i', 'b', 'k', ' '), MakeFourCC('a', 'q', 'v', ' '),
+                                         MakeFourCC('c', 'q', 'v', ' '), MakeFourCC('a', 'q', 'v', '2'), MakeFourCC('c', 'q', 'v', '2'),
+                                         MakeFourCC('a', 'q', 'v', '3'), MakeFourCC('c', 'q', 'v', '3'), MakeFourCC('k', 'e', 'y', ' '),
+                                         MakeFourCC('r', 'p', 's', ' '), MakeFourCC('r', 'p', 'l', ' '), MakeFourCC('b', 'p', 's', ' '),
+                                         MakeFourCC('b', 'p', 'l', ' ')};
+constexpr uint32_t ListedCodes[] = {MakeFourCC('u', 'b', 't', 'm'), MakeFourCC('d', 'c', 'm', 'a'), MakeFourCC('r', 't', 'm', 'a'),
+                                    MakeFourCC('u', 'b', 'a', ' '), MakeFourCC('l', 'l', 'm', 'r'), MakeFourCC('l', 's', 'v', 'l'),
+                                    MakeFourCC('r', 'k', 'e', 'y'), MakeFourCC('r', 'i', 'd', ' '), MakeFourCC('r', 't', 'p', ' ')};
+constexpr uint32_t UniqueCodes[] = {MakeFourCC('c', 'm', '1', ' '), MakeFourCC('c', 'm', '2', ' ')};
+constexpr int Banks = 4;              // DataTables::Bank 1-3, indexed by the item's data flag
+constexpr int ItStackable = 0x142;    // uint8 stackable column of D2R's items record (read by the stackable test 0x374660)
+constexpr int32_t QualityUnique = 7;  // D2R item quality (6 rare)
+
 using SellableFn = int32_t (*)(Unit* item) noexcept;
+using ItemRecordFn = const uint8_t* (*)(uint32_t dataFlag, int32_t classId) noexcept;
 SellableFn g_sellable = nullptr;
-IsTypeFn g_typeTest = nullptr;  // ItemIsType's entry (through the hook above when it is in; it keeps these answers)
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::DataTableService* g_tables = nullptr;
-std::atomic<int32_t> g_runeType {-1};
-std::atomic<uint32_t> g_runeRefusals {0};
+int32_t g_typeRows[Banks][std::size(TypeCodes)] = {};  // row + 1, 0 = not looked up yet, -1 = not in the bank (game thread only)
+std::atomic<uint32_t> g_sellRefusals {0};
 
-// The `rune` row, looked up on the first sell check (the SDK answers only on the game thread, where the checks run)
-auto RuneType() noexcept -> int32_t {
-	int32_t type = g_runeType.load(std::memory_order_relaxed);
-	if (type < 0) {
+template <size_t N>
+auto HasCode(const uint32_t (&codes)[N], uint32_t code) noexcept -> bool {
+	return std::find(std::begin(codes), std::end(codes), code) != std::end(codes);
+}
+
+// The itemtypes row of TypeCodes[i] in the bank (-1: not there), looked up on first use; only Busy (off the game thread, where
+// the SDK answers nothing) is asked again
+auto TypeRow(uint8_t bank, size_t i) noexcept -> int32_t {
+	int32_t& row = g_typeRows[bank][i];
+	if (row == 0) {
 		D2RL::DataTables::RowView view {.structSize = D2RL::DataTables::RowViewSize};
-		if (g_tables->findRowByCode(g_context, D2RL::DataTables::Bank::Rotw, D2RL::DataTables::TableId::ItemTypes, RuneCode, &view) ==
-		    D2RL::DataTables::Result::Success) {
-			type = static_cast<int32_t>(view.rowIndex);
-			g_runeType.store(type);
-			plog::Info("rune sales: itemtypes rune is row %d", type);
+		const auto result = g_tables->findRowByCode(g_context, static_cast<D2RL::DataTables::Bank>(bank),
+		                                            D2RL::DataTables::TableId::ItemTypes, TypeCodes[i], &view);
+		if (result == D2RL::DataTables::Result::Busy) {
+			return -1;
 		}
+		row = result == D2RL::DataTables::Result::Success ? static_cast<int32_t>(view.rowIndex) + 1 : -1;
 	}
-	return type;
+	return row < 0 ? -1 : row - 1;
+}
+
+// PD2's list (point 5 above), applied to an item D2R would let a vendor take
+auto PdRefuses(Unit* item) noexcept -> bool {
+	if (item == nullptr || At<int32_t>(item, d2r::rva::UnitType) != 4) {
+		return false;
+	}
+	const uint8_t bank = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::sig::UnitDataFlag)(item);
+	const uint8_t* record = bank < Banks ? d2r::Engine<ItemRecordFn>(d2r::sig::ItemRecord)(bank, At<int32_t>(item, d2r::rva::UnitClassId))
+	                                     : nullptr;
+	if (record == nullptr) {
+		return false;
+	}
+	const int32_t type = At<int16_t>(record, d2r::rva::ItType);
+	const auto typeIs = [&](size_t i) { return TypeRow(bank, i) == type; };
+	const uint32_t code = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::sig::ItemCode)(item);
+	bool throwing = false;
+	for (size_t i = TypeFirstThrowing; i < std::size(TypeCodes) && !throwing; ++i) {
+		throwing = typeIs(i);
+	}
+	// the quality is read only for a unique-listed code or type
+	const bool unique = (HasCode(UniqueCodes, code) || typeIs(TypeT5m)) &&
+	                    d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::ItemQuality)(item) == QualityUnique;
+	return SellRefused(typeIs(TypeGem) || typeIs(TypeRune) || typeIs(TypeRung), At<uint8_t>(record, ItStackable) != 0,
+	                   throwing || HasCode(StackExemptCodes, code), HasCode(ListedCodes, code), unique);
 }
 
 auto SellableHook(Unit* item) noexcept -> int32_t {
 	const int32_t result = g_sellable(item);
-	if (result != 0) {
-		const int32_t rune = RuneType();
-		if (rune >= 0 && g_typeTest(item, rune) != 0) {
-			g_runeRefusals.fetch_add(1);
-			return 0;
-		}
+	if (result != 0 && PdRefuses(item)) {
+		g_sellRefusals.fetch_add(1);
+		return 0;
 	}
 	return result;
 }
 
-auto InstallRuneSales(const D2RL::PluginContext* context, uint64_t isTypeRva) noexcept -> bool {
-	if (isTypeRva == 0 || context->QueryService(&g_tables) != D2RL::ServiceQueryResult::Success ||
+auto InstallSellRefusals(const D2RL::PluginContext* context) noexcept -> bool {
+	if (d2r::sig::UnitDataFlag.state != sigscan::State::Ok || d2r::sig::ItemRecord.state != sigscan::State::Ok ||
+	    d2r::sig::ItemCode.state != sigscan::State::Ok || d2r::sig::ItemQuality.state != sigscan::State::Ok ||
+	    context->QueryService(&g_tables) != D2RL::ServiceQueryResult::Success ||
 	    !D2RL::HasDataTableServiceField(g_tables, D2RL::DataTableServiceRequiredSize)) {
-		plog::Warn("skipped rune sales: no ItemIsType or no data table service");
+		plog::Warn("skipped vendor sell refusals: an item function or the data table service is missing");
 		return false;
 	}
 	g_context = context;
-	g_typeTest = reinterpret_cast<IsTypeFn>(context->exeBase + isTypeRva);
 	return sigscan::HookBySignature(context, "ItemIsSellable", SellablePattern, 0, SellableEntry, sizeof(SellableEntry), SellableHook,
 	                                &g_sellable);
 }
@@ -220,14 +279,14 @@ auto InstallItemPrices(const D2RL::PluginContext* context, char* report, size_t 
 	}
 	const bool superior = InstallSuperiorStats(context);
 	const bool repair = sigscan::HookBySignature(context, "ItemPrice", PricePattern, 0, PriceEntry, sizeof(PriceEntry), PriceHook, &g_price);
-	const bool runes = InstallRuneSales(context, isTypeRva);
-	std::snprintf(report, reportSize, "weapon prices %s, gamble midpoint %s, superior stat skip %s, repair cap %s, rune sales block %s",
+	const bool sells = InstallSellRefusals(context);
+	std::snprintf(report, reportSize, "weapon prices %s, gamble midpoint %s, superior stat skip %s, repair cap %s, vendor sell refusals %s",
 	              quantity ? "in" : "FAILED", gamble ? "in" : "FAILED", superior ? "in" : "FAILED", repair ? "in" : "FAILED",
-	              runes ? "in" : "FAILED");
-	return quantity && gamble && superior && repair && runes;
+	              sells ? "in" : "FAILED");
+	return quantity && gamble && superior && repair && sells;
 }
 
 auto ItemPriceCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "item prices: %u prices without the stack quantity, %u repair quotes capped, highest repair quote %d, %u rune sales refused (rune type %d)",
-	              g_weaponSkips.load(), g_repairCaps.load(), g_repairMax.load(), g_runeRefusals.load(), g_runeType.load());
+	std::snprintf(out, size, "item prices: %u prices without the stack quantity, %u repair quotes capped, highest repair quote %d, %u vendor sales refused",
+	              g_weaponSkips.load(), g_repairCaps.load(), g_repairMax.load(), g_sellRefusals.load());
 }
