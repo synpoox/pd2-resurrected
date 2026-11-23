@@ -87,4 +87,4 @@ auto InstallGrimWardCorpse(const D2RL::PluginContext* context, char* report, siz
 	return on;
 }
 
-PD2R_RULE(InstallGrimWardCorpse, 110)
+PD2R_RULE(InstallGrimWardCorpse, 120)
