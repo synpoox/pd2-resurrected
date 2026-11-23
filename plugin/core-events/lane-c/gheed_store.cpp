@@ -3,7 +3,7 @@
 // Stock: PD2 0x103846d0 replaces 1.13c's gamble fill (D2Game +0xbe2a0) for NPC 147 in a map level whose event is Gheed.
 // Once per game (game +0x2628, the event's state, set to 2) it makes a store of its own (act index -1, so not the act's
 // store) holding: 1 in 200 Kadala's Heirloom (0x10388cd0, not ported: docs/deviations.md), then up to 5 random unique
-// items (below), item level 99, unidentified (identified here: MakeUnique), and none of the plain stock. Here the stock goes in his trade store: D2R's
+// items (below), item level 99, unidentified, and none of the plain stock. Here the stock goes in his trade store: D2R's
 // trade fill (0x53c9f0 in build 93847) is wrapped, and for the map's Gheed its plain stock is not made; each unique is
 // made through D2R's own store item maker (0x540ea0: makes, checks and places an item in the NPC's store), whose item
 // creation (0x43d530) is wrapped so that, during this call only, the drop request also names the unique row.
@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <intrin.h>
+#include <iterator>
 
 namespace {
 
@@ -82,6 +83,9 @@ constexpr char MakerPattern[] = "48 8b c4 44 89 48 20 53 55 56 57 41 54 41 55 41
 // request and calls ItemSpawn, then marks the item identified
 constexpr char CreatePattern[] = "40 55 53 56 57 48 8d 6c 24 f8 48 81 ec 08 01 00 00 48";
 constexpr uint8_t CreateEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x48, 0x8d, 0x6c, 0x24, 0xf8, 0x48, 0x81, 0xec, 0x08, 0x01, 0x00, 0x00};
+// D2R's item price (player, item, difficulty, player's table, npc, mode)
+constexpr char PricePattern[] = "4c 89 4c 24 20 44 89 44 24 18 48 89 54 24 10 48 89 4c 24 08 55 57 41 55 48 8d 6c 24 c9 48 81 ec b0 00 00 00 48 8b fa";
+constexpr uint8_t PriceEntry[] = {0x4c, 0x89, 0x4c, 0x24, 0x20, 0x44, 0x89, 0x44, 0x24, 0x18, 0x48, 0x89, 0x54, 0x24, 0x10};
 // D2R's Npc think, monai row 32's slot in the AI table
 constexpr char NpcThinkPattern[] = "48 89 5c 24 10 48 89 74 24 18 57 48 83 ec 40 49 8b f0";
 // Calls read from those bodies (checked bytes around each call): the fill's prologue gets the NPC's store record
@@ -106,6 +110,7 @@ using MakerFn = Unit* (*)(Unit* npc, uint32_t code, Game* game, int32_t send, in
 using RecordFn = uint8_t* (*)(Game* game, Unit* npc, uint64_t* out) noexcept;
 using NowFn = uint64_t (*)() noexcept;
 using FreeFn = void (*)(Game* game, Unit* item) noexcept;
+using PriceFn = uint64_t (*)(Unit* player, Unit* item, int32_t difficulty, void* table, int32_t npc, int32_t mode) noexcept;
 using CreateFn = Unit* (*)(Unit* unit, int32_t row, Game* game, int32_t mode, int32_t quality, int32_t f6, int32_t f7, int32_t ilvl,
                            int32_t a9, int32_t a10, int32_t a11) noexcept;
 
@@ -116,6 +121,7 @@ CreateFn g_create = nullptr;
 RecordFn g_record = nullptr;
 NowFn g_now = nullptr;
 FreeFn g_free = nullptr;
+PriceFn g_price = nullptr;
 thread_local int32_t g_forceUnique = -1;  // the unique row 0x43d530 makes, only during MakeUnique
 std::atomic<uint32_t> g_stocks {0}, g_uniques {0}, g_idles {0};
 
@@ -172,15 +178,53 @@ auto CreateItem(Unit* unit, int32_t row, Game* game, int32_t mode, int32_t quali
 	return item;
 }
 
-// PD2 0x103841d0 (item level 99, mode 4, unique row forced) and 0x10314290 (into the store). PD2 leaves it unidentified
-// (1.13c #10977 clears flag 0x10) for its gamble window; in the trade window it stays identified as the maker leaves it:
-// the client is sent an unidentified item without its properties, so its price differs from the server's and D2R's buy
-// (0x53d850) refuses it with result 7, "That item has just been traded."
+// The store items made this way (unit and its id, so a reused unit is not taken for one), for the buy price below
+struct StockItem {
+	std::atomic<Unit*> unit {nullptr};
+	std::atomic<uint32_t> id {0};
+};
+StockItem g_stock[16];
+std::atomic<uint32_t> g_stockNext {0};
+constexpr int UnitGuid = 0x08;  // the unit's id (Unit +0x08)
+
+auto IsStock(Unit* item) noexcept -> bool {
+	for (const auto& s : g_stock) {
+		if (s.unit.load(std::memory_order_relaxed) == item && s.id.load(std::memory_order_relaxed) == At<uint32_t>(item, UnitGuid)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+// PD2 0x103841d0 (item level 99, mode 4, unique row forced) and 0x10314290 (into the store), unidentified (1.13c #10977
+// clears flag 0x10) as PD2 leaves it
 auto MakeUnique(Game* game, Unit* npc, int32_t row, uint32_t code) noexcept -> Unit* {
 	g_forceUnique = row;
 	Unit* item = g_maker(npc, code, game, 0, QualityUnique, ItemLevel, 0);
 	g_forceUnique = -1;
+	if (item != nullptr) {
+		d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag)(item, ItemFlagIdentified, 0);
+		auto& slot = g_stock[g_stockNext.fetch_add(1, std::memory_order_relaxed) % std::size(g_stock)];
+		slot.id.store(At<uint32_t>(item, UnitGuid), std::memory_order_relaxed);
+		slot.unit.store(item, std::memory_order_relaxed);
+	}
 	return item;
+}
+
+// D2R's item price (0x36f0c0: player, item, difficulty, player's table, npc, mode; mode 0 a buy). The buy (0x53d850)
+// refuses an item whose server price differs from the price the client sent (result 7, "That item has just been
+// traded."). The client prices a store item as identified, while 0x36f0c0 adds the quality cost (the unique's cost)
+// only to an identified item: for his unidentified stock the server prices it as identified too, so the price paid is
+// the price his store shows.
+auto Price(Unit* player, Unit* item, int32_t difficulty, void* table, int32_t npc, int32_t mode) noexcept -> uint64_t {
+	if (mode != 0 || item == nullptr || !IsStock(item)) {
+		return g_price(player, item, difficulty, table, npc, mode);
+	}
+	const auto setFlag = d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag);
+	setFlag(item, ItemFlagIdentified, 1);
+	const uint64_t price = g_price(player, item, difficulty, table, npc, mode);
+	setFlag(item, ItemFlagIdentified, 0);
+	return price;
 }
 
 // PD2's pick: up to 10 draws of rand() % rows, the first that passes wins; -1 when none does
@@ -301,6 +345,7 @@ auto InstallGheedStore(const D2RL::PluginContext* context, char* report, size_t 
 	// the item creation hook first: the fill hook is what calls into it
 	const bool store = sigscan::HookBySignature(context, "StoreItemCreate", CreatePattern, 0, CreateEntry, sizeof(CreateEntry),
 	                                            &CreateItem, &g_create) &&
+	                   sigscan::HookBySignature(context, "ItemPrice", PricePattern, 0, PriceEntry, sizeof(PriceEntry), &Price, &g_price) &&
 	                   sigscan::HookBySignature(context, "TradeFill", FillPattern, 0, FillEntry, sizeof(FillEntry), &Fill, &g_fill);
 	const bool still = ai_registry::RegisterAt(context, NpcAiRow, context->exeBase + think, GheedClass, &ThinkNpc);
 	std::snprintf(report, reportSize, "map Gheed: unique stock%s, stands still%s", store ? "" : " FAILED", still ? "" : " FAILED");
