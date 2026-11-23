@@ -1268,7 +1268,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvdofunc | 188 | `0x103b59c0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Force Move, Find Potion/Item, Lightning Bolt/Fury, Split Throw) |
 | `0x1036ba20` | srvdofunc | 189 | `0x103b5a30` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Force Move, Find Potion/Item, Lightning Bolt/Fury, Split Throw) |
 | `0x1036ba20` | srvstfunc | 10 | `0x103b5dd0` | unclear | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: not diffed |
-| `0x1036ba20` | srvstfunc | 27 | `0x103b5ed0` | missing | [#2006](https://github.com/synpoox/pd2-resurrected/issues/2006): PD2 applies the aurastate list (`0x10381a70`), D2R `0x571f40` kicks only |
+| `0x1036ba20` | srvstfunc | 27 | `0x103b5ed0` | not needed | close enough ([#2006](https://github.com/synpoox/pd2-resurrected/issues/2006)): D2R's `0x571f40` puts the same attackrate on through `0x434290`, a flag-4 list the next mode change frees, as PD2's `0x10381a70` |
 | `0x1036ba20` | srvstfunc | 28 | `0x103b6020` | unclear | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: tests stat 191 item_skillonequip; not diffed |
 | `0x1036ba20` | srvstfunc | 29 | `0x103b61a0` | unclear | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: not diffed |
 | `0x1036ba20` | srvstfunc | 37 | `0x103b6310` | ported | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: SrvStMeleeSplash ([#1936](https://github.com/synpoox/pd2-resurrected/issues/1936)) |
@@ -1285,7 +1285,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvstfunc | 76 | `0x103b6aa0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvstfunc | 77 | `0x103b6c80` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvstfunc | 78 | `0x103b6cf0` | documented | [necromancer-w14](../research/skills/necromancer-w14.md), [w10-barbarian](../research/skills/w10-barbarian.md) |
-| `0x1036ba20` | srvstfunc | 79 | `0x103b6eb0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Force Move, Find Potion/Item, Split Throw) |
+| `0x1036ba20` | srvstfunc | 79 | `0x103b6eb0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Force Move, Find Potion/Item, Split Throw); [#2045](https://github.com/synpoox/pd2-resurrected/issues/2045): `0x10381a70`'s flag-4 list, freed on the next mode change as in PD2 |
 | `0x103ad290` | cltstfunc (D2Client `+0xde928`) | 9 | `0x103accc0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): D2R's own |
 | `0x103ad290` | cltstfunc (D2Client `+0xde928`) | 54 | `0x103acd00` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): aura client, cut: Left Click Auras companion |
 | `0x103ad290` | cltstfunc (D2Client `+0xde928`) | 55 | `0x103acd30` | ported | `plugin/core-rules/skill_functions.cpp` |
