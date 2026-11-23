@@ -975,7 +975,15 @@ struct SplashHit {
 	int32_t toHit = 0;
 	uint32_t leechDivisor = 2;
 	int32_t damagePercent = 100;
+	int64_t inRange = 0;  // the units the callback ran on (victims: those it landed on)
 };
+
+// D2R's to-hit roll (attacker, defender, bonus %, 0) -> non-zero on a hit: 1.13c's and PD2's 0x10305140, with no reach
+// test. MeleeRoll calls it after its melee reach test (UnitInReach), which an owner far from its sentinel fails.
+constexpr int32_t StatToHitPercentRoll = 119;  // item_tohit_percent, the same row in PD2's and our itemstatcost
+using ToHitRollFn = int32_t (*)(Unit*, Unit*, int32_t, int32_t) noexcept;
+ToHitRollFn g_toHitRoll = nullptr;
+constexpr int MeleeRollToHitCall = 0x120;  // MeleeRoll's call to it (93847: 0x44b840)
 
 // D2R's area apply (0x436e90) with a melee hit's events: PD2's apply (0x10305880, its event step 0x10305c30) fires
 // domeleedamage on the attacker and event 1 on the victim, where D2R's area apply fires 6 and 2.
@@ -1051,10 +1059,12 @@ auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	d2r::LeapKnockback damage;
 	auto* block = reinterpret_cast<uint8_t*>(&damage);
 	uint16_t rolled = ResultHit;
-	if (hit->roll) {  // PD2 rolls with its own 0x10305130; D2R's melee roll with no always-hit stands in
-		using RollFn = uint16_t (*)(Game*, Unit*, Unit*, int32_t, uint8_t, int32_t) noexcept;
-		rolled = d2r::Engine<RollFn>(d2r::sig::MeleeRoll)(game, attacker, victim, hit->toHit, 0, 0) & ResultHit;
+	if (hit->roll) {  // PD2's callback: roll(attacker, victim, attacker's item_tohit_percent + the block's to-hit, 0)
+		const int32_t bonus =
+			d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(attacker, StatToHitPercentRoll, 0) + hit->toHit;
+		rolled = g_toHitRoll(attacker, victim, bonus, 0) != 0 ? ResultHit : 0;
 	}
+	++hit->inRange;
 	damage.resultFlags = rolled | hit->resultFlags;
 	damage.hitFlags = hit->hitFlags;
 	*reinterpret_cast<int32_t*>(block + DmgPercent) = hit->percent;
@@ -1091,10 +1101,11 @@ auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	}
 	if (pd2::HotSample(g_splashVictims)) {
 		const auto field = [block](int offset) { return *reinterpret_cast<const int32_t*>(block + offset); };
-		plog::Info("%s hit: current skill %d: phys %d fire %d light %d magic %d cold %d poison %d (1/256), "
-		           "damage%% %d, kick %d, hit %u", hit->attacker != nullptr ? "blade sentinel" : "splash", hit->skillId, field(DmgPhys), field(DmgFire), field(DmgLight),
-		           field(DmgMagic), field(DmgCold), field(DmgPoison), field(DmgPercent), kick != nullptr ? 1 : 0,
-		           g_splashVictims.load());
+		plog::Info("%s unit in range: current skill %d: phys %d fire %d light %d magic %d cold %d poison %d (1/256), "
+		           "damage%% %d, kick %d, to-hit roll %s (unit %u)", hit->attacker != nullptr ? "blade sentinel" : "splash",
+		           hit->skillId, field(DmgPhys), field(DmgFire), field(DmgLight), field(DmgMagic), field(DmgCold),
+		           field(DmgPoison), field(DmgPercent), kick != nullptr ? 1 : 0,
+		           !hit->roll ? "none" : (rolled != 0 ? "hit" : "miss"), g_splashVictims.load());
 	}
 	DealSplash(game, attacker, victim, damage);
 	hit->victims += (damage.resultFlags & ResultHit) != 0 ? 1 : 0;
@@ -1308,9 +1319,9 @@ void SentinelHit(Game* game, Unit* unit, Unit* owner, const uint8_t* monstats) n
 	}
 	g_sentinelUnits.fetch_add(static_cast<uint32_t>(hit.victims));
 	if (pd2::HotSample(g_sentinelHits)) {
-		plog::Info("blade sentinel: skill %d level %d, owner type %d: radius %d, to-hit %d, units hit %lld (hit %u)", skillId,
-		           level, At<int32_t>(owner, UnitType), radius, hit.toHit, static_cast<long long>(hit.victims),
-		           g_sentinelHits.load());
+		plog::Info("blade sentinel: skill %d level %d, owner type %d: radius %d, to-hit %d, units in range %lld, landed "
+		           "%lld (hit %u)", skillId, level, At<int32_t>(owner, UnitType), radius, hit.toHit,
+		           static_cast<long long>(hit.inRange), static_cast<long long>(hit.victims), g_sentinelHits.load());
 	}
 }
 
@@ -1404,9 +1415,12 @@ auto InstallBladeSentinel(const D2RL::PluginContext* context) noexcept -> bool {
 		return code[0] == 0xe8 ? at + 5 + rel : 0;
 	};
 	const uint64_t owner = callee(AiBladeCreeper.address + SentinelOwnerCall);
-	if (owner == 0 || owner != callee(AiBladeCreeper.address + SentinelOwnerCall2)) {
+	const uint64_t roll =
+		d2r::sig::MeleeRoll.state == sigscan::State::Ok ? callee(d2r::sig::MeleeRoll.address + MeleeRollToHitCall) : 0;
+	if (owner == 0 || owner != callee(AiBladeCreeper.address + SentinelOwnerCall2) || roll == 0) {
 		return false;
 	}
+	g_toHitRoll = reinterpret_cast<ToHitRollFn>(roll);
 	g_petOwner = reinterpret_cast<PetOwnerFn>(owner);
 	return ai_registry::RegisterAt(context, BladeCreeperRow, AiBladeCreeper.address, BladeCreeper, &SentinelThink);
 }
