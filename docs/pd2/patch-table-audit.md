@@ -637,7 +637,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 3: D2Game call `+0x92c82`, `+0x92a22`, `+0x93807` (to `0x92360`) -> PD2 `0x103022c0` | `+0x92940`, `+0x92bb0` | PD2's damage builder (0x103022c0) adds its crit and deadly strike multiplier (IR3) | ported | plugin/core-rules/item_rules.cpp (WeaponStrike) | WeaponDamage 0x44c030 |
+| 3: D2Game call `+0x92c82`, `+0x92a22`, `+0x93807` (to `0x92360`) -> PD2 `0x103022c0` | `+0x92940`, `+0x92bb0` | PD2's kick fill (0x103022c0): the base from the unit's 21/22 less the weapon's own, item_normaldamage 111, the boots and dexterity ([#2051](https://github.com/synpoox/pd2-resurrected/issues/2051)), and its crit and deadly strike multiplier (IR3) | ported | plugin/core-rules/skill/kick_base.cpp (base), plugin/core-rules/item_rules.cpp (WeaponStrike) | WeaponDamage 0x44c030 |
 | 4: D2Game `+0xdd52a`..`+0xdd52c`: `74286a` -> `9090e8`<br>D2Game call `+0xdd52c(6a)` (to `0x500e3f33`) -> PD2 `0x10303170`<br>D2Game `+0xdd531`..`+0xdd5b3`: `53e8d7d2f2ff85c089442410..` -> `909090909090909090909090..` | `+0xdd450` | +0xdd450: the strike multiplier call (0x10303170) replaces 1.13c's block | ported | plugin/core-rules/item_rules.cpp (WeaponStrike) | - |
 | 2: D2Common call `+0x6bf87`, `+0x6bd1a` (to `0x6b180`) -> PD2 `0x103046b0` | `+0x6baa0` | D2Common missile fill +0x6baa0: PD2's gated missile crit roll (0x103046b0); IR3 calls it dead code because PD2 runs its own missile fill | ported | plugin/core-rules/item_rules.cpp (IR3 missile roll) | 0x3ba820 |
 
