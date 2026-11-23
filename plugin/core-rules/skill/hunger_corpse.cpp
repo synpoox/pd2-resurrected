@@ -64,4 +64,4 @@ auto InstallHungerCorpse(const D2RL::PluginContext* context, char* report, size_
 }
 
 #include "registry.h"
-PD2R_RULE(InstallHungerCorpse, 240)
+PD2R_RULE(InstallHungerCorpse, 250)
