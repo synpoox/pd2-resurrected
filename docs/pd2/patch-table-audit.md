@@ -35,7 +35,7 @@ By module: D2Game 615 records, D2Client 410, D2Common 86, D2Lang 3, D2Win 1. A f
 The installer writes (section [Installer table writes](#installer-table-writes)) number 257:
 - 99 are named by our code, and 23 more skill entries are ported or documented by function number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage);
 - 38 are named only by a doc, whose verdict stands;
-- 1 is still a real gap ([#1872](https://github.com/synpoox/pd2-resurrected/issues/1872)); the other five are closed ([#1869](https://github.com/synpoox/pd2-resurrected/issues/1869) kept as a deviation, [#1870](https://github.com/synpoox/pd2-resurrected/issues/1870), [#1871](https://github.com/synpoox/pd2-resurrected/issues/1871), [#1873](https://github.com/synpoox/pd2-resurrected/issues/1873) ported);
+- 1 is still a real gap ([#1872](https://github.com/synpoox/pd2-resurrected/issues/1872)); the other five are closed ([#1869](https://github.com/synpoox/pd2-resurrected/issues/1869) (think ported, srvdo 44 kept as a deviation), [#1870](https://github.com/synpoox/pd2-resurrected/issues/1870), [#1871](https://github.com/synpoox/pd2-resurrected/issues/1871), [#1873](https://github.com/synpoox/pd2-resurrected/issues/1873) ported);
 - 91 are still unchecked, tracked in [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849).
 
 The unchecked set still holds 11 monster AI think replacements, the same kind of gap as the pets.
@@ -499,7 +499,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 1: D2Game call `+0x6f63d` (to `0xb132` D2Common#10413) -> PD2 `0x102fe740` | `+0x6f620` | PD2's own missile fill (live fill `0x102fe730` -> `0x103069d0`) | ported | plugin/core-rules/item_rules.cpp | - |
+| 1: D2Game call `+0x6f63d` (to `0xb132` D2Common#10413) -> PD2 `0x102fe740` | `+0x6f620` | PD2's own missile fill (live fill `0x102fe730` -> `0x103069d0`) | ported | crit roll: plugin/core-rules/item_rules.cpp MissileStrike; mastery: D2R's own fill ([#1868](https://github.com/synpoox/pd2-resurrected/issues/1868)) | - |
 
 ### Missile pierce cap
 
