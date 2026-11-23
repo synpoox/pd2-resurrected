@@ -22,6 +22,7 @@
 #include "sig_hook.h"
 
 #include <D2RLPlugin/data_tables.h>
+#include <D2RLPlugin/mutations.h>
 
 #include <atomic>
 #include <cstdio>
@@ -29,6 +30,8 @@
 #include <cstring>
 #include <intrin.h>
 #include <iterator>
+
+#include <windows.h>
 
 namespace {
 
@@ -83,9 +86,20 @@ constexpr char MakerPattern[] = "48 8b c4 44 89 48 20 53 55 56 57 41 54 41 55 41
 // request and calls ItemSpawn, then marks the item identified
 constexpr char CreatePattern[] = "40 55 53 56 57 48 8d 6c 24 f8 48 81 ec 08 01 00 00 48";
 constexpr uint8_t CreateEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x48, 0x8d, 0x6c, 0x24, 0xf8, 0x48, 0x81, 0xec, 0x08, 0x01, 0x00, 0x00};
-// D2R's item price (player, item, difficulty, player's table, npc, mode)
-constexpr char PricePattern[] = "4c 89 4c 24 20 44 89 44 24 18 48 89 54 24 10 48 89 4c 24 08 55 57 41 55 48 8d 6c 24 c9 48 81 ec b0 00 00 00 48 8b fa";
-constexpr uint8_t PriceEntry[] = {0x4c, 0x89, 0x4c, 0x24, 0x20, 0x44, 0x89, 0x44, 0x24, 0x18, 0x48, 0x89, 0x54, 0x24, 0x10};
+// The calls to D2R's item price thunk (0x36f0b0, a jmp to 0x36f0c0, which core-rules hooks for its repair cap) that
+// price a store buy: the server's buy handler 0x53d850 (0x53d9c9, 0x53df48) and the client's store UI 0x10cad0 (0x10cd5f,
+// 0x10cde4, 0x10ce69) and 0x10d160 (0x10d523, 0x10d5e7, 0x10d691). Each pattern has one match; the e8 is at +6.
+constexpr const char* PriceCalls[] = {
+	"8b d7 89 5c 24 20 e8 ?? ?? ?? ?? 8b 8d d8 00 00 00",
+	"40 48 8b 4c 24 58 e8 ?? ?? ?? ?? 48 8b 4c 24 78 45",
+	"48 8b d5 48 8b c8 e8 ?? ?? ?? ?? 41 89 04 24 b8 02",
+	"48 8b d5 48 8b c8 e8 ?? ?? ?? ?? 41 89 04 24 b8 03",
+	"48 8b d5 48 8b c8 e8 ?? ?? ?? ?? 41 89 04 24 b8 01",
+	"48 8b d6 48 8b c8 e8 ?? ?? ?? ?? 48 8b ce 89 05 a7",
+	"48 8b d6 48 8b c8 e8 ?? ?? ?? ?? 48 8b ce 89 05 e3",
+	"48 8b d6 48 8b c8 e8 ?? ?? ?? ?? 89 05 3c b1 93 02",
+};
+constexpr int PriceCallAt = 6;
 // D2R's Npc think, monai row 32's slot in the AI table
 constexpr char NpcThinkPattern[] = "48 89 5c 24 10 48 89 74 24 18 57 48 83 ec 40 49 8b f0";
 // Calls read from those bodies (checked bytes around each call): the fill's prologue gets the NPC's store record
@@ -187,7 +201,15 @@ std::atomic<uint32_t> g_stock[16] {};
 std::atomic<uint32_t> g_stockNext {0};
 constexpr int UnitGuid = 0x08;  // the unit's id (Unit +0x08)
 
+constexpr int ItemDataFlags = 0x18;  // u32 in the item's UnitData (SetItemFlag's word)
+
+// one of his stock: still unidentified, unique, and an id made here
 auto IsStock(Unit* item) noexcept -> bool {
+	const auto* data = At<const uint8_t*>(item, d2r::rva::UnitData);
+	if (data == nullptr || (At<uint32_t>(data, ItemDataFlags) & ItemFlagIdentified) != 0 ||
+	    d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::ItemQuality)(item) != QualityUnique) {
+		return false;
+	}
 	const uint32_t id = At<uint32_t>(item, UnitGuid);
 	for (const auto& s : g_stock) {
 		if (id != 0 && s.load(std::memory_order_relaxed) == id) {
@@ -211,13 +233,107 @@ auto MakeUnique(Game* game, Unit* npc, int32_t row, uint32_t code) noexcept -> U
 	return item;
 }
 
-// D2R's item price (0x36f0c0: player, item, difficulty, player's table, npc, mode; 0 buy, 1 sell, 2 gamble, 3 repair).
 // The buy (0x53d850) refuses an item whose server price differs from the price the client sent (result 7, "That item
-// has just been traded."), and an unidentified unique's buy price is not the same on the two sides (the client's copy
-// showed 1 gold). His stock's buy is priced as a gamble on both sides, the price PD2 asks in its gamble window.
+// has just been traded."), so his stock's buy is repriced at the same calls on both sides. PD2's price (PD2.gpr
+// 0x10385020: a map level 0x1037c510, NPC 0x93, its gamble mode 2) is 0x1037c4c0(1000000, 100, 100.0 - stat 0x57):
+// 1,000,000 gold less the buyer's reduced-prices percent (0x10385076 mov ecx,0xf4240; 0x10385071 mov edx,0x64).
+constexpr int64_t StockPrice = 1000000;
+constexpr int32_t StatReducedPrices = 0x57;
+constexpr auto StockPriceFor(int32_t reduced) noexcept -> uint64_t {
+	const int64_t percent = reduced > 99 ? 99 : reduced;  // D2R's gamble path clamps it to 99; PD2 does not
+	return static_cast<uint64_t>(StockPrice * (100 - percent) / 100);
+}
+static_assert(StockPriceFor(0) == 1000000 && StockPriceFor(10) == 900000 && StockPriceFor(200) == 10000);
+
 auto Price(Unit* player, Unit* item, int32_t difficulty, void* table, int32_t npc, int32_t mode) noexcept -> uint64_t {
-	constexpr int32_t ModeBuy = 0, ModeGamble = 2;
-	return g_price(player, item, difficulty, table, npc, mode == ModeBuy && item != nullptr && IsStock(item) ? ModeGamble : mode);
+	constexpr int32_t ModeBuy = 0;
+	if (mode != ModeBuy || player == nullptr || item == nullptr || !IsStock(item)) {
+		return g_price(player, item, difficulty, table, npc, mode);
+	}
+	return StockPriceFor(d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(player, StatReducedPrices, 0));
+}
+
+// A page within rel32 reach below the image (as core-rules' AllocateRelay), for `jmp [rip+0]; entry`
+auto AllocateRelay(uint64_t image) noexcept -> uint8_t* {
+	SYSTEM_INFO info;
+	GetSystemInfo(&info);
+	const uint64_t step = info.dwAllocationGranularity;
+	const uint64_t reach = 0x70000000ull;
+	const uint64_t low = image > reach ? image - reach : step;
+	for (uint64_t at = (low + step - 1) & ~(step - 1); at < image; at += step) {
+		if (void* p = VirtualAlloc(reinterpret_cast<void*>(at), 0x1000, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE)) {
+			return static_cast<uint8_t*>(p);
+		}
+	}
+	return nullptr;
+}
+
+// All the price calls or none: each must be an e8 to the same thunk, and one MutationService transaction checks and
+// writes them all (the stock bytes are the expected bytes), so the two sides never price his stock differently.
+auto RedirectPrices(const D2RL::PluginContext* context) noexcept -> bool {
+	constexpr size_t Count = std::size(PriceCalls);
+	uint64_t sites[Count] {};
+	uint8_t stock[Count][5] {};
+	uint64_t thunk = 0;
+	for (size_t i = 0; i < Count; ++i) {
+		uint64_t match = 0;
+		if (sigscan::ScanUnique(context->exeBase, PriceCalls[i], 0, &match) != 1) {
+			return false;
+		}
+		sites[i] = context->exeBase + match + PriceCallAt;
+		std::memcpy(stock[i], reinterpret_cast<const void*>(sites[i]), 5);
+		int32_t rel = 0;
+		std::memcpy(&rel, stock[i] + 1, 4);
+		const uint64_t target = sites[i] + 5 + static_cast<int64_t>(rel);
+		if (stock[i][0] != 0xe8 || (thunk != 0 && target != thunk)) {
+			return false;
+		}
+		thunk = target;
+	}
+	const D2RL::MutationService* mutations = nullptr;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize)) {
+		return false;
+	}
+	uint8_t* relay = AllocateRelay(context->exeBase);
+	if (relay == nullptr) {
+		return false;
+	}
+	const uint64_t entry = reinterpret_cast<uint64_t>(&Price);
+	const uint8_t jump[6] = {0xff, 0x25, 0, 0, 0, 0};
+	std::memcpy(relay, jump, sizeof(jump));
+	std::memcpy(relay + sizeof(jump), &entry, 8);
+	DWORD old;
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (VirtualProtect(relay, 0x1000, PAGE_EXECUTE_READ, &old) == 0 ||
+	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		VirtualFree(relay, 0, MEM_RELEASE);
+		return false;
+	}
+	g_price = reinterpret_cast<PriceFn>(thunk);  // before a call can land
+	uint8_t calls[Count][5] {};
+	bool staged = true;
+	for (size_t i = 0; i < Count && staged; ++i) {
+		const int64_t reach = static_cast<int64_t>(reinterpret_cast<uint64_t>(relay)) - static_cast<int64_t>(sites[i] + 5);
+		const int32_t rel32 = static_cast<int32_t>(reach);
+		calls[i][0] = 0xe8;
+		std::memcpy(calls[i] + 1, &rel32, 4);
+		const D2RL::Mutations::BytePatchRequest patch {.structSize = D2RL::Mutations::BytePatchRequestSize,
+		                                               .rva = sites[i] - context->exeBase,
+		                                               .expected = stock[i],
+		                                               .expectedSize = 5,
+		                                               .bytes = calls[i],
+		                                               .size = 5};
+		D2RL::Mutations::OperationHandle operation = 0;
+		staged = reach == rel32 && mutations->stageBytePatch(context, transaction, &patch, &operation) == D2RL::Mutations::Result::Success;
+	}
+	D2RL::Mutations::CommitResult result {.structSize = D2RL::Mutations::CommitResultSize};
+	if (!staged || mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		VirtualFree(relay, 0, MEM_RELEASE);
+		return false;
+	}
+	return true;
 }
 
 // PD2's pick: up to 10 draws of rand() % rows, the first that passes wins; -1 when none does
@@ -280,6 +396,9 @@ auto Fill(Game* game, Unit* player, Unit* npc) noexcept -> void {
 		g_fill(game, player, npc);
 		return;
 	}
+	for (auto& s : g_stock) {  // a new game's stock: the last game's ids may come back
+		s.store(0, std::memory_order_relaxed);
+	}
 	if (!BuildStock(game, npc)) {
 		g_fill(game, player, npc);
 		return;
@@ -320,6 +439,7 @@ auto InstallGheedStore(const D2RL::PluginContext* context, char* report, size_t 
 	const bool found = d2r::sig::UnitRoom.state == sigscan::State::Ok && d2r::sig::RoomLevelId.state == sigscan::State::Ok &&
 	                   d2r::sig::ItemSpawn.state == sigscan::State::Ok && d2r::sig::SetItemFlag.state == sigscan::State::Ok &&
 	                   d2r::sig::ItemQuality.state == sigscan::State::Ok && d2r::sig::AiIdle.state == sigscan::State::Ok &&
+		                   d2r::sig::UnitStat.state == sigscan::State::Ok &&
 	                   sigscan::ScanUnique(context->exeBase, MakerPattern, 0, &maker) == 1 &&
 	                   sigscan::ScanUnique(context->exeBase, NpcThinkPattern, 0, &think) == 1 &&
 	                   sigscan::ScanUnique(context->exeBase, FillPattern, 0, &fill) == 1;
@@ -338,7 +458,7 @@ auto InstallGheedStore(const D2RL::PluginContext* context, char* report, size_t 
 	// the item creation hook first: the fill hook is what calls into it
 	const bool store = sigscan::HookBySignature(context, "StoreItemCreate", CreatePattern, 0, CreateEntry, sizeof(CreateEntry),
 	                                            &CreateItem, &g_create) &&
-	                   sigscan::HookBySignature(context, "ItemPrice", PricePattern, 0, PriceEntry, sizeof(PriceEntry), &Price, &g_price) &&
+	                   RedirectPrices(context) &&
 	                   sigscan::HookBySignature(context, "TradeFill", FillPattern, 0, FillEntry, sizeof(FillEntry), &Fill, &g_fill);
 	const bool still = ai_registry::RegisterAt(context, NpcAiRow, context->exeBase + think, GheedClass, &ThinkNpc);
 	std::snprintf(report, reportSize, "map Gheed: unique stock%s, stands still%s", store ? "" : " FAILED", still ? "" : " FAILED");
