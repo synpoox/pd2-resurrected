@@ -18,7 +18,7 @@ rows, its quality. It refuses:
    `thro`, `misl`, `ajav`).
 3. a **non-stackable** item with the code `ubtm`, `dcma`, `rtma`, `uba` (the Uber maps), `llmr` (Lilith's Mirror), `lsvl`
    (Vial of Lightsong), `rkey`, `rid` or `rtp` (the unlimited key and books).
-4. a **unique** item with the code `cm1` or `cm2`, or of type `t5m` (tier 5 map).
+4. a **unique** item with the code `cm1` or `cm2`, or of type `t5m` (tier 5 map; our tables have no `t5m` items, so this part never applies).
 
 The test is `tools/tests/test_vendor_sell_refusals.py`: the code lists in the plugin are PD2's, PD2's type ids (20, 74, 148,
 211, 38, 42, 43, 44, 48, 56, 87 in its raw itemtypes) are those type codes, and every code is a row of our tables. PD2's ids

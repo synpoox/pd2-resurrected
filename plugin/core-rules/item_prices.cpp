@@ -182,7 +182,7 @@ using ItemRecordFn = const uint8_t* (*)(uint32_t dataFlag, int32_t classId) noex
 SellableFn g_sellable = nullptr;
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::DataTableService* g_tables = nullptr;
-int32_t g_typeRows[Banks][std::size(TypeCodes)] = {};  // row + 1, 0 = not looked up yet, -1 = not in the bank (game thread only)
+std::atomic<int32_t> g_typeRows[Banks][std::size(TypeCodes)] = {};  // row + 1, 0 = not looked up yet, -1 = not in the bank
 std::atomic<uint32_t> g_sellRefusals {0};
 
 template <size_t N>
@@ -190,18 +190,30 @@ auto HasCode(const uint32_t (&codes)[N], uint32_t code) noexcept -> bool {
 	return std::find(std::begin(codes), std::end(codes), code) != std::end(codes);
 }
 
-// The itemtypes row of TypeCodes[i] in the bank (-1: not there), looked up on first use; only Busy (off the game thread, where
-// the SDK answers nothing) is asked again
+constexpr int32_t RowBusy = -2;
+
+// The itemtypes row of TypeCodes[i] in the bank (-1: not there, RowBusy: not known yet), looked up on first use; only Busy (off
+// the game thread, where the SDK answers nothing) is asked again
 auto TypeRow(uint8_t bank, size_t i) noexcept -> int32_t {
-	int32_t& row = g_typeRows[bank][i];
+	std::atomic<int32_t>& cell = g_typeRows[bank][i];
+	int32_t row = cell.load();
 	if (row == 0) {
 		D2RL::DataTables::RowView view {.structSize = D2RL::DataTables::RowViewSize};
 		const auto result = g_tables->findRowByCode(g_context, static_cast<D2RL::DataTables::Bank>(bank),
 		                                            D2RL::DataTables::TableId::ItemTypes, TypeCodes[i], &view);
 		if (result == D2RL::DataTables::Result::Busy) {
-			return -1;
+			return RowBusy;
 		}
-		row = result == D2RL::DataTables::Result::Success ? static_cast<int32_t>(view.rowIndex) + 1 : -1;
+		if (result == D2RL::DataTables::Result::Success) {
+			row = static_cast<int32_t>(view.rowIndex) + 1;
+			plog::Info("vendor sell refusals: itemtypes %.4s is row %d in bank %u", reinterpret_cast<const char*>(&TypeCodes[i]),
+			           row - 1, static_cast<unsigned>(bank));
+		} else {
+			row = -1;
+			plog::Warn("vendor sell refusals: itemtypes %.4s not in bank %u (result %u), rule off",
+			           reinterpret_cast<const char*>(&TypeCodes[i]), static_cast<unsigned>(bank), static_cast<unsigned>(result));
+		}
+		cell.store(row);
 	}
 	return row < 0 ? -1 : row - 1;
 }
@@ -218,7 +230,12 @@ auto PdRefuses(Unit* item) noexcept -> bool {
 		return false;
 	}
 	const int32_t type = At<int16_t>(record, d2r::rva::ItType);
-	const auto typeIs = [&](size_t i) { return TypeRow(bank, i) == type; };
+	bool busy = false;  // a type row not known yet (off the game thread): fail open, as #1777 did
+	const auto typeIs = [&](size_t i) {
+		const int32_t row = TypeRow(bank, i);
+		busy |= row == RowBusy;
+		return row == type;
+	};
 	const uint32_t code = d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::sig::ItemCode)(item);
 	bool throwing = false;
 	for (size_t i = TypeFirstThrowing; i < std::size(TypeCodes) && !throwing; ++i) {
@@ -227,8 +244,9 @@ auto PdRefuses(Unit* item) noexcept -> bool {
 	// the quality is read only for a unique-listed code or type
 	const bool unique = (HasCode(UniqueCodes, code) || typeIs(TypeT5m)) &&
 	                    d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::ItemQuality)(item) == QualityUnique;
-	return SellRefused(typeIs(TypeGem) || typeIs(TypeRune) || typeIs(TypeRung), At<uint8_t>(record, ItStackable) != 0,
-	                   throwing || HasCode(StackExemptCodes, code), HasCode(ListedCodes, code), unique);
+	const bool refusedType = typeIs(TypeGem) || typeIs(TypeRune) || typeIs(TypeRung);
+	return !busy && SellRefused(refusedType, At<uint8_t>(record, ItStackable) != 0, throwing || HasCode(StackExemptCodes, code),
+	                            HasCode(ListedCodes, code), unique);
 }
 
 auto SellableHook(Unit* item) noexcept -> int32_t {
