@@ -203,11 +203,11 @@ constexpr int UnitGuid = 0x08;  // the unit's id (Unit +0x08)
 
 constexpr int ItemDataFlags = 0x18;  // u32 in the item's UnitData (SetItemFlag's word)
 
-// one of his stock: still unidentified, unique, and an id made here
+// one of his stock: still unidentified and an id made here (only uniques are). Not ItemQuality: the client's copy of an
+// unidentified unique read quality 1 in game, so the client would price it as a plain item and the buy is refused.
 auto IsStock(Unit* item) noexcept -> bool {
 	const auto* data = At<const uint8_t*>(item, d2r::rva::UnitData);
-	if (data == nullptr || (At<uint32_t>(data, ItemDataFlags) & ItemFlagIdentified) != 0 ||
-	    d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::ItemQuality)(item) != QualityUnique) {
+	if (data == nullptr || (At<uint32_t>(data, ItemDataFlags) & ItemFlagIdentified) != 0) {
 		return false;
 	}
 	const uint32_t id = At<uint32_t>(item, UnitGuid);
