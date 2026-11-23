@@ -1,3 +1,3 @@
 #### Bug Fixes
 
-- Scarabs, Blunderbores, Siege Beasts, Radament and other monsters now play their HD animations for their special attacks (#2092).
+- Scarabs, Blunderbores, Siege Beasts, Radament and more now play HD animations for special attacks (#2092).
