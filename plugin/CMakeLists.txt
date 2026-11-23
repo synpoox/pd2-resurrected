@@ -137,6 +137,7 @@ modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/stash_affinity.cpp
 	core-ui/stash_tabs.cpp
 	core-ui/monsters_remaining.cpp
+	core-ui/descdam_lines.cpp
 	core-ui/plugin.rc
 )
 target_link_libraries(plugin_core_ui PRIVATE core_common xinput)
