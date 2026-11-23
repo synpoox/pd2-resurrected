@@ -32,6 +32,10 @@ auto InstallBaalWaveDelay(const D2RL::PluginContext* context, char* report, size
 auto InstallGoldCap(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 // The cap function's RVA (D2R's max inventory gold of a unit, `int32_t (*)(Unit*)`), 0 when its signature is not found.
 auto GoldCapRva(const D2RL::PluginContext* context) noexcept -> uint64_t;
+// Monster life per extra player, PD2's 70% steps (#2025), monster_life_per_player.cpp; appends its part to `report`.
+auto InstallMonsterLifePerPlayer(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
+// Sacrifice's self-hit flag (#2018), sacrifice_hit_flag.cpp: true when installed; appends its part to `report`.
+auto InstallSacrificeHitFlag(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 // Just-portaled state lasts 15 frames (#2022), portal_state_time.cpp: true when installed; appends its part to `report`.
 auto InstallPortalStateTime(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
