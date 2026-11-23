@@ -8,7 +8,7 @@
 // halves leech (0x10303a00).
 // D2R: srvdo 64 is 93847 0x5645c0; its HitEvents (0x44ce80) call at 0x564839 passes r9d = 0 (`xor r9d,r9d` at
 // 0x564828). In HitEvents a non-zero flag runs 0x44df10 (D2R's +0xdc0b0: event 11, the defender's damage resist %
-// (stat 36) and flat damage reduction (stat 34), resists and absorbs, block total +0x134 rebuilt, event 16) and picks
+// (stat 36) and flat damage reduction (stat 34), block total +0x134 rebuilt, event 16 absorbresisteddamage: D2R only) and picks
 // events 6/2. The events need result bit 1, which the block (result 0, hit flag 0x1000) lacks, and its leech fields
 // are 0, so neither changes. What changes is the life cost: the caster's own damage reduction lowers it, and an
 // absorbdamage skill on the caster (Energy Shield, Bone Armor, Cyclone Armor) takes its share.
