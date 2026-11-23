@@ -3877,8 +3877,10 @@ auto LeapHitOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	target[0] = At<int32_t>(victim, d2r::rva::UnitType);
 	target[1] = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(d2r::rva::UnitId)(victim, __FILE__, __LINE__);
 	setPathTarget(path, victim);
+	LeapAttackLeech(unit, victim);  // PD2's landing hit: life leech / 3 (#2009, skill/leech.cpp)
 	d2r::Engine<void (*)(void*, Unit*, int32_t, int32_t) noexcept>(d2r::rva::SkillMeleeHit)(area->game, unit, hit->skillId,
 	                                                                                       hit->level);
+	LeapAttackLeech(nullptr, nullptr);
 	setPathTarget(path, savedPathTarget);
 	target[0] = savedType;
 	target[1] = savedId;
@@ -6331,6 +6333,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	}
 	const bool monCurse = InstallMonsterCurse(context, report, reportSize);
 	count({monCurse});
+	count({InstallLeech(context, report, reportSize)});
 	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
 	                                             sizeof(d2r::rva::BusyModeGateEntry), BusyModeGate, &g_gateOriginal);
 	count({gate});
