@@ -11,11 +11,15 @@
 // Standing still: PD2's Npc think (0x10357340, monai row 32) idles Gheed for 25 frames (0x103a1910) in a map level; D2R's
 // Npc think lets him walk. His think is registered on row 32 (ai_registry), every other NPC keeps D2R's.
 //
+// Bought identified (#1962): D2R's server buy handler (0x53d850) is wrapped; once it returns, a buy of his stock whose
+// item now sits in the buyer's inventory is identified by D2R's own identify (0x46e8c0, the one its gamble buy calls).
+//
 // No PluginSDK service fills an NPC's store (createItem only reaches the player's containers) or runs a monster's AI,
 // so these are native hooks; every address is found by signature at load, and nothing changes when one is not found.
 #include "gheed_store.h"
 
 #include "ai_registry.h"
+#include "hot_log.h"
 #include "log.h"
 #include "map_events.h"
 #include "pd2_engine.h"
@@ -139,7 +143,7 @@ FreeFn g_free = nullptr;
 PriceFn g_price = nullptr;
 thread_local int32_t g_forceUnique = -1;  // the unique row 0x43d530 makes, only during MakeUnique
 thread_local bool g_forceExact = false;    // the Heirloom: that row as a loaded item's, with no unique roll
-std::atomic<uint32_t> g_stocks {0}, g_uniques {0}, g_idles {0};
+std::atomic<uint32_t> g_stocks {0}, g_uniques {0}, g_idles {0}, g_identified {0};
 
 // PD2 rolls with the CRT's rand() (map_events.cpp seeds each thread the same way)
 auto Rand() noexcept -> int32_t {
@@ -311,6 +315,46 @@ auto Price(Unit* player, Unit* item, int32_t difficulty, void* table, int32_t np
 		return g_price(player, item, difficulty, table, npc, mode);
 	}
 	return StockPriceFor(d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(player, StatReducedPrices, 0));
+}
+
+// D2R's server buy handler 0x53d850 (game, player, npc, item id, x, y, slot, the client's price, gamble, a10, a11), which
+// returns eax. A trade buy moves the store's own unit (0x389820 takes it out of the store, same id) into the buyer's
+// inventory, sends it to the buyer's client (0x535f60) and only then charges the gold (0x5416d0); a failed buy leaves it
+// in the store. Its gamble branch identifies the bought item with 0x46e8c0 (game, player, item, 0) before the charge.
+constexpr char BuyPattern[] =
+	"4c 8b dc 55 53 56 57 48 8d 6c 24 88 48 81 ec 78 01 00 00 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 45 38 8b 85 c0 00 00 00 49 8b d8";
+constexpr uint8_t BuyEntry[] = {0x4c, 0x8b, 0xdc, 0x55, 0x53, 0x56, 0x57, 0x48, 0x8d, 0x6c,
+                                0x24, 0x88, 0x48, 0x81, 0xec, 0x78, 0x01, 0x00, 0x00};
+using BuyFn = uint64_t (*)(Game* game, Unit* player, Unit* npc, uint32_t itemId, uint32_t x, uint32_t y, uint64_t slot,
+                           uint32_t price, uint8_t gamble, uint8_t a10, uint8_t a11) noexcept;
+BuyFn g_buy = nullptr;
+constexpr int32_t UnitItem = 4;
+constexpr int ItemOwnerInventory = 0xa0;  // the inventory holding the item, in its UnitData (0x389820 reads it)
+
+// After the buy: the price was agreed and the gold charged, so his stock's item, now the buyer's (its inventory is his,
+// not the store's), is identified the way the gamble buy does it: 0x46e8c0 sets flag 0x10 and sends the item again to
+// the buyer's client (0x535f60), host or TCP/IP client alike. The rest of the store is not touched. An unidentified
+// item a player sold him and buys back is identified too. No SDK service fits: editItem takes a PlayerHandle, and the
+// server has none for a remote buyer (getPeerPlayer needs a message from that client).
+auto Buy(Game* game, Unit* player, Unit* npc, uint32_t itemId, uint32_t x, uint32_t y, uint64_t slot, uint32_t price,
+         uint8_t gamble, uint8_t a10, uint8_t a11) noexcept -> uint64_t {
+	const uint64_t result = g_buy(game, player, npc, itemId, x, y, slot, price, gamble, a10, a11);
+	if (gamble != 0 || game == nullptr || player == nullptr || npc == nullptr || At<int32_t>(npc, d2r::rva::UnitClassId) != GheedClass) {
+		return result;
+	}
+	Unit* item = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit)(game, UnitItem, itemId);
+	if (item == nullptr || !IsStock(player, item, GheedClass, ModeBuy)) {
+		return result;
+	}
+	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(d2r::sig::UnitInventory)(player, __FILE__, __LINE__);
+	if (inventory == nullptr || At<void*>(At<const uint8_t*>(item, d2r::rva::UnitData), ItemOwnerInventory) != inventory) {
+		return result;  // the buy failed: it is still in his store
+	}
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t) noexcept>(d2r::sig::IdentifyItem)(game, player, item, 0);
+	if (pd2::HotSample(g_identified)) {
+		plog::Info("gheed store: bought item %u identified (price %u)", itemId, price);
+	}
+	return result;
 }
 
 // A page within rel32 reach below the image (as core-rules' AllocateRelay), for `jmp [rip+0]; entry`
@@ -523,10 +567,16 @@ auto InstallGheedStore(const D2RL::PluginContext* context, char* report, size_t 
 	                   RedirectPrices(context) &&
 	                   sigscan::HookBySignature(context, "TradeFill", FillPattern, 0, FillEntry, sizeof(FillEntry), &Fill, &g_fill);
 	const bool still = ai_registry::RegisterAt(context, NpcAiRow, context->exeBase + think, GheedClass, &ThinkNpc);
-	std::snprintf(report, reportSize, "map Gheed: unique stock%s, stands still%s", store ? "" : " FAILED", still ? "" : " FAILED");
-	return store && still ? 1 : 0;
+	// off on a miss: his stock is then bought unidentified, as before #1962
+	const bool identify = store && d2r::sig::FindUnit.state == sigscan::State::Ok && d2r::sig::UnitInventory.state == sigscan::State::Ok &&
+	                      d2r::sig::IdentifyItem.state == sigscan::State::Ok &&
+	                      sigscan::HookBySignature(context, "StoreBuy", BuyPattern, 0, BuyEntry, sizeof(BuyEntry), &Buy, &g_buy);
+	std::snprintf(report, reportSize, "map Gheed: unique stock%s, bought identified%s, stands still%s", store ? "" : " FAILED",
+	              identify ? "" : " FAILED", still ? "" : " FAILED");
+	return store && identify && still ? 1 : 0;
 }
 
 auto GheedStoreCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "gheed store: %u stocks, %u uniques, %u idles", g_stocks.load(), g_uniques.load(), g_idles.load());
+	std::snprintf(out, size, "gheed store: %u stocks, %u uniques, %u identified on buy, %u idles", g_stocks.load(), g_uniques.load(),
+	              g_identified.load(), g_idles.load());
 }
