@@ -35,7 +35,10 @@ its flags (0x8020) leave out 4; D2R's client create (`0x1b7760`) reads params ve
 keeps Vel (D2R +0xc0), as in PD2. After each flame PD2 calls `0x103a45c0` (a D2Common pointer) with calc1 and the
 missile; D2R's Inferno client (cltdo 24, `0x2203f0`) calls `0x34da60 (missile, MsAnimSpeed << 8 / calc1)` at the same
 place, and the port does that. The ending matches cltdo 24 under state 12 (inferno): rewind the frame by 2, or set
-+0x4c / +0x64; D2R does it only for other players, PD2 for every caster; the port keeps D2R's check.
++0x4c / +0x64; D2R does it only for other players, PD2 for every caster; the port keeps D2R's check. PD2's set
+(`0x103abfae`: `push 1; push ebx; call 0x1030ab80`, #10542) puts the frame at 1 (1 << 8) and the speed at 0x500; D2R's
+cltdo 24 sets frame 8, which with PD2's 8-frame sequence (#2028) is the end, so the port sets 1, and keeps D2R's speed
+call (5, 0x500).
 
 ## The channel take-over (gate A)
 

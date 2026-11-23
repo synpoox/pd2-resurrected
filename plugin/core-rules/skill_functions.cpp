@@ -4126,7 +4126,8 @@ auto CltDoChannel(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_
 			d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitFrame)(
 				unit, d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitFrame)(unit) - 2);
 		} else {
-			d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitFrames)(unit, 8);
+			// PD2 0x103abfae: #10542(unit, 1), frame 1 of its 8; D2R sets the speed below, as #10542 does (0x500)
+			d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitFrames)(unit, 1);
 			d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitAnimSpeed)(unit, 5);
 		}
 	}
