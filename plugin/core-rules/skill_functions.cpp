@@ -4417,6 +4417,10 @@ std::atomic<uint32_t> g_revives {0};
 // think, so a MutationService byte patch changes each imm8, found by signature, expected byte checked.
 constexpr const char* ValkyrieThinkDelay = "44 8b 8e 70 01 00 00 41 b8 02 00 00 00 44 89 6c 24 30 41 83 c1 14";
 constexpr const char* ReviveThinkDelay = "44 8b 8e 70 01 00 00 33 c0 89 44 24 30 41 83 c1 0f";
+// #1988: PD2's patch table also has 1.13c +0xa37b7 `19` -> `06`, the shared summon creator (+0xa3610) queuing a new
+// pet's AI event at frame + 6, not + 25. D2R's creator is 0x4350e0 (`add r9d,0x19` at 0x435444). Valkyrie's do calls
+// it, then drops that event and queues its own (+ 8 above), as in 1.13c; Revive does not call it.
+constexpr const char* SummonThinkDelay = "44 8b 8d 70 01 00 00 41 b8 02 00 00 00 44 89 64 24 30 41 83 c1 19";
 // PD2 0x102fb2b0 wraps Revive's last D2Common #10704 (collision refresh): with state 96 (revive) on, path +0x44 (unit
 // size) above 2 becomes 2, then the refresh. D2R's Revive ends with the same refresh, 0x3429b0 (reads path +0x58, writes
 // the collision class to +0x5c) and no cap; SrvDoRevive caps after it and refreshes again. No SDK service sets a size.
@@ -4429,7 +4433,7 @@ uint64_t g_collisionRefresh = 0;  // rva, 0 when the signature did not match onc
 std::atomic<uint32_t> g_reviveCaps {0};
 
 static auto PatchThinkDelay(const D2RL::PluginContext* context, const char* pattern, int at, uint8_t stock,
-                            const char* what) noexcept -> bool {
+                            uint8_t delay, const char* what) noexcept -> bool {
 	uint64_t rva = 0;
 	const D2RL::MutationService* mutations = nullptr;
 	D2RL::Mutations::TransactionHandle transaction = 0;
@@ -4440,7 +4444,7 @@ static auto PatchThinkDelay(const D2RL::PluginContext* context, const char* patt
 		plog::Info("summon think: %s first think FAILED (signature or mutation service)", what);
 		return false;
 	}
-	static constexpr uint8_t PD2Delay[] = {0x08};
+	const uint8_t PD2Delay[] = {delay};
 	const uint8_t expected[] = {stock};
 	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
 	                                              .rva = rva,
@@ -4457,7 +4461,7 @@ static auto PatchThinkDelay(const D2RL::PluginContext* context, const char* patt
 		           static_cast<unsigned long long>(rva), stock);
 		return false;
 	}
-	plog::Info("summon think: %s first think at frame + 8 (was + %u) at 0x%llx", what, stock,
+	plog::Info("summon think: %s first think at frame + %u (was + %u) at 0x%llx", what, delay, stock,
 	           static_cast<unsigned long long>(rva));
 	return true;
 }
@@ -5833,17 +5837,20 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		                            allyBuff ? "" : " FAILED (table signature or slot)");
 		used += n > 0 ? static_cast<size_t>(n) : 0;
 	}
-	const bool valkyrieThink = PatchThinkDelay(context, ValkyrieThinkDelay, 21, 0x14, "valkyrie");
-	const bool reviveThink = PatchThinkDelay(context, ReviveThinkDelay, 16, 0x0f, "revive");
+	const bool valkyrieThink = PatchThinkDelay(context, ValkyrieThinkDelay, 21, 0x14, 0x08, "valkyrie");
+	const bool reviveThink = PatchThinkDelay(context, ReviveThinkDelay, 16, 0x0f, 0x08, "revive");
+	const bool summonThink = PatchThinkDelay(context, SummonThinkDelay, 21, 0x19, 0x06, "summon");
+	plog::Info("summon: first think 6 %s", summonThink ? "on" : "FAILED");
 	if (sigscan::ScanUnique(context->exeBase, CollisionRefreshEntry, 0, &g_collisionRefresh) != 1) {
 		g_collisionRefresh = 0;
 	}
 	plog::Info("revive: size cap %s", g_collisionRefresh != 0 ? "on" : "FAILED (collision refresh signature)");
-	count({valkyrieThink, reviveThink, g_collisionRefresh != 0});
+	count({valkyrieThink, reviveThink, summonThink, g_collisionRefresh != 0});
 	used = std::strlen(report);
 	if (used < reportSize) {
-		std::snprintf(report + used, reportSize - used, "; first think valkyrie%s revive%s, revive size cap%s",
-		              valkyrieThink ? "" : " FAILED", reviveThink ? "" : " FAILED", g_collisionRefresh != 0 ? "" : " FAILED");
+		std::snprintf(report + used, reportSize - used, "; first think valkyrie%s revive%s summon%s, revive size cap%s",
+		              valkyrieThink ? "" : " FAILED", reviveThink ? "" : " FAILED", summonThink ? "" : " FAILED",
+		              g_collisionRefresh != 0 ? "" : " FAILED");
 	}
 	uint64_t reschedule = 0;
 	if (sigscan::ScanUnique(context->exeBase, AttackRescheduleEntry, 0, &reschedule) == 1) {
