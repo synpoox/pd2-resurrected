@@ -3721,6 +3721,10 @@ auto SrvDoLeap(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept 
 	return 1;
 }
 
+// 93847: 0x22e8f0, void (unit, unitSkill): the client leap's jump arc (gravity and lift), timed from the path's
+// velocity at the call. D2R's cltdo 43 runs it on the start frame with LeapStart's speed.
+sigscan::Entry LeapArc {"ClientLeapArc", "skills", sigscan::Kind::Code, 0, 0, "48 8b c4 48 89 58 20 57 48 83 ec 70"};
+
 // PD2 cltdofunc 97: D2R's Leap client half (cltdo 43) with PD2's speed on the start frame.
 auto CltDoLeap(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	if (unit == nullptr) {
@@ -3736,6 +3740,10 @@ auto CltDoLeap(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
 	if ((flags & 0x2) == 0 && (flags & 0x80) != 0) {
 		const int32_t velocity = LeapVelocity(unit, skill, skillId, level);
 		SetSkillVelocity(unit, uskill, velocity);
+		// The arc was timed for LeapStart's slower speed, so the unit landed mid-arc and bounced (#1961): time it again.
+		if (LeapArc.state == sigscan::State::Ok) {
+			d2r::Engine<void (*)(Unit*, UnitSkill*) noexcept>(LeapArc)(unit, uskill);
+		}
 		const bool kindFirst = pd2::HotSample(g_leapClientKinds[skillId == SkillLeap ? 0 : 1]);
 		if (pd2::HotSample(g_leapClients) || kindFirst) {
 			plog::Info("leap client: skill %d level %d: velocity %d, cast %u", skillId, level, velocity, g_leapClients.load());
@@ -5835,6 +5843,11 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		              window ? "" : " FAILED (bytes differ)");
 	}
 	sigscan::Resolve(SentinelOwn, std::size(SentinelOwn), context->exeBase, nullptr, 0);
+	sigscan::Entry* const leapArc[] = {&LeapArc};
+	sigscan::Resolve(leapArc, 1, context->exeBase, nullptr, 0);
+	if (LeapArc.state != sigscan::State::Ok) {
+		plog::Info("skills: signature %s %s, leap arc keeps D2R's timing", LeapArc.name, sigscan::StateText(LeapArc.state));
+	}
 	const bool sentinel = InstallBladeSentinel(context);
 	const bool sentinelOwner = sentinel && InstallSentinelOwner(context);
 	count({sentinel, sentinelOwner});
