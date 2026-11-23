@@ -17,6 +17,13 @@ Log lines go to the plugin's log (`core-maps.log` for core-events, whose plugin 
 counters (skill functions, items, merc, cube, cube stacks, stash stacks, item prices, almanac, shrines, loot, sockets)
 to the console and the log. No arguments, no precondition. Example: `core-rules`.
 
+`core-rules armageddon` : dev test aid (#1843): swaps the first Phase Blade (`7cr`) in the local player's inventory for
+the Armageddon Blade, the unique the imbue makes on a hit (base `7cr2`, the one uniqueitems row on it, item level 87),
+through one SDK item transaction on the game thread, with no roll. Single player / host only. Precondition: in a game,
+a Phase Blade in the inventory (not the cursor). Answers `core-rules: queued, see the log` (or `core-rules: <reason>`).
+Log line: `armageddon: console: Phase Blade (class <n>, bank row <n>) -> 2H Phase Blade row <n>: result 0, quality 7,
+unique row <n>, item level 87`, or `armageddon: console: <reason>`. Example: `core-rules armageddon`.
+
 ## core-ui
 
 `core-ui` : the same for the client plugin: version, image, mod, file, off-file words, parts, and the counters (stack

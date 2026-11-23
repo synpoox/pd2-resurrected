@@ -31,6 +31,7 @@
 
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <iterator>
 
 #ifndef MODKIT_PLUGIN_NAME
@@ -202,6 +203,18 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	if (command == nullptr || command->plugin == nullptr || g_context == nullptr) {
 		return D2RL::ConsoleCommandResult::Failed;
 	}
+	const char* args = command->args != nullptr ? command->args : "";
+	while (*args == ' ') {
+		++args;
+	}
+	if (std::strncmp(args, "armageddon", 10) == 0) {
+		char why[120];
+		const bool queued = QueueArmageddon(why, sizeof(why));
+		char answer[160];
+		std::snprintf(answer, sizeof(answer), "%s: %s", PluginName, why);
+		command->plugin->WriteConsoleMessage(answer);
+		return queued ? D2RL::ConsoleCommandResult::Handled : D2RL::ConsoleCommandResult::Failed;
+	}
 	char line[2500];
 	char image[200];
 	build_guard::Describe(image, sizeof(image), build_guard::ImageStamp(static_cast<uintptr_t>(g_context->exeBase)), D2RL::GetBuildVersion(g_context));
@@ -282,7 +295,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	g_imageKnown = d2r::Bind(context->exeBase);
 	parts::InstallAll(g_parts, std::size(g_parts), context, PluginName, g_imageKnown);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand,
-	                                       "PD2 Resurrected Core Rules: every part and its counters.");
+	                                       "PD2 Resurrected Core Rules: every part and its counters; `armageddon` (dev) turns a Phase Blade into the Armageddon Blade.");
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {

@@ -10,3 +10,6 @@ auto InstallLootRules(const D2RL::PluginContext* context, char* report, size_t r
 auto LootRuleCount() noexcept -> int;
 // Live counters for the status command.
 auto LootRuleCounters(char* out, size_t size) noexcept -> void;
+// `core-rules armageddon` (dev): queues the swap of the first Phase Blade in the local player's inventory for the
+// Armageddon Blade; `why` gets the console answer. False when it could not be queued.
+auto QueueArmageddon(char* why, size_t whySize) noexcept -> bool;
