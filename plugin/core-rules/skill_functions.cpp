@@ -3101,9 +3101,10 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 // = the skill level, and each aurastat SET to calc(level) * stacks / max(calc4, 1) (0x1037c4c0), attackrate's value
 // also on other_animrate. D2R's srvdo 9 (93847: 0x567e80) calls its helper (0x566d60) at 0x567fd6: stacks capped by
 // the level, aurastats ADDED by 0x574480 at the stack count as level. The redirect calls D2R's helper first (its list
-// create, timer, state event and client update stay) and then writes PD2's values over the list. Only rows with
-// calc4 > 0 (Frenzy): PD2's monster frenzies are 1.13c srvdo 109 (+0xb6790), whose call of the helper (+0xb6828) PD2
-// leaves stock, and Berserk (calc4 blank, PD2 would zero its aurastats) keeps D2R's (docs/deviations.md).
+// create, timer, state event and client update stay) and then writes PD2's values over the list. PD2's monster
+// frenzies are 1.13c srvdo 109 (+0xb6790), whose call of the helper (+0xb6828) PD2 leaves stock, so monsters on a
+// calc4-blank row keep D2R's. Berserk (calc4 blank) gets its aurastats at the skill level with no stacks, as its
+// tooltip says; PD2's cap would zero them (#1900, docs/deviations.md).
 // No SDK service runs a skill's per-hit aura stack, so this redirects the one call by signature.
 constexpr const char* FrenzyHelperCall = "45 8b cf 48 89 74 24 20 45 8b c4 48 8b d3 48 8b cd e8 ?? ?? ?? ?? b8 01 00 00 00";
 constexpr uint32_t FrenzyHelperCallAt = 17;
@@ -3124,9 +3125,12 @@ auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* 
 	const uint32_t dataFlag = game != nullptr ? d2r::DataFlag(game) : 0;
 	const uint8_t* skill = game != nullptr ? d2r::api.getSkillRecord(dataFlag, skillId) : nullptr;
 	const int32_t calc4 = skill != nullptr ? d2r::EvalCalc(game, unit, skill, SkCalc4, skillId, level) : 0;
-	if (calc4 <= 0 || unit == nullptr) {
+	// calc4 blank (Berserk, #1900): each aurastat at the skill level, no stacks, as its tooltip says. Monster frenzies
+	// (srvdo 9, calc4 blank) keep D2R's ramp by the stack count.
+	if (unit == nullptr || (calc4 <= 0 && At<int32_t>(unit, UnitType) == UnitMonster)) {
 		return g_frenzyHelper(game, unit, skillId, level, event);
 	}
+	const int32_t cap = std::max(calc4, 1);
 	const auto stateList = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList);
 	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);
 	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
@@ -3142,26 +3146,28 @@ auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* 
 	if (list == nullptr) {
 		return result;
 	}
-	const int32_t stacks = std::min(current + 1, calc4);
+	const int32_t stacks = std::min(current + 1, cap);
 	setStat(dataFlag, list, SkillFrenzyStat, stacks, 0);
 	setStat(dataFlag, list, ModifierListLevel, level, 0);
 	const uint64_t statCount = At<uint64_t>(tables, TablesStatCount);
-	int32_t firstStat = -1, firstValue = 0;
+	const bool sample = pd2::HotSample(g_frenzyHits);
+	char values[96] = {};
+	size_t used = 0;
 	for (int i = 0; i < 6; ++i) {
 		const int32_t stat = At<int16_t>(skill, SkAuraStat1 + 2 * i);
 		if (stat < 0 || static_cast<uint64_t>(stat) >= statCount) {
 			continue;
 		}
 		const double scaled = static_cast<double>(d2r::EvalCalc(game, unit, skill, SkAuraStatCalc1 + 4 * i, skillId, level)) *
-		                      stacks / calc4;
+		                      stacks / cap;
 		const int32_t value = scaled <= 2147483647.0 ? static_cast<int32_t>(scaled) : INT32_MAX;  // as 0x1037c4c0
 		setStat(dataFlag, list, stat, value, 0);
 		if (stat == StatAttackRate) {
 			setStat(dataFlag, list, StatOtherAnimRate, value, 0);
 		}
-		if (firstStat < 0) {
-			firstStat = stat;
-			firstValue = value;
+		if (sample && used < sizeof(values)) {
+			const int n = std::snprintf(values + used, sizeof(values) - used, " %d=%d", stat, value);
+			used += n > 0 ? static_cast<size_t>(n) : 0;
 		}
 	}
 	// D2R's helper ends with this reschedule (0x490ef0 clears the unit's pending attack events, then queues them from
@@ -3169,8 +3175,8 @@ auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* 
 	if (g_attackReschedule != nullptr && event != nullptr) {
 		g_attackReschedule(game, unit, At<int32_t>(event, 0x24), At<int32_t>(event, 0x28));
 	}
-	if (pd2::HotSample(g_frenzyHits)) {
-		plog::Info("frenzy: skill %d level %d stacks %d/%d %d=%d", skillId, level, stacks, calc4, firstStat, firstValue);
+	if (sample) {
+		plog::Info("frenzy: skill %d level %d stacks %d/%d%s", skillId, level, stacks, calc4, values);
 	}
 	return result;
 }
