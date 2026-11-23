@@ -10,9 +10,25 @@
 
 namespace pd2::corruption_lines {
 
-// The property buffer's colour code: U+E07E (UTF-8) plus the code character. A code holds for the rest of its line and
-// the lines after it, so a red line ends on the property blue again.
-inline constexpr std::string_view Red = "\xEE\x81\xBE" "1", Blue = "\xEE\x81\xBE" "3";
+// The tooltip text's colour code: U+E07E (UTF-8) plus the code character. A code holds for the rest of its line and
+// the lines after it, so a red line ends on the colour that was active before it (the property blue, `3`, by default).
+inline constexpr std::string_view Lead = "\xEE\x81\xBE";
+inline constexpr char RedCode = '1', BlueCode = '3';
+
+// The colour code active after `text`, starting from `current`
+inline auto LastCode(std::string_view text, char current) -> char {
+	for (size_t at = text.find(Lead); at != std::string_view::npos; at = text.find(Lead, at + Lead.size())) {
+		if (at + Lead.size() < text.size()) {
+			current = text[at + Lead.size()];
+		}
+	}
+	return current;
+}
+
+// Appends `line` in red, then the code that was active before it
+inline void AppendRed(std::string& out, std::string_view line, char before) {
+	out.append(Lead).append(1, RedCode).append(line).append(Lead).append(1, before);
+}
 
 inline auto Split(std::string_view text) -> std::vector<std::string_view> {
 	std::vector<std::string_view> lines;
@@ -47,6 +63,7 @@ inline auto Mark(char* with, size_t size, std::string_view lower, std::string_vi
 	std::vector<std::string_view> spareLow = Split(lower), spareHigh = Split(higher);
 	std::string out;
 	bool marked = false, first = true;
+	char code = BlueCode;
 	for (const std::string_view line : Split(text)) {
 		if (!first) {
 			out += '\n';
@@ -56,14 +73,42 @@ inline auto Mark(char* with, size_t size, std::string_view lower, std::string_vi
 		if (low || high || line.empty()) {
 			out += line;
 		} else {
-			out.append(Red).append(line).append(Blue);
+			AppendRed(out, line, code);
 			marked = true;
 		}
+		code = LastCode(line, code);
 	}
 	if (!marked || out.size() + 1 > size) {
 		return false;
 	}
 	std::memcpy(with, out.c_str(), out.size() + 1);
+	return true;
+}
+
+// `text` grew from `from` bytes by one line (and its newline): that line turns red, as Mark does. False, and `text`
+// untouched, when nothing was added or it would not fit in `size` bytes with its terminator.
+inline auto MarkTail(char* text, size_t size, size_t from) -> bool {
+	const std::string_view all(text, strnlen(text, size));
+	if (from >= all.size()) {
+		return false;
+	}
+	std::string_view line = all.substr(from);
+	const bool newline = line.back() == '\n';
+	if (newline) {
+		line.remove_suffix(1);
+	}
+	if (line.empty()) {
+		return false;
+	}
+	std::string out(all.substr(0, from));
+	AppendRed(out, line, LastCode(out, BlueCode));
+	if (newline) {
+		out += '\n';
+	}
+	if (out.size() + 1 > size) {
+		return false;
+	}
+	std::memcpy(text, out.c_str(), out.size() + 1);
 	return true;
 }
 

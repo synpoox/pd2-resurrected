@@ -9,6 +9,8 @@
 // (corruption_lines.h). A merged line (the item's own +200% and the corruption's +40% Enhanced Damage) is therefore red
 // as a whole, and a line the corruption did not touch never is, also when the corruption split a group line such as All
 // Resistances. When a value cannot be lowered (the stat is not on the item's magic or base list) its line stays blue.
+// A line with no number (Cannot Be Frozen) is set to 0 both ways when the corruption is its only source. The + sockets
+// outcome's `Socketed (N)` line is not a property line: SocketLine (0x2c1760) reddens it.
 // Client copy only, UI thread, as item_quantity's tab counts: the server's item and the save are untouched.
 #include "corruption_marks.h"
 
@@ -43,18 +45,28 @@ constexpr uint8_t PropertyLinesEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x20, 0x55, 0x
 using LinesFn = void (*)(Unit* item, char* out, int32_t size, int32_t a4, uint32_t a5, int32_t a6, uint32_t a7, uint32_t a8,
                          void* a9, uint64_t* a10) noexcept;
 LinesFn g_lines = nullptr;
+// D2Client InventoryTooltip.cpp (0x2c1760 on 93847): (item, out, ...) appends the `Socketed (%i)` line (or its ethereal
+// and plain ethereal forms) and a newline to the tooltip text `out` (0x400 bytes). It reads the item's socket count, not
+// a stat, so the property-line builds cannot see a + sockets outcome: its line is marked here instead.
+constexpr const char* SocketLinePattern = "40 55 53 56 57 41 54 41 55 41 56 41 57 48 8d ac 24 68 fc ff ff";
+constexpr uint8_t SocketLineEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57,
+                                       0x48, 0x8d, 0xac, 0x24, 0x68, 0xfc, 0xff, 0xff};
+constexpr size_t SocketLineSize = 0x400;
+using SocketLineFn = void (*)(Unit* item, char* out, void* a3, uint64_t* a4) noexcept;
+SocketLineFn g_socketLine = nullptr;
 
 constexpr int32_t StatCorrupted = 413, StatCorruptor = 414;  // as corruption_roll.cpp
 constexpr int32_t PropertyFuncs = 7;
 
 struct Property {
 	std::vector<int32_t> stats;  // every stat its functions set
+	bool sockets = false;        // property function 14: sets the item's sockets
 };
 std::vector<Property> g_props;     // by properties.txt row number (propids)
 std::vector<int32_t> g_valShift;   // by itemstatcost id
 int32_t g_corrupt = -1, g_corruptNum = -1;
 
-std::atomic<uint32_t> g_calls {0}, g_corrupted {0}, g_rows {0}, g_items {0}, g_marked {0};
+std::atomic<uint32_t> g_calls {0}, g_corrupted {0}, g_rows {0}, g_items {0}, g_marked {0}, g_sockets {0};
 
 // The stats a property function sets with no stat column of its own (D2R's property functions 5, 6 and 7)
 auto FixedStats(int32_t func, std::vector<int32_t>* out) -> void {
@@ -101,6 +113,7 @@ auto Load(const D2RL::PluginContext* context) -> bool {
 			} else {
 				FixedStats(lines::Number(lines::Table::Cell(row, func[i])), &p.stats);
 			}
+			p.sockets = p.sockets || lines::Number(lines::Table::Cell(row, func[i])) == 14;
 		}
 		if (c == "corrupt") {
 			g_corrupt = static_cast<int32_t>(g_props.size()) - 1;
@@ -118,8 +131,8 @@ struct Lowered {
 };
 
 // The corruption's stats on `item`, each with its row's minimum (shifted by the stat's ValShift). Empty when the
-// item is not corrupted, or its outcome has no property that is on the item.
-auto Collect(Unit* item, std::vector<Lowered>* out) noexcept -> void {
+// item is not corrupted, or its outcome has no property that is on the item. *sockets: the outcome added sockets.
+auto Collect(Unit* item, std::vector<Lowered>* out, bool* sockets) noexcept -> void {
 	using namespace d2r::rva;
 	const int32_t outcome = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatCorrupted, 0);
 	if (outcome == 0) {
@@ -153,6 +166,10 @@ auto Collect(Unit* item, std::vector<Lowered>* out) noexcept -> void {
 				break;
 			}
 			if (prop == g_corrupt || prop == g_corruptNum || prop < 0 || static_cast<size_t>(prop) >= g_props.size()) {
+				continue;
+			}
+			if (g_props[prop].sockets) {
+				*sockets = true;  // its line is SocketLine's
 				continue;
 			}
 			const int32_t min = At<int16_t>(mod, 6), max = At<int16_t>(mod, 8);
@@ -197,8 +214,9 @@ void Lines(Unit* item, char* out, int32_t size, int32_t a4, uint32_t a5, int32_t
            uint64_t* a10) noexcept {
 	g_calls.fetch_add(1, std::memory_order_relaxed);
 	std::vector<Lowered> lowered;
+	bool sockets = false;
 	if (item != nullptr && out != nullptr && size > 0 && At<int32_t>(item, d2r::rva::UnitType) == 4) {
-		Collect(item, &lowered);
+		Collect(item, &lowered, &sockets);
 	}
 	if (lowered.empty()) {
 		g_lines(item, out, size, a4, a5, a6, a7, a8, a9, a10);
@@ -217,8 +235,10 @@ void Lines(Unit* item, char* out, int32_t size, int32_t a4, uint32_t a5, int32_t
 		std::string text = start;
 		text.resize(size, '\0');
 		uint64_t copy[2] = {a10Copy[0], a10Copy[1]};
+		// the corruption as the stat's only source: 0 both ways, or a line with no number (Cannot Be Frozen) would read
+		// the same raised and stay blue
 		for (const Lowered& l : lowered) {
-			Set(item, dataFlag, l, l.was + sign * l.by);
+			Set(item, dataFlag, l, l.was == l.by ? 0 : l.was + sign * l.by);
 		}
 		g_lines(item, text.data(), size, a4, a5, a6, a7, a8, a9, a10 != nullptr ? copy : nullptr);
 		for (const Lowered& l : lowered) {
@@ -233,6 +253,20 @@ void Lines(Unit* item, char* out, int32_t size, int32_t a4, uint32_t a5, int32_t
 	}
 }
 
+void SocketLine(Unit* item, char* out, void* a3, uint64_t* a4) noexcept {
+	const size_t before = out != nullptr ? strnlen(out, SocketLineSize) : 0;
+	g_socketLine(item, out, a3, a4);
+	if (item == nullptr || out == nullptr || At<int32_t>(item, d2r::rva::UnitType) != 4) {
+		return;
+	}
+	std::vector<Lowered> unused;
+	bool sockets = false;
+	Collect(item, &unused, &sockets);
+	if (sockets && lines::MarkTail(out, SocketLineSize, before)) {
+		g_sockets.fetch_add(1, std::memory_order_relaxed);
+	}
+}
+
 }  // namespace
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
@@ -241,14 +275,16 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		return;
 	}
 	const bool hook = sigscan::HookBySignature(context, "ItemPropertyLines", PropertyLinesPattern, 0, PropertyLinesEntry,
-	                                           sizeof(PropertyLinesEntry), Lines, &g_lines);
+	                                           sizeof(PropertyLinesEntry), Lines, &g_lines) &&
+	                  sigscan::HookBySignature(context, "ItemSocketLine", SocketLinePattern, 0, SocketLineEntry,
+	                                           sizeof(SocketLineEntry), SocketLine, &g_socketLine);
 	std::snprintf(report, size, hook ? "corrupted items show the lines their corruption changed in red (%zu properties read)"
-	                                 : "FAILED (property lines signature not found once, or its entry bytes differ)", g_props.size());
+	                                 : "FAILED (a tooltip signature not found once, or its entry bytes differ)", g_props.size());
 }
 
 void Counters(char* out, size_t size) noexcept {
-	std::snprintf(out, size, "corruption: %u property builds, %u of a corrupted item, %u outcome rows matched, %u with stats lowered, %u with red lines",
-	              g_calls.load(), g_corrupted.load(), g_rows.load(), g_items.load(), g_marked.load());
+	std::snprintf(out, size, "corruption: %u property builds, %u of a corrupted item, %u outcome rows matched, %u with stats lowered, %u with red lines, %u red Socketed lines",
+	              g_calls.load(), g_corrupted.load(), g_rows.load(), g_items.load(), g_marked.load(), g_sockets.load());
 }
 
 }  // namespace corruption_marks
