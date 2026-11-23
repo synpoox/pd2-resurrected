@@ -32,3 +32,7 @@ struct SlowNodes {
 };
 auto SlowPrimeEvilBegin(d2r::Game* game, int32_t event, d2r::Unit* unit, d2r::Unit* target, SlowNodes& nodes) noexcept -> void;
 auto SlowPrimeEvilEnd(const SlowNodes& nodes) noexcept -> void;
+
+// --- Sacrifice's missile kills (#2043, sacrifice_missile.cpp) ---
+// The missile of the missile damage or AreaApply call running on this thread (D2R passes the deal its owner), or null.
+auto SacrificeKillMissile() noexcept -> d2r::Unit*;

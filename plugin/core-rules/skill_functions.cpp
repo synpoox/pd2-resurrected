@@ -5953,7 +5953,7 @@ bool g_killGetsBlock = false;   // set once the kill's argument patch is in: bef
 int32_t g_sacrificeState = -1;  // states.txt sacrifice_explosion (ours 269, PD2 223)
 thread_local Unit* t_lifeUnit = nullptr;
 thread_local int32_t t_lifeBefore = 0;
-std::atomic<uint32_t> g_sacrificeKills {0};
+std::atomic<uint32_t> g_sacrificeKills {0}, g_sacrificeMissileSkips {0};
 std::atomic<uint32_t> g_sacrificeBlasts {0};
 
 // PD2's 0x1037c530: value x percent / 100 in doubles, truncated, at most INT32_MAX
@@ -6071,16 +6071,31 @@ auto SacrificeKill(Game* game, Unit* victim, Unit* attacker, uint64_t block) noe
 	const int32_t before = life ? t_lifeBefore : 0;
 	t_lifeUnit = nullptr;
 	// The chain (#2043): an explosion's kill arrives here with the killer as attacker (AreaApply -> DealDamage), so a
-	// killer still on Sacrifice queues the next one. PD2's missile case (block +0x5c, skill 96) is the guts missile,
-	// whose hits D2R's missile damage (0x462e60) also credits to its owner, the corpse; PD2 then asks the corpse (or its
-	// pet owner) for Sacrifice, which no monster has. docs/deviations.md "Sacrifice: guts kills of a pet corpse".
+	// killer still on Sacrifice queues the next one. A missile kill (D2R passes its owner; skill/sacrifice_missile.cpp
+	// keeps the missile) explodes as in PD2's 0x103025c0 only when the missile's skill is Sacrifice and the walked owner
+	// (a pet up to its player, 0x10374a60) has the skill: the guts missile of a pet's corpse, never a Blessed Hammer.
 	if (!g_killGetsBlock || game == nullptr || victim == nullptr || attacker == nullptr || g_sacrificeState < 0 ||
 	    At<int32_t>(attacker, UnitType) == UnitMissile) {
 		return;
 	}
-	void* current = d2r::Engine<void* (*)(Unit*) noexcept>(CurrentSkill)(attacker);
-	if (current == nullptr || UnitSkillIdOf(current) != SkillSacrifice) {
-		return;
+	Unit* owner = At<int32_t>(attacker, UnitType) == UnitMonster && g_petOwner != nullptr ? g_petOwner(attacker) : nullptr;
+	owner = owner != nullptr ? owner : attacker;
+	if (Unit* missile = SacrificeKillMissile(); missile != nullptr) {
+		const int32_t skillId = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileSkill)(missile);
+		if (skillId != SkillSacrifice ||
+		    d2r::Engine<void* (*)(Unit*, int32_t, int32_t) noexcept>(GetUnitSkill)(owner, SkillSacrifice, 0) == nullptr) {
+			if (pd2::HotSample(g_sacrificeMissileSkips)) {
+				plog::Info("sacrifice: missile kill of monster class %d skipped: missile skill %d, owner type %d, skip %u",
+				           At<int32_t>(victim, UnitClassId), skillId, At<int32_t>(owner, UnitType),
+				           g_sacrificeMissileSkips.load());
+			}
+			return;
+		}
+	} else {
+		void* current = d2r::Engine<void* (*)(Unit*) noexcept>(CurrentSkill)(attacker);
+		if (current == nullptr || UnitSkillIdOf(current) != SkillSacrifice) {
+			return;
+		}
 	}
 	const auto* damage = reinterpret_cast<const uint8_t*>(block);
 	const int32_t overkill = std::max(At<int32_t>(damage, DmgTotal) - before, 0);
@@ -6088,12 +6103,12 @@ auto SacrificeKill(Game* game, Unit* victim, Unit* attacker, uint64_t block) noe
 	                                     At<uint16_t>(victim, UnitAnimSpeed));
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(victim, g_sacrificeState, 1);
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(victim, g_sacrificeState, 1);
-	// shortcut: the owner is the attacker; PD2 walks a pet up to its player (0x10374a60), and no pet uses Sacrifice
+	// PD2 queues the walked owner as the killer
 	const uint32_t value = (static_cast<uint32_t>(overkill) & OverkillMask) |
-	                       static_cast<uint32_t>(At<int32_t>(attacker, UnitType)) << 28;
+	                       static_cast<uint32_t>(At<int32_t>(owner, UnitType)) << 28;
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, void*, int32_t, int32_t, int32_t) noexcept>(AddUnitEventCallback)(
 		game, victim, UnitEventCallback, At<int32_t>(game, GameFrame) + delay, reinterpret_cast<void*>(&SacrificeBlast),
-		At<int32_t>(attacker, UnitIdField), static_cast<int32_t>(value), 0);
+		At<int32_t>(owner, UnitIdField), static_cast<int32_t>(value), 0);
 	if (pd2::HotSample(g_sacrificeKills)) {
 		plog::Info("sacrifice: kill of monster class %d by unit type %d: damage %d - life before %d (%s) = overkill %d "
 		           "(1/256), explosion in %d frames, kill %u", At<int32_t>(victim, UnitClassId),
