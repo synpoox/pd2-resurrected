@@ -26,9 +26,9 @@ Status is one of four:
 
 | Status | Records | Units |
 |---|---|---|
-| ported | 122 | 69 |
+| ported | 123 | 70 |
 | deviation | 330 | 83 |
-| missing | 168 | 108 |
+| missing | 167 | 107 |
 | not needed | 495 | 261 |
 | **total** | **1115** | **521** |
 
@@ -631,7 +631,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 | 3: D2Game `+0xcfc58`..`+0xcfc59`: `751f` -> `9090`<br>D2Game call `+0xcfc61` (to `0xa430` D2Common#10744) -> PD2 `0x102fb2f0`<br>D2Game call `+0xcfdef` (to `0xd51a0` ItemMode.cpp) -> PD2 `0x103734e0` | `+0xcfbc0` | +0xcfbc0: a jne NOPed, D2Common #10744 through 0x102fb2f0, and after ItemMode +0xd51a0 a monster gets 0x103a4240 (0x103734e0) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 | 3: D2Game `+0xd0655`..`+0xd0656`: `7405` -> `9090`<br>D2Game call `+0xd070e` (to `0xa934` D2Common#10244) -> PD2 `0x1036e620` | - | +0xd0655 je NOPed; +0xd070e D2Common #10244 (an item type test) through PD2's list (0x1036e620) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 | 2: D2Game `+0xd9a41`..`+0xd9a42`: `7e2a` -> `9090`<br>D2Game call `+0xd9a5e` (to `0xaa12` D2Common#10029) -> PD2 `0x1036f940` | `+0xd9470` | ItemMode +0xd9a41 jle NOPed; D2Common #10029 called with its last argument 0 (0x1036f940) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
-| 1: D2Game call `+0xdc477` (to `0xda7b0`) -> PD2 `0x10304dc0` | `+0xdc0b0` | +0xdc477: with item_halffreezeduration and no item_cannotbefrozen, PD2 halves the cold length fields too (0x10304dc0) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read); [#1864](https://github.com/synpoox/pd2-resurrected/issues/1864) | - |
+| 1: D2Game call `+0xdc477` (to `0xda7b0`) -> PD2 `0x10304dc0` | `+0xdc0b0` | +0xdc477: with item_halffreezeduration and no item_cannotbefrozen, PD2 halves the cold length fields too (0x10304dc0) | ported | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); D2R `0x44eb83` in `0x44df10` (core-rules byte patch); [#1864](https://github.com/synpoox/pd2-resurrected/issues/1864) | - |
 | 1: D2Game call `+0xdc88d` (to `0xa76c` D2Common#10261) -> PD2 `0x1036e510` | `+0xdc780` | SUnitDmg.cpp +0xdc88d: a stat add also adds stat 423 x3 and clamps stat 105 (0x1036e510) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 | 1: D2Game call `+0xde287` (to `0xdcc20`) -> PD2 `0x10302a30` | `+0xde0c0` | +0xde287: +0xdcc20 replaced by 0x10302a30 (a state 273 special) | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
 | 1: D2Game call `+0xe1e8d` (to `0xa5e0` D2Common#10874) -> PD2 `0x102fa5c0` | `+0xe1d90` | +0xe1e8d: D2Common #10874 through 0x102fa5c0 | missing | [#1847](https://github.com/synpoox/pd2-resurrected/issues/1847); - (needs a read) | - |
