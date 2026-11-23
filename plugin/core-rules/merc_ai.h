@@ -9,7 +9,7 @@ namespace sigscan {
 struct Entry;
 }
 
-// Installs the think hook (Battle Orders, aura restart), the attack-call redirect and the target-search patch; `report` gets one entry each.
+// Installs the think hook (Battle Orders, party Battle Orders, aura restart), the attack-call redirect and the target-search patch; `report` gets one entry each.
 // Returns how many were installed.
 auto InstallMercAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
 auto MercAiCount() noexcept -> int;
