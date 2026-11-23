@@ -178,18 +178,19 @@ auto CreateItem(Unit* unit, int32_t row, Game* game, int32_t mode, int32_t quali
 	return item;
 }
 
-// The store items made this way (unit and its id, so a reused unit is not taken for one), for the buy price below
-struct StockItem {
-	std::atomic<Unit*> unit {nullptr};
-	std::atomic<uint32_t> id {0};
-};
-StockItem g_stock[16];
+// The unit ids of the store items made this way, for the buy price below. The id, not the unit: the client's copy of
+// an item is another unit with the same id.
+// shortcut: ids of the last 16 items in this process, so only a local game's client (single player, or the host) sees
+// the same price; a remote client prices them as a plain item and its buy is refused. Upgrade with a client-side table
+// fed by the server if remote play needs it.
+std::atomic<uint32_t> g_stock[16] {};
 std::atomic<uint32_t> g_stockNext {0};
 constexpr int UnitGuid = 0x08;  // the unit's id (Unit +0x08)
 
 auto IsStock(Unit* item) noexcept -> bool {
+	const uint32_t id = At<uint32_t>(item, UnitGuid);
 	for (const auto& s : g_stock) {
-		if (s.unit.load(std::memory_order_relaxed) == item && s.id.load(std::memory_order_relaxed) == At<uint32_t>(item, UnitGuid)) {
+		if (id != 0 && s.load(std::memory_order_relaxed) == id) {
 			return true;
 		}
 	}
@@ -204,27 +205,19 @@ auto MakeUnique(Game* game, Unit* npc, int32_t row, uint32_t code) noexcept -> U
 	g_forceUnique = -1;
 	if (item != nullptr) {
 		d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag)(item, ItemFlagIdentified, 0);
-		auto& slot = g_stock[g_stockNext.fetch_add(1, std::memory_order_relaxed) % std::size(g_stock)];
-		slot.id.store(At<uint32_t>(item, UnitGuid), std::memory_order_relaxed);
-		slot.unit.store(item, std::memory_order_relaxed);
+		g_stock[g_stockNext.fetch_add(1, std::memory_order_relaxed) % std::size(g_stock)].store(At<uint32_t>(item, UnitGuid),
+		                                                                                         std::memory_order_relaxed);
 	}
 	return item;
 }
 
-// D2R's item price (0x36f0c0: player, item, difficulty, player's table, npc, mode; mode 0 a buy). The buy (0x53d850)
-// refuses an item whose server price differs from the price the client sent (result 7, "That item has just been
-// traded."). The client prices a store item as identified, while 0x36f0c0 adds the quality cost (the unique's cost)
-// only to an identified item: for his unidentified stock the server prices it as identified too, so the price paid is
-// the price his store shows.
+// D2R's item price (0x36f0c0: player, item, difficulty, player's table, npc, mode; 0 buy, 1 sell, 2 gamble, 3 repair).
+// The buy (0x53d850) refuses an item whose server price differs from the price the client sent (result 7, "That item
+// has just been traded."), and an unidentified unique's buy price is not the same on the two sides (the client's copy
+// showed 1 gold). His stock's buy is priced as a gamble on both sides, the price PD2 asks in its gamble window.
 auto Price(Unit* player, Unit* item, int32_t difficulty, void* table, int32_t npc, int32_t mode) noexcept -> uint64_t {
-	if (mode != 0 || item == nullptr || !IsStock(item)) {
-		return g_price(player, item, difficulty, table, npc, mode);
-	}
-	const auto setFlag = d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag);
-	setFlag(item, ItemFlagIdentified, 1);
-	const uint64_t price = g_price(player, item, difficulty, table, npc, mode);
-	setFlag(item, ItemFlagIdentified, 0);
-	return price;
+	constexpr int32_t ModeBuy = 0, ModeGamble = 2;
+	return g_price(player, item, difficulty, table, npc, mode == ModeBuy && item != nullptr && IsStock(item) ? ModeGamble : mode);
 }
 
 // PD2's pick: up to 10 draws of rand() % rows, the first that passes wins; -1 when none does
