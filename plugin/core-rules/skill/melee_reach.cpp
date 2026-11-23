@@ -89,6 +89,7 @@ struct Nearest {
 	int64_t bestDist;
 	Unit* last;
 	int32_t candidates;
+	uint32_t nextId, lowId;  // for the hot log only: D2R's pick (the next id above the last target, else the lowest)
 };
 std::atomic<uint32_t> g_tests {0}, g_rolls {0}, g_searches {0};
 
@@ -162,7 +163,14 @@ auto NearestFilter(uint8_t* state, Unit* unit) noexcept -> int32_t {
 		return 1;
 	}
 	++ctx->candidates;
-	if (At<uint32_t>(unit, UnitIdField) == ctx->skip) {
+	const uint32_t id = At<uint32_t>(unit, UnitIdField);
+	if (id > ctx->skip && id < ctx->nextId) {
+		ctx->nextId = id;
+	}
+	if (id < ctx->lowId) {
+		ctx->lowId = id;
+	}
+	if (id == ctx->skip) {
 		ctx->last = unit;
 		return 1;
 	}
@@ -183,7 +191,7 @@ auto WhirlSearch(d2r::Game* game, Unit* unit, int32_t x, int32_t y, int32_t radi
 	const Owner owner = OwnerOf(unit);
 	const int32_t range = g_meleeRange(unit);
 	const int32_t widened = range + 2 + (owner == Owner::Monster ? 1 : owner == Owner::Player ? range / 2 : 0);
-	Nearest ctx {unit, skip, nullptr, 0x7fffffff, nullptr, 0};
+	Nearest ctx {unit, skip, nullptr, 0x7fffffff, nullptr, 0, UINT32_MAX, UINT32_MAX};
 	AreaPos pos {d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::UnitRoom)(unit), x, y};
 	g_area(game, unit, &pos, widened, flags | 0xa783, &NearestFilter, &ctx, 0, __FILE__, __LINE__);
 	Unit* pick = ctx.best != nullptr ? ctx.best : ctx.last;
@@ -192,11 +200,12 @@ auto WhirlSearch(d2r::Game* game, Unit* unit, int32_t x, int32_t y, int32_t radi
 	}
 	if (pd2::HotSample(g_searches)) {
 		plog::Info("melee-reach: whirlwind search unit type %d, radius %d -> %d, %d in range, last id %u, picked id %d "
-		           "at distance^2 %lld%s (%u so far)",
+		           "at distance^2 %lld%s; D2R's next-id pick %d (%u so far)",
 		           At<int32_t>(unit, d2r::rva::UnitType), radius, widened, ctx.candidates, skip,
 		           pick != nullptr ? static_cast<int32_t>(At<uint32_t>(pick, UnitIdField)) : -1,
 		           ctx.best != nullptr ? static_cast<long long>(ctx.bestDist) : -1LL,
-		           ctx.best == nullptr && ctx.last != nullptr ? " (last target, nothing else)" : "", g_searches.load());
+		           ctx.best == nullptr && ctx.last != nullptr ? " (last target, nothing else)" : "",
+		           static_cast<int32_t>(ctx.nextId != UINT32_MAX ? ctx.nextId : ctx.lowId), g_searches.load());
 	}
 	return pick;
 }
