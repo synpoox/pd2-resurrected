@@ -84,6 +84,17 @@ constexpr char CreatePattern[] = "40 55 53 56 57 48 8d 6c 24 f8 48 81 ec 08 01 0
 constexpr uint8_t CreateEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x48, 0x8d, 0x6c, 0x24, 0xf8, 0x48, 0x81, 0xec, 0x08, 0x01, 0x00, 0x00};
 // D2R's Npc think, monai row 32's slot in the AI table
 constexpr char NpcThinkPattern[] = "48 89 5c 24 10 48 89 74 24 18 57 48 83 ec 40 49 8b f0";
+// Calls read from those bodies (checked bytes around each call): the fill's prologue gets the NPC's store record
+// (0x502b70: game, npc, out) and stamps its +0x38 with the time (0x120d720), which D2R's restock check (0x503290) reads;
+// the maker frees an item whose base is not the one asked (0x43ec10: game, item)
+struct CallSite {
+	int offset;  // of the e8
+	uint8_t before[6], after[6];
+};
+constexpr CallSite FillRecord {0x43, {0x49, 0x8b, 0xd6, 0x49, 0x8b, 0xcc}, {0x48, 0x8b, 0xf8, 0x48, 0x89, 0x44}};
+constexpr CallSite FillNow {0x50, {0xf8, 0x48, 0x89, 0x44, 0x24, 0x58}, {0x33, 0xf6, 0x48, 0x89, 0x47, 0x38}};
+constexpr CallSite MakerFree {0x2f4, {0x48, 0x8b, 0xd7, 0x49, 0x8b, 0xcf}, {0x41, 0xff, 0xc6, 0x33, 0xc0, 0x41}};
+constexpr int StoreStamp = 0x38;
 
 // The drop request 0x43d530 fills for ItemSpawn (d2r::rva Drop* offsets: +0x00 unit, +0x18 item level, +0xc0 flags)
 constexpr int ReqGame = 0x10, ReqItemLevel = 0x18, ReqRow = 0x20, ReqMode = 0x24, ReqOne = 0x38, ReqGameWord = 0x3a,
@@ -92,6 +103,9 @@ constexpr int GameWord = 0x128;  // the game's u16 0x43d530 copies into the requ
 
 using FillFn = void (*)(Game* game, Unit* player, Unit* npc) noexcept;
 using MakerFn = Unit* (*)(Unit* npc, uint32_t code, Game* game, int32_t send, int32_t quality, int32_t ilvl, int32_t plvl) noexcept;
+using RecordFn = uint8_t* (*)(Game* game, Unit* npc, uint64_t* out) noexcept;
+using NowFn = uint64_t (*)() noexcept;
+using FreeFn = void (*)(Game* game, Unit* item) noexcept;
 using CreateFn = Unit* (*)(Unit* unit, int32_t row, Game* game, int32_t mode, int32_t quality, int32_t f6, int32_t f7, int32_t ilvl,
                            int32_t a9, int32_t a10, int32_t a11) noexcept;
 
@@ -99,6 +113,9 @@ const D2RL::PluginContext* g_context = nullptr;
 FillFn g_fill = nullptr;
 MakerFn g_maker = nullptr;
 CreateFn g_create = nullptr;
+RecordFn g_record = nullptr;
+NowFn g_now = nullptr;
+FreeFn g_free = nullptr;
 thread_local int32_t g_forceUnique = -1;  // the unique row 0x43d530 makes, only during MakeUnique
 std::atomic<uint32_t> g_stocks {0}, g_uniques {0}, g_idles {0};
 
@@ -124,6 +141,12 @@ auto CreateItem(Unit* unit, int32_t row, Game* game, int32_t mode, int32_t quali
 	if (g_forceUnique < 0) {
 		return g_create(unit, row, game, mode, quality, f6, f7, ilvl, a9, a10, a11);
 	}
+	// The maker frees an item whose base is not the one asked and, after its quality-2 retry, gives up: an item that is
+	// not the forced unique is handed back on another base, so nothing but a unique reaches his store
+	const auto reject = [&]() noexcept { return g_create(unit, row == 0 ? 1 : 0, game, mode, 2, f6, f7, ilvl, a9, a10, a11); };
+	if (quality != QualityUnique) {
+		return reject();
+	}
 	// 0x43d530's own request, with the unique row (+1) the TC drop 0x444680 also sets
 	alignas(8) uint8_t req[ReqSize] {};
 	*reinterpret_cast<Unit**>(req) = unit;
@@ -139,9 +162,13 @@ auto CreateItem(Unit* unit, int32_t row, Game* game, int32_t mode, int32_t quali
 	*reinterpret_cast<int32_t*>(req + ReqA11) = a11;
 	*reinterpret_cast<uint64_t*>(req + ReqFlags) = (f6 != 0 ? 8u : 0u) | (f7 != 0 ? 2u : 0u);
 	Unit* item = d2r::Engine<Unit* (*)(Game*, void*, int32_t) noexcept>(d2r::sig::ItemSpawn)(game, req, a9);
-	if (item != nullptr) {
-		d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag)(item, ItemFlagIdentified, 1);
+	if (item == nullptr || d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::ItemQuality)(item) != QualityUnique) {
+		if (item != nullptr) {
+			g_free(game, item);
+		}
+		return reject();
 	}
+	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag)(item, ItemFlagIdentified, 1);
 	return item;
 }
 
@@ -177,8 +204,7 @@ auto Pick(const D2RL::DataTables::TableView& view, const D2RL::DataTableService*
 	return -1;
 }
 
-auto BuildStock(Game* game, Unit* npc) noexcept -> void {
-	SetMapEventSpawns(game, StockBuilt);
+auto BuildStock(Game* game, Unit* npc) noexcept -> bool {
 	const D2RL::DataTableService* tables = nullptr;
 	D2RL::DataTables::TableView view {.structSize = D2RL::DataTables::TableViewSize};
 	const auto bank = static_cast<D2RL::DataTables::Bank>(d2r::DataFlag(game));
@@ -186,9 +212,10 @@ auto BuildStock(Game* game, Unit* npc) noexcept -> void {
 	    !D2RL::HasDataTableServiceField(tables, D2RL::DataTableServiceRequiredSize) ||
 	    tables->getTable(g_context, bank, D2RL::DataTables::TableId::UniqueItems, &view) != D2RL::DataTables::Result::Success ||
 	    view.rowSize <= UqLvlReq) {
-		plog::Warn("gheed store: no uniqueitems table (bank %u), his store stays empty", static_cast<uint32_t>(bank));
-		return;
+		plog::Warn("gheed store: no uniqueitems table (bank %u), D2R's stock instead", static_cast<uint32_t>(bank));
+		return false;
 	}
+	SetMapEventSpawns(game, StockBuilt);
 	char rows[MaxUniques * 12] = "";
 	int32_t made = 0;
 	int32_t row = Pick(view, tables, bank);
@@ -208,6 +235,7 @@ auto BuildStock(Game* game, Unit* npc) noexcept -> void {
 	g_uniques.fetch_add(static_cast<uint32_t>(made), std::memory_order_relaxed);
 	plog::Info("gheed store: stock for Gheed in level %d (bank %u): %d unique(s), rows %s", LevelOf(npc),
 	           static_cast<uint32_t>(bank), made, made != 0 ? rows : "none");
+	return true;
 }
 
 auto Fill(Game* game, Unit* player, Unit* npc) noexcept -> void {
@@ -216,7 +244,15 @@ auto Fill(Game* game, Unit* player, Unit* npc) noexcept -> void {
 		g_fill(game, player, npc);
 		return;
 	}
-	BuildStock(game, npc);
+	if (!BuildStock(game, npc)) {
+		g_fill(game, player, npc);
+		return;
+	}
+	// what D2R's fill does first: stamp the store record's time, or its restock check fires at once
+	uint64_t created = 0;
+	if (uint8_t* record = g_record(game, npc, &created); record != nullptr) {
+		*reinterpret_cast<uint64_t*>(record + StoreStamp) = g_now();
+	}
 }
 
 auto ThinkNpc(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
@@ -228,22 +264,41 @@ auto ThinkNpc(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	ai_registry::Vanilla(NpcAiRow)(game, unit, tick);
 }
 
+// the target of the e8 at `base + site.offset`, or 0 when the bytes around it differ
+auto CallTarget(uint64_t base, const CallSite& site) noexcept -> uint64_t {
+	const auto* at = reinterpret_cast<const uint8_t*>(base + site.offset);
+	if (std::memcmp(at - sizeof(site.before), site.before, sizeof(site.before)) != 0 || at[0] != 0xe8 ||
+	    std::memcmp(at + 5, site.after, sizeof(site.after)) != 0) {
+		return 0;
+	}
+	int32_t rel = 0;
+	std::memcpy(&rel, at + 1, sizeof(rel));
+	return base + site.offset + 5 + static_cast<int64_t>(rel);
+}
+
 }  // namespace
 
 auto InstallGheedStore(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	g_context = context;
-	uint64_t maker = 0, think = 0;
+	uint64_t maker = 0, think = 0, fill = 0;
 	const bool found = d2r::sig::UnitRoom.state == sigscan::State::Ok && d2r::sig::RoomLevelId.state == sigscan::State::Ok &&
 	                   d2r::sig::ItemSpawn.state == sigscan::State::Ok && d2r::sig::SetItemFlag.state == sigscan::State::Ok &&
 	                   d2r::sig::ItemQuality.state == sigscan::State::Ok && d2r::sig::AiIdle.state == sigscan::State::Ok &&
 	                   sigscan::ScanUnique(context->exeBase, MakerPattern, 0, &maker) == 1 &&
-	                   sigscan::ScanUnique(context->exeBase, NpcThinkPattern, 0, &think) == 1;
-	if (!found) {
-		plog::Warn("gheed store: a signature was not found (store item maker, Npc think or a shared entry), off");
+	                   sigscan::ScanUnique(context->exeBase, NpcThinkPattern, 0, &think) == 1 &&
+	                   sigscan::ScanUnique(context->exeBase, FillPattern, 0, &fill) == 1;
+	const uint64_t record = found ? CallTarget(context->exeBase + fill, FillRecord) : 0;
+	const uint64_t now = found ? CallTarget(context->exeBase + fill, FillNow) : 0;
+	const uint64_t free = found ? CallTarget(context->exeBase + maker, MakerFree) : 0;
+	if (!found || record == 0 || now == 0 || free == 0) {
+		plog::Warn("gheed store: a signature or call site was not found (store fill, item maker, Npc think or a shared entry), off");
 		std::snprintf(report, reportSize, "map Gheed FAILED (signature)");
 		return 0;
 	}
 	g_maker = reinterpret_cast<MakerFn>(context->exeBase + maker);
+	g_record = reinterpret_cast<RecordFn>(record);
+	g_now = reinterpret_cast<NowFn>(now);
+	g_free = reinterpret_cast<FreeFn>(free);
 	// the item creation hook first: the fill hook is what calls into it
 	const bool store = sigscan::HookBySignature(context, "StoreItemCreate", CreatePattern, 0, CreateEntry, sizeof(CreateEntry),
 	                                            &CreateItem, &g_create) &&
