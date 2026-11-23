@@ -10,7 +10,7 @@ Answers [#1817](https://github.com/synpoox/pd2-resurrected/issues/1817). PD2's p
 - **Type 0.** Write `length` copies of `value`'s low byte (the apply `memset`s them). With length 0, it writes the 32-bit `value`: a pointer into a 1.13c function table, or a larger buffer size.
 
 **Method.**
-1. A script parsed the records, found the 1.13c function around each site (Ghidra, PD2.gpr), followed the thunks and grouped the records into 521 units: one per redirected callee and PD2 target, or per run of adjacent bytes.
+1. A script parsed the records, found the 1.13c function around each site (Ghidra, PD2.gpr), followed the thunks and grouped the records into units: one per redirected callee and PD2 target, or per run of adjacent bytes.
 2. Each unit was read: the decompiled PD2 function against the vanilla code it replaces.
 3. Each unit was checked against `plugin/`, `docs/research/`, `docs/pd2/`, `docs/deviations.md`, `docs/roadmap.md` and `docs/features/`, by address and by name.
 
@@ -25,7 +25,7 @@ Status is one of five:
 
 ## Summary
 
-The status counts are not kept here: every PR that changes a row would conflict on them. The totals are 1115 records in 521 units, plus 1375 records of the same array outside the parsed range and the 65 records of the no-PlugY array ([Records outside the parsed range](#records-outside-the-parsed-range)). To count a status, count the rows in the tables below whose status column holds it (for example `grep -c "| missing |"`, adjusting for the table's column), and the records and units by summing the rows' record and unit cells.
+The status counts are not kept here: every PR that changes a row would conflict on them. The parsed range holds 1115 records, plus 1375 records of the same array outside the parsed range and the 65 records of the no-PlugY array ([Records outside the parsed range](#records-outside-the-parsed-range)). To count a status, count the rows in the tables below whose status column holds it (for example `grep -c "| missing |"`, adjusting for the table's column), and the records and units by summing the rows' record and unit cells.
 
 By module: D2Game 615 records, D2Client 410, D2Common 86, D2Lang 3, D2Win 1. A few features account for most of the records:
 - PD2's client sound engine: 261 D2Client records. It is a deviation: D2R's sound tables are kept.
@@ -35,7 +35,7 @@ By module: D2Game 615 records, D2Client 410, D2Common 86, D2Lang 3, D2Win 1. A f
 The installer writes (section [Installer table writes](#installer-table-writes)) number 257:
 - 99 are named by our code, and 23 more skill entries are ported or documented by function number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage);
 - 38 are named only by a doc, whose verdict stands;
-- 6 are real gaps with their own issues ([#1869](https://github.com/synpoox/pd2-resurrected/issues/1869), [#1870](https://github.com/synpoox/pd2-resurrected/issues/1870), [#1871](https://github.com/synpoox/pd2-resurrected/issues/1871), [#1872](https://github.com/synpoox/pd2-resurrected/issues/1872), [#1873](https://github.com/synpoox/pd2-resurrected/issues/1873));
+- 1 is still a real gap ([#1872](https://github.com/synpoox/pd2-resurrected/issues/1872)); the other five are closed ([#1869](https://github.com/synpoox/pd2-resurrected/issues/1869) kept as a deviation, [#1870](https://github.com/synpoox/pd2-resurrected/issues/1870), [#1871](https://github.com/synpoox/pd2-resurrected/issues/1871), [#1873](https://github.com/synpoox/pd2-resurrected/issues/1873) ported);
 - 91 are still unchecked, tracked in [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849).
 
 The unchecked set still holds 11 monster AI think replacements, the same kind of gap as the pets.
@@ -499,7 +499,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 1: D2Game call `+0x6f63d` (to `0xb132` D2Common#10413) -> PD2 `0x102fe740` | `+0x6f620` | PD2's item rule | ported | plugin/core-rules/item_rules.cpp | - |
+| 1: D2Game call `+0x6f63d` (to `0xb132` D2Common#10413) -> PD2 `0x102fe740` | `+0x6f620` | PD2's own missile fill (live fill `0x102fe730` -> `0x103069d0`) | ported | plugin/core-rules/item_rules.cpp | - |
 
 ### Missile pierce cap
 
@@ -843,7 +843,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 | 3: D2Common `+0x334ac`..`+0x334cc`: `6a006a4456e8ba5600006a00..` -> `909090909090909090909090..`<br>D2Common `+0x334ac`: `6a` -> `e8`<br>D2Common call `+0x334ac(6a)` (to `0x56479eb1`) -> PD2 `0x103a37a0` | `+0x33110` | Units.cpp +0x334ac: the dual wield average of the two weapons' attackrate (68) is NOPed for 0x102fc0f0 (PD2.gpr 0x102fc0e0): a player takes the rate of the weapon with the higher 68 + item_fasterattackrate (93), the left on a tie; a monster keeps the average | ported | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); D2R `0x35129c` and `0x3513ff` in `0x350b40` (core-rules byte patches); [#1867](https://github.com/synpoox/pd2-resurrected/issues/1867) | - |
 | 8: D2Common call `+0x378eb`, `+0x379e6`, `+0x379fb`, `+0x37abb`, `+0x37b5f`, `+0x37c80`, `+0x37d00`, `+0x37d15` (to `0x376f0`) -> PD2 `0x102fbe10` | `+0x37840`, `+0x37920`, `+0x37a20`, `+0x37af0`, `+0x37c20`, `+0x37ca0` | +0x376f0 (8 sites) through 0x102fbe10: for a level above 136 a value is set from 0x1037f1a0 | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read; levels past 136 are PD2's maps) | - |
 | 3: D2Common `+0x3a74f`..`+0x3a750`: `4e5c` -> `ce90`<br>D2Common call `+0x3a75a` (to `0x3a280`) -> PD2 `0x102fae50` | `+0x3a740` | +0x3a740: a register change and a stat add moved to the unit at +0x5c (0x102fae50) | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
-| 19: D2Common call `+0x6ac1f`, `+0x6ac6a`, `+0x6acb5`, `+0x6ad00`, `+0x6ad4b`, `+0x6ad96`, `+0x6ade1`, `+0x6ae2c`, `+0x6ae77`, `+0x6aebc`, `+0x6af01`, `+0x6af3b`, `+0x6af77`, `+0x6afbf`, `+0x6afff`, `+0x6b044`, `+0x6b08c`, `+0x6b0d4`, `+0x6b122` (to `0x38a80`) -> PD2 `0x102fa820` | `+0x6abe0` | +0x6abe0 (19 sites): elemental min/max damage stats get their skill mastery (stats 329, 330, 357, 331, 332) added (0x102fa820) | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read); [#1868](https://github.com/synpoox/pd2-resurrected/issues/1868) | - |
+| 19: D2Common call `+0x6ac1f`, `+0x6ac6a`, `+0x6acb5`, `+0x6ad00`, `+0x6ad4b`, `+0x6ad96`, `+0x6ade1`, `+0x6ae2c`, `+0x6ae77`, `+0x6aebc`, `+0x6af01`, `+0x6af3b`, `+0x6af77`, `+0x6afbf`, `+0x6afff`, `+0x6b044`, `+0x6b08c`, `+0x6b0d4`, `+0x6b122` (to `0x38a80`) -> PD2 `0x102fa820` | `+0x6abe0` | +0x6abe0 (19 sites): elemental min/max damage stats get their skill mastery (stats 329, 330, 357, 331, 332) added (0x102fa820) | not needed | D2R's missile fill `0x3c08a0` already adds the owner's mastery ([#1868](https://github.com/synpoox/pd2-resurrected/issues/1868)) | - |
 
 ### Charm "only one unique" rule
 
