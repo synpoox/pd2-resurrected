@@ -2,7 +2,7 @@
 //
 // 1.13c D2Game's hit damage +0xdd450 rolls a monster's (non-pet) life and mana steal stats through +0xdcd80, which
 // shifts them left 8 into the damage block (+0x38 / +0x3c). PD2 redirects only the mana call (+0xdd745) to
-// ProjectDiablo.dll 0x10302520 (PD2.gpr; 0x10302530 installed), which scales by 0x10 instead of 0x100 when the
+// ProjectDiablo.dll 0x10302520 (installed; PD2.gpr 0x10302510), which scales by 0x10 instead of 0x100 when the
 // stealer is a monster (`cmp dword [esi],1; mov edi,0x10; cmovne edi,eax; imul ebx,edi`), the min and max stats both.
 // D2R inlines that roll in its hit damage (93847 0x44c030): the mana block 0x44c7fb is reached only for a monster
 // attacker that is not a pet (`cmp [rsp+0x50],1`, the attacker's type), with stats 63 / 62 `shl 8` at 0x44c812 /
