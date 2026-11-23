@@ -4939,35 +4939,6 @@ thread_local int32_t t_smiteLevel = 0;
 
 using AuraEventFn = int32_t (*)(Game*, int32_t, Unit*, Unit*, void*, int32_t, int32_t) noexcept;
 
-// --- Slow skips the prime evils (#2004) ------------------------------------------------------------------------------
-// PD2's aura event 19 (item_slow; ProjectDiablo.dll 0x10346df0 PD2.gpr, 0x10346e00 installed, over 1.13c's in D2Game's
-// event table +0x1077a8) returns 0 when the target is a monster for which D2Common #10278 is true (monstats flags bit 7,
-// the `primeevil` column), and on player vs player (not ported, #2004), else runs vanilla. D2R 93847's event 19
-// (0x5849d0, slot 19 of 0x238e5c0) has no prime-evil test, so its entry is hooked. No SDK service runs a skill event.
-constexpr uint8_t SlowEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x18, 0x57};
-constexpr const char* SlowPattern =
-    "48 89 5c 24 08 48 89 6c 24 10 48 89 74 24 18 57 41 56 41 57 48 83 ec 60 49 8b f1 49 8b e8 4c 8b f1 4d 85 c0 0f 84 ?? "
-    "?? ?? ?? 4d 85 c9 0f 84 ?? ?? ?? ?? 8b 84 24 a8 00 00 00 48 8b cd 8b d0 44 0f b7 c0 c1 ea 10 e8 ?? ?? ?? ?? 8b f8 85 "
-    "c0 0f 84 ?? ?? ?? ?? 48 8b ce e8 ?? ?? ?? ?? 85 c0 75 05 8d 58 32";
-AuraEventFn g_slow = nullptr;
-std::atomic<uint32_t> g_slowSkips {0};
-
-auto SlowEvent(Game* game, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skillId, int32_t level) noexcept
-    -> int32_t {
-	using namespace d2r::rva;
-	if (game != nullptr && target != nullptr && At<int32_t>(target, UnitType) == UnitMonster) {
-		const int32_t classId = At<int32_t>(target, UnitClassId);
-		const auto* record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(MonStatsRecord)(d2r::DataFlag(game), classId);
-		if (record != nullptr && (At<uint32_t>(record, MonFlags) & MonPrimeEvil) != 0) {
-			if (pd2::HotSample(g_slowSkips)) {
-				plog::Info("slow: skipped prime evil, monstats row %d", classId);
-			}
-			return 0;
-		}
-	}
-	return g_slow(game, event, unit, target, damage, skillId, level);
-}
-
 // PD2's event 16 on Smite: one roll a hit with the crushingblow stat, its per-hand sum and calc3, on the damage block
 // before D2R applies it, as a domeleedamage event runs. CrushingBlowApply's slot holds PD2's blow (item_rules.cpp,
 // with Smite's calc4).
@@ -6438,14 +6409,6 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; blood golem heal%s", golem ? "" : " FAILED");
-	}
-	const bool slow = sigscan::HookBySignature(context, "AuraEvent19Slow", SlowPattern, 0, SlowEntry, sizeof(SlowEntry),
-	                                           static_cast<AuraEventFn>(SlowEvent), &g_slow);
-	plog::Info("slow: skip prime evils %s", slow ? "on" : "FAILED");
-	count({slow});
-	used = std::strlen(report);
-	if (used < reportSize) {
-		std::snprintf(report + used, reportSize - used, "; slow prime evils%s", slow ? "" : " FAILED");
 	}
 	g_skillTotal = total;
 	return installed;
