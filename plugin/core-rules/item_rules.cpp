@@ -19,6 +19,7 @@
 #include <intrin.h>
 #include "item_rules.h"
 #include "skill_functions.h"
+#include "skill/common.h"
 
 #define NOMINMAX
 #include <windows.h>
@@ -621,11 +622,14 @@ auto HitEvent(Game* game, int32_t event, Unit* unit, Unit* target, void* damage)
 	if (count != 0) {
 		t_hiddenEvent = event;
 	}
+	SlowNodes slow;  // PD2's slow skips prime evils (#2004, skill/slow_prime_evil.cpp)
+	SlowPrimeEvilBegin(game, event, unit, target, slow);
 	const int32_t result = g_hitEventOriginal(game, event, unit, target, damage);
 	// Inside the hidden-node window, so the splashed units get open wounds as a plain splash's do
 	if (event == EventMeleeDamage) {
 		SpinSplashes(game, event, unit, target, static_cast<const uint8_t*>(damage));
 	}
+	SlowPrimeEvilEnd(slow);
 	t_hiddenEvent = outerHidden;
 	for (int i = 0; i < count; ++i) {
 		*reinterpret_cast<uint16_t*>(hidden[i] + EventNodeEvent) = static_cast<uint16_t>(event);
@@ -2966,6 +2970,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	rule(missileStrike, "missile strike");
 	const bool blowRoll = PatchHitEvents(context);
 	rule(blowRoll, "crushing blow roll", " FAILED (call sites)");
+	plog::Info("slow: skip prime evils %s", blowRoll ? "on" : "FAILED");  // rides on the HitEvent relay
 	const bool lifeCap = context->InstallInlineHook(AddLife, AddLifeEntry, sizeof(AddLifeEntry),
 	                                                CappedAddLife, &g_addLifeOriginal);
 	rule(lifeCap, "life steal cap");
