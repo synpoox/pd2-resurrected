@@ -9,8 +9,9 @@
 //   13 Double Throw  0x103ad6b0: D2R's two-hand throw line with ddam calc1/calc2 (D2R's reads skills calc1, which
 //                    is Split Throw's missile count); PD2's Split Throw one-hand branch is what the two-hand line
 //                    prints with one weapon (SrcDam 128, no skill damage)
-//   15 Dragon Talon  0x103ad7b0: D2R's kick line with ddam calc1 as the kick damage% (D2R's: Param1 + (lvl-1) x
-//                    Param2), as the kick itself deals it (core-rules, #1862)
+//   15 Dragon Talon  0x103ad7b0: PD2's damage% (ddam calc1, as the kick deals it: core-rules, #1862; D2R's is
+//                    Param1 + (lvl-1) x Param2) on D2R's base, the skill's + the boots' damage: D2R's server kick
+//                    fill 0x573af0 deals that base, not PD2's (stat 21/22 less the weapon's, + 111; deviations.md)
 //   25 charge-ups    0x103ade80: weapon at calc1 x (charges + 1) % + the p<charges+1>dm line, coloured by its element
 //   26 arrows        0x103ae000: (weapon + the skill's elemental) x SrcDam / 128, coloured by EType
 // Slots are written with PatchWriteU64, each expecting the pointer it holds at install (D2R's function).
@@ -90,7 +91,7 @@ using StateListFn = void* (*)(void*, int32_t) noexcept;
 using ListStatFn = int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept;
 
 // skills record (rvas_93847 offsets.h / knowledge/d2r-93847-addresses.md)
-constexpr size_t SkAuraStat1 = 0x74, SkAuraState = 0xa0, SkCalc1 = 0x190, SkSrcDam = 0x24d, SkEType = 0x284;
+using d2r::rva::SkAuraStat1, d2r::rva::SkAuraState, d2r::rva::SkCalc1, d2r::rva::SkSrcDam, d2r::rva::SkEType;
 // skilldesc record (its field table at 0x302380: descdam +0x10, ddam calc1 +0x14, calc2 +0x18, p1-3dmelem +0x1c,
 // p1-3dmmin +0x20, p1-3dmmax +0x2c)
 constexpr size_t SdCalc1 = 0x14, SdCalc2 = 0x18, SdElem = 0x1c, SdMin = 0x20, SdMax = 0x2c;
@@ -207,7 +208,7 @@ void Throw(uint8_t flag, void* unit, void* skill, const uint8_t* rec, int32_t le
 	}
 }
 
-// --- 15: Dragon Talon, Dragon Flight (D2R's 0x284b40 with PD2's damage%) ------------------------------------------
+// --- 15: Dragon Talon, Dragon Flight (D2R's 0x284b40 with PD2's damage%; D2R's base, the server kick's) ----------
 void Kick(uint8_t flag, void* unit, void* skill, const uint8_t* rec, int32_t level, Line* line, Line*, int32_t* color,
           int32_t*) noexcept {
 	*color = 0;
@@ -269,15 +270,13 @@ void Arrow(uint8_t flag, void* unit, void* skill, const uint8_t* rec, int32_t le
 	if (unit == nullptr || skill == nullptr || rec == nullptr) {
 		return;
 	}
-	const int32_t id = SkillId(rec), srcDam = rec[SkSrcDam];
+	const int32_t id = SkillId(rec), srcDam = rec[SkSrcDam] != 0 ? rec[SkSrcDam] : 128;  // SrcDam 0 = 128 (offsets.h)
 	int32_t wmin = 0, wmax = 0, weaponColor = 0;
 	Weapon(unit, skill, 0, 0, &wmin, &wmax, &weaponColor);
 	// PD2 hands SrcDam to its weapon fill as the scale; D2R's lines (ids 7, 24) fill at 0x80 and scale the sum after
 	int32_t min = SrcDamScale(wmin, srcDam), max = SrcDamScale(wmax, srcDam);
-	if (srcDam != 0) {
-		min += SrcDamScale(Call<DamageFn>(SkillElemMin)(flag, unit, id, level, 1) >> 8, srcDam);
-		max += SrcDamScale(Call<DamageFn>(SkillElemMax)(flag, unit, id, level, 1) >> 8, srcDam);
-	}
+	min += SrcDamScale(Call<DamageFn>(SkillElemMin)(flag, unit, id, level, 1) >> 8, srcDam);
+	max += SrcDamScale(Call<DamageFn>(SkillElemMax)(flag, unit, id, level, 1) >> 8, srcDam);
 	const int32_t elem = ElemColor(rec[SkEType]);
 	*color = elem >= 0 ? elem : weaponColor;
 	Write(line, min, max, min != 0 && max != 0);
