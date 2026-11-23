@@ -345,12 +345,15 @@ void DropStateList(uint32_t dataFlag, Unit* unit, int32_t state) noexcept {
 // --- Split Throw's start buff (PD2 srvstfunc 79)---------------------------------------------------------------------
 std::atomic<uint32_t> g_tempBuffs {0};
 
-// The skill's aurastate with its aurastat1-6 for a short time from the start frame, built the way Frozen Armor's
-// srvdo 18 (0x553e60) builds its state list. PD2 gives Split Throw temp_skill_buff + attackrate (par4).
-// shortcut: approximation from PD2's data, the length is a fixed TempBuffFrames because PD2's row has no auralencalc;
-// upgrade when PD2's srvst 79 is read from ProjectDiablo.dll.
-constexpr int32_t TempBuffFrames = 25;
+// D2R's pieces of the flag-4 list below, each by signature; the cast goes on without a buff when one is missing
+const sigscan::Entry* const TempBuffUses[] = {&d2r::sig::UnitStateList, &d2r::sig::NewStatList,   &d2r::sig::UnitId,
+                                              &d2r::sig::SetListState,  &d2r::sig::AttachStatList, &d2r::sig::SetStateBit,
+                                              &d2r::sig::AddAuraStats};
+constexpr uint32_t ListFlagTemp = 4;  // freed with its state by D2R's set anim mode (0x34e5f0 -> 0x2f7540)
 
+// PD2's helper (0x10381a70): the skill's aurastate with its aurastat1-6 on a flag-4 list with no timer, kept when
+// the unit still has one, the way D2R's 0x434290 puts Dragon Tail's attackrate on; the next mode change frees it, so
+// the buff lasts for the attack. PD2 gives Split Throw temp_skill_buff + attackrate (par4).
 auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	if (game == nullptr || unit == nullptr) {
@@ -362,35 +365,33 @@ auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 		return 0;
 	}
 	const int32_t state = At<int16_t>(skill, SkAuraState);
-	if (state <= 0) {
-		return 1;  // no aurastate: the cast goes on without a buff
+	if (state <= 0 || !std::all_of(std::begin(TempBuffUses), std::end(TempBuffUses),
+	                               [](const sigscan::Entry* e) { return e->state == sigscan::State::Ok; })) {
+		return 1;  // no aurastate (or no engine pieces): the cast goes on without a buff
 	}
-	DropStateList(dataFlag, unit, state);  // always a new list: NewStateList keeps a same-level one as it is
-	d2r::StateListRequest request {unit, unit, skillId, level, TempBuffFrames, -1, 0, state,
-	                               d2r::Engine<void (*)()>(SkillStateExpired)};
-	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
-	if (list == nullptr) {
-		return 1;
+	void* list = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(d2r::sig::UnitStateList)(unit, state);
+	const bool kept = list != nullptr;
+	if (!kept) {
+		const int32_t id = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(d2r::sig::UnitId)(unit, __FILE__,
+		                                                                                                   __LINE__);
+		list = d2r::Engine<void* (*)(uint32_t, int32_t, int32_t, int32_t) noexcept>(d2r::sig::NewStatList)(
+			ListFlagTemp, 0, At<int32_t>(unit, UnitType), id);
+		if (list == nullptr) {
+			return 1;
+		}
+		d2r::Engine<void (*)(void*, int32_t) noexcept>(d2r::sig::SetListState)(list, state);
+		d2r::Engine<void (*)(Unit*, void*, int32_t) noexcept>(d2r::sig::AttachStatList)(unit, list, 1);
 	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::SetStateBit)(unit, state, 1);  // Attach does not
 	using AuraStatsFn = void (*)(Unit*, void*, const uint8_t*, int32_t, int32_t) noexcept;
-	d2r::Engine<AuraStatsFn>(AddAuraStats)(unit, list, skill, skillId, level);
-	d2r::Engine<AuraStatsFn>(AddAuraStatsB)(unit, list, skill, skillId, level);
-	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
-	setStat(dataFlag, list, StatListSkill, skillId, 0);
-	setStat(dataFlag, list, StatListLevel, level, 0);
-	const int32_t key = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t) noexcept>(StateListKey)(
-		dataFlag, list, d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(unit));
-	setStat(dataFlag, list, StatListKey, key, 0);
-	using SendFn = void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t, const void*, const void*,
-	                        int32_t) noexcept;
-	d2r::Engine<SendFn>(SendSkillState)(game, unit, skillId, level, key, 1, state, skill + SkSendStateA,
-	                                    skill + SkSendStateB, 4);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, state, 1);
+	d2r::Engine<AuraStatsFn>(d2r::sig::AddAuraStats)(unit, list, skill, skillId, level);
 	if (pd2::HotSample(g_tempBuffs)) {
-		// aurastat1 and its calc value as the skill computes them, so the check can compare them with PD2's par4
-		plog::Info("temp buff: skill %d level %d state %d for %d frames, stat %d +%d, cast %u", skillId, level, state,
-		           TempBuffFrames, At<int16_t>(skill, SkAuraStat1),
-		           d2r::EvalCalc(game, unit, skill, SkAuraStatCalc1, skillId, level), g_tempBuffs.load());
+		// aurastat1 and its calc value as the skill computes them, so the check can compare them with PD2's par4; "kept"
+		// means the last attack's list was still on (no mode change freed it)
+		plog::Info("temp buff: skill %d level %d state %d on a %s flag-4 list, stat %d +%d, frame %d, cast %u", skillId,
+		           level, state, kept ? "kept" : "new", At<int16_t>(skill, SkAuraStat1),
+		           d2r::EvalCalc(game, unit, skill, SkAuraStatCalc1, skillId, level), At<int32_t>(game, GameFrame),
+		           g_tempBuffs.load());
 	}
 	return 1;
 }
@@ -6150,6 +6151,10 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 			used += n > 0 ? static_cast<size_t>(n) : 0;
 		}
 	}
+	const bool tempBuff = std::all_of(std::begin(TempBuffUses), std::end(TempBuffUses),
+	                                  [](const sigscan::Entry* e) { return e->state == sigscan::State::Ok; });
+	plog::Info("temp buff: PD2 flag-4 list until the mode changes %s", tempBuff ? "on" : "FAILED (signature)");
+	count({tempBuff});
 	AddSkillRoutes();
 	char routerReport[160];
 	const bool router = skill_router::InstallRouter(context, routerReport, sizeof(routerReport));
