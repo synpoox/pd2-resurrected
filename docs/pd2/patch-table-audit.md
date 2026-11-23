@@ -905,7 +905,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 72 DoomKnight think | `0x1035a930` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 74 OblivionKnight think | `0x1035b0a0` | documented | [uber-bosses-dll](uber-bosses-dll.md) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 87 Trap-Melee think | `0x1035b3f0` | ported | `plugin/core-events/dclone_ai.cpp` |
-| `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 89 Megademon think | `0x10357710` | missing | [#1871](https://github.com/synpoox/pd2-resurrected/issues/1871) |
+| `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 89 Megademon think | `0x10357710` | ported | `plugin/core-events/lane-c/megademon_ai.cpp` ([#1871](https://github.com/synpoox/pd2-resurrected/issues/1871)) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 93 ArcaneTower think | `0x1035cb30` | missing | [#1872](https://github.com/synpoox/pd2-resurrected/issues/1872) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 99 TrappedSoul think | `0x1035bc60` | ported | `plugin/core-events/dclone_ai.cpp`, `plugin/core-events/nihlathak_ai.cpp`, `plugin/core-events/nihlathak_ai.h` |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 102 BladeCreeper think | `0x1035fd10` | missing | [#1869](https://github.com/synpoox/pd2-resurrected/issues/1869) |
