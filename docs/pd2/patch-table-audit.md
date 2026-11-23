@@ -18,7 +18,7 @@ Status is one of five:
 - **ported**: the code or data that does it.
 - **deviation**: a `docs/deviations.md` row covers it.
 - **missing**: a GitHub issue now tracks it.
-- **unclear**: decoded, but whether D2R needs it is not settled.
+- **unclear**: read only partly (not fully decoded), so whether D2R needs it is not settled; #1979 tracks the decode.
 - **not needed**: client-only work D2R already does, a feature cut on the roadmap, or no behaviour change. The row says which.
 
 "Undecoded" rows are read only partly. Their issues ([#1847](https://github.com/synpoox/pd2-resurrected/issues/1847), [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848), and [#1979](https://github.com/synpoox/pd2-resurrected/issues/1979) for the extra-records rows) ask for one issue per real rule once decoded.
