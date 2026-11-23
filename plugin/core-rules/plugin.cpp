@@ -21,6 +21,7 @@
 #include "item_rules.h"
 #include "log.h"
 #include "loot_rules.h"
+#include "merc_ai.h"
 #include "merc_rules.h"
 #include "socket_rules.h"
 #include "off_switch.h"
@@ -126,6 +127,12 @@ void InstallSummons(const D2RL::PluginContext* context, char* report, size_t siz
 	std::snprintf(report, size, "%d/%d installed: %s", installed, SummonAiCount(), rules);
 }
 
+void InstallMercAiPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallMercAi(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, MercAiCount(), rules);
+}
+
 void InstallArena(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	InstallArenaSpots(context, report, size);
 }
@@ -143,6 +150,7 @@ parts::Part g_parts[] = {
 	{"loot", true, InstallLoot},
 	{"sockets", true, InstallSockets},
 	{"summons", true, InstallSummons},
+	{"mercai", true, InstallMercAiPart, nullptr, MercAiUses},
 	{"bosses", true, InstallBossAura, BossAuraState, BossAuraUses},
 };
 
@@ -262,6 +270,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	SummonAiCounters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	MercAiCounters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;

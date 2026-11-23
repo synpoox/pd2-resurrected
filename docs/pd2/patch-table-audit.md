@@ -27,8 +27,8 @@ Status is one of four:
 | Status | Records | Units |
 |---|---|---|
 | ported | 128 | 73 |
-| deviation | 330 | 83 |
-| missing | 162 | 104 |
+| deviation | 338 | 84 |
+| missing | 154 | 103 |
 | not needed | 495 | 261 |
 | **total** | **1115** | **521** |
 
@@ -313,7 +313,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 8: D2Game `+0x1deb3`: `76` -> `eb`<br>D2Game `+0x1ded6`: `76` -> `eb`<br>D2Game `+0x1defb`: `76` -> `eb`<br>D2Game `+0x1e000`: `7d` -> `eb`<br>D2Game `+0x1e047`: `19` -> `19`<br>D2Game call `+0x1e05d` (to `0x1c8a0`) -> PD2 `0x10360fd0`<br>D2Game `+0x1e0eb`: `77` -> `eb`<br>D2Game `+0x1e11c`: `05` -> `00` | - | PD2's hireable think (+0x1dd40) rules | missing | [#1803](https://github.com/synpoox/pd2-resurrected/issues/1803) | D2R's hireable AI |
+| 8: D2Game `+0x1deb3`: `76` -> `eb`<br>D2Game `+0x1ded6`: `76` -> `eb`<br>D2Game `+0x1defb`: `76` -> `eb`<br>D2Game `+0x1e000`: `7d` -> `eb`<br>D2Game `+0x1e047`: `19` -> `19`<br>D2Game call `+0x1e05d` (to `0x1c8a0`) -> PD2 `0x10360fd0`<br>D2Game `+0x1e0eb`: `77` -> `eb`<br>D2Game `+0x1e11c`: `05` -> `00` | `+0x1dd40` | PD2's hireable think rules: follow moves, step aside and wander dropped (+0x1deb3, +0x1ded6, +0x1defb, +0x1e0eb, +0x1e11c), no search-skip roll (+0x1e000), Whirlwind and A4 AmpDmg before the attack (10360fd0) | deviation | plugin/core-rules/merc_ai.cpp ports +0x1e000 and 10360fd0; the rest is the deviations.md row 'Mercenary follow, aura restart and party Battle Orders' ([#1803](https://github.com/synpoox/pd2-resurrected/issues/1803)) | 0x5beac0 |
 
 ### Outer void level rules
 

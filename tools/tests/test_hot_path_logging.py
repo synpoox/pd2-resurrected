@@ -13,6 +13,8 @@ HOT = {
                                   "RefreshOpBase", "MakeRoom", "ResistCurse", "CurseGate", "ApplyUngated", "CurseApply",
                                   "ApplyDarkPact", "SetPhasing", "EquipStatCallback", "EquipAuraTick", "AddCharge",
                                   "MapItemMaker"],
+    # per mercenary think and attack (#1803)
+    "core-rules/merc_ai.cpp": ["MercThink", "MercAttack"],
     "core-rules/loot_rules.cpp": ["ApplyEthereal", "RollStaffMods"],
     "core-rules/skill_functions.cpp": ["AvoidWithParry", "SrvDoMultipleShot", "MeleeHit", "LeapHitOne", "QueueHitHook"],
     "core-rules/missile_functions.cpp": ["SrvHitSpawnReturn", "SrvHitBounce", "SrvDmgFirstHit", "SrvHitExplodeSpread",
