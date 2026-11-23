@@ -124,7 +124,7 @@ PD2's event 16 (`0x103469a0`), disassembled; constants from the DLL:
 - Divisor: 10 on a player; on a monster, 10 for a hireling (D2Common #11104: class 271, 338, 359, 560, 561), else 8,
   except a prime evil (monstats flag `0x80`, #10278): 30 when in PD2's boss sets (`0x10371290`, filled at run time),
   else `(100 - life %) * 10 + 70` (#11027). A non-hireling monster then adds `0xaf5f0(monster_playercount) / 50`
-  (D2Game's table, 0 for 1 player and +1 for each player after it, 2 less from 9). Other units: 8. Missile (event 6):
+  (D2Game's table, 0 for 1 player and +1.4 for each player after it up to 8, as #2025 patches it; 2 less from 9). Other units: 8. Missile (event 6):
   times 2 on levels 157, 159 and 166 (PD2 levels, not in the merged data), else times 1.5.
 - Blow = life / (divisor / (efficiency / 100 + effectiveness)); efficiency = `item_crushingblow_efficiency` + its
   per-hand sum; effectiveness 1, or 1 + calc4 / 100 when the unit's current skill (`0x1030dd00`) is Smite (97),
