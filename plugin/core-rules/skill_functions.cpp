@@ -5953,7 +5953,7 @@ bool g_killGetsBlock = false;   // set once the kill's argument patch is in: bef
 int32_t g_sacrificeState = -1;  // states.txt sacrifice_explosion (ours 269, PD2 223)
 thread_local Unit* t_lifeUnit = nullptr;
 thread_local int32_t t_lifeBefore = 0;
-std::atomic<uint32_t> g_sacrificeKills {0}, g_sacrificeMissileSkips {0};
+std::atomic<uint32_t> g_sacrificeKills {0}, g_sacrificeMissileSkips {0}, g_sacrificeSkillSkips {0};
 std::atomic<uint32_t> g_sacrificeBlasts {0};
 
 // PD2's 0x1037c530: value x percent / 100 in doubles, truncated, at most INT32_MAX
@@ -6094,6 +6094,11 @@ auto SacrificeKill(Game* game, Unit* victim, Unit* attacker, uint64_t block) noe
 	} else {
 		void* current = d2r::Engine<void* (*)(Unit*) noexcept>(CurrentSkill)(attacker);
 		if (current == nullptr || UnitSkillIdOf(current) != SkillSacrifice) {
+			if (pd2::HotSample(g_sacrificeSkillSkips)) {
+				plog::Info("sacrifice: kill of monster class %d by unit type %d skipped: current skill %d, skip %u",
+				           At<int32_t>(victim, UnitClassId), At<int32_t>(attacker, UnitType),
+				           current != nullptr ? UnitSkillIdOf(current) : -1, g_sacrificeSkillSkips.load());
+			}
 			return;
 		}
 	}
