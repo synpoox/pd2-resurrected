@@ -1,4 +1,4 @@
-"""Runes can't be sold (#1777): core-rules refuses any item of the itemtypes `rune` type, so every rune must carry it."""
+"""Runes can't be sold (#1777): core-rules refuses an item of the itemtypes `rune` type (#2012 widens it to PD2's list), so every rune must carry it."""
 import csv
 import re
 import unittest
@@ -24,7 +24,7 @@ class RuneSales(unittest.TestCase):
 
     def test_the_hook_looks_the_type_up_by_code(self):
         src = (ROOT / "plugin" / "core-rules" / "item_prices.cpp").read_text(encoding="utf-8")
-        self.assertIn("'r' | 'u' << 8 | 'n' << 16 | 'e' << 24", src)
+        self.assertIn("MakeFourCC('r', 'u', 'n', 'e')", src)
         self.assertIn("TableId::ItemTypes", src)
 
 

@@ -41,4 +41,11 @@ constexpr auto GamblePrice(int32_t playerLevel, int32_t mid, int32_t cost, int32
 	return ((base + levels) * ((l * 2 + 1) / 3 + 20)) / 15;
 }
 
+// PD2's vendor sell check (ProjectDiablo.dll 0x1037f760, after 1.13c's own flag and quest test): a vendor refuses an item of
+// a refused type (gem, rune, `rung`); else a stackable item unless it is a book, quiver, key, rejuvenation potion or throwing
+// type (`stackExempt`); else a non-stackable one listed by code, or a unique listed by code or type (`uniqueListed`).
+constexpr auto SellRefused(bool refusedType, bool stackable, bool stackExempt, bool listed, bool uniqueListed) noexcept -> bool {
+	return refusedType || (stackable ? !stackExempt : (listed || uniqueListed));
+}
+
 }  // namespace pd2::itemprice
