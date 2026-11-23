@@ -2,8 +2,8 @@
 //
 // Stock: PD2 0x103846d0 replaces 1.13c's gamble fill (D2Game +0xbe2a0) for NPC 147 in a map level whose event is Gheed.
 // Once per game (game +0x2628, the event's state, set to 2) it makes a store of its own (act index -1, so not the act's
-// store) holding: 1 in 200 Kadala's Heirloom (0x10388cd0, not ported: docs/deviations.md), then up to 5 random unique
-// items (below), item level 99, unidentified, and none of the plain stock. Here the stock goes in his trade store: D2R's
+// store) holding: 1 in 200 Kadala's Heirloom (0x10388cd0, below), then random unique items (below), 5 items in all at
+// most, item level 99, unidentified, and none of the plain stock. Here the stock goes in his trade store: D2R's
 // trade fill (0x53c9f0 in build 93847) is wrapped, and for the map's Gheed its plain stock is not made; each unique is
 // made through D2R's own store item maker (0x540ea0: makes, checks and places an item in the NPC's store), whose item
 // creation (0x43d530) is wrapped so that, during this call only, the drop request also names the unique row.
@@ -19,6 +19,7 @@
 #include "log.h"
 #include "map_events.h"
 #include "pd2_engine.h"
+#include "property_ids.h"
 #include "sig_hook.h"
 
 #include <D2RLPlugin/data_tables.h>
@@ -46,13 +47,13 @@ constexpr int32_t NpcAiRow = 32;     // monai Npc
 constexpr int32_t IdleFrames = 25;   // PD2 0x103a1910(game, unit, 0x19)
 constexpr int32_t ItemLevel = 99;
 constexpr int32_t QualityUnique = 7;
-constexpr int32_t MaxUniques = 5;    // PD2 stops once 5 are made
+constexpr int32_t MaxUniques = 5;    // PD2 stops once 5 are made (the Heirloom counts as one)
 constexpr int32_t MakeTries = 20;    // PD2's 0x14 item attempts
 constexpr int32_t PickTries = 10;    // rows drawn for one pick
 constexpr uint32_t ItemFlagIdentified = 0x10;
 
-// D2R's compiled uniqueitems record (build 93847: the loader's column table at 0x31f1d0)
-constexpr int UqCode = 0x28, UqFlags = 0x2c, UqRarity = 0x34, UqLvl = 0x38, UqLvlReq = 0x3a;
+// D2R's compiled uniqueitems record (build 93847: the loader's column table at 0x31f1d0; `index` is text at +0x02)
+constexpr int UqName = 0x02, UqNameSize = 0x1f, UqCode = 0x28, UqFlags = 0x2c, UqRarity = 0x34, UqLvl = 0x38, UqLvlReq = 0x3a;
 constexpr uint32_t UqSpawnable = 1u << 0, UqDisabled = 1u << 2;
 constexpr uint32_t JewelCode = 0x2077656a;  // 'jew '
 
@@ -116,7 +117,7 @@ constexpr int StoreStamp = 0x38;
 
 // The drop request 0x43d530 fills for ItemSpawn (d2r::rva Drop* offsets: +0x00 unit, +0x18 item level, +0xc0 flags)
 constexpr int ReqGame = 0x10, ReqItemLevel = 0x18, ReqRow = 0x20, ReqMode = 0x24, ReqOne = 0x38, ReqGameWord = 0x3a,
-              ReqQuality = 0x40, ReqUnique = 0x50, ReqA10 = 0x58, ReqA11 = 0x5c, ReqFlags = 0xc0, ReqSize = 0xc8;
+              ReqForce = 0x3c, ReqQuality = 0x40, ReqUnique = 0x50, ReqA10 = 0x58, ReqA11 = 0x5c, ReqFlags = 0xc0, ReqSize = 0xc8;
 constexpr int GameWord = 0x128;  // the game's u16 0x43d530 copies into the request
 
 using FillFn = void (*)(Game* game, Unit* player, Unit* npc) noexcept;
@@ -137,6 +138,7 @@ NowFn g_now = nullptr;
 FreeFn g_free = nullptr;
 PriceFn g_price = nullptr;
 thread_local int32_t g_forceUnique = -1;  // the unique row 0x43d530 makes, only during MakeUnique
+thread_local bool g_forceExact = false;    // the Heirloom: that row as a loaded item's, with no unique roll
 std::atomic<uint32_t> g_stocks {0}, g_uniques {0}, g_idles {0};
 
 // PD2 rolls with the CRT's rand() (map_events.cpp seeds each thread the same way)
@@ -177,9 +179,17 @@ auto CreateItem(Unit* unit, int32_t row, Game* game, int32_t mode, int32_t quali
 	*reinterpret_cast<uint16_t*>(req + ReqOne) = 1;
 	*reinterpret_cast<uint16_t*>(req + ReqGameWord) = At<uint16_t>(game, GameWord);
 	*reinterpret_cast<int32_t*>(req + ReqQuality) = quality;
-	*reinterpret_cast<int32_t*>(req + ReqUnique) = g_forceUnique + 1;
+	*reinterpret_cast<int32_t*>(req + ReqUnique) = g_forceExact ? g_forceUnique : g_forceUnique + 1;
 	*reinterpret_cast<int32_t*>(req + ReqA10) = a10;
 	*reinterpret_cast<int32_t*>(req + ReqA11) = a11;
+	if (g_forceExact) {
+		// PD2's request +0x2c (D2R +0x3c): ItemSpawn takes the row as is (0x443910) and, the row's code not being the
+		// base's, puts none of its properties on. That path seeds the item from +0x58 and +0x5c, which PD2 leaves 0
+		// (so its rolls never vary); here they are random (docs/deviations.md)
+		*reinterpret_cast<int32_t*>(req + ReqForce) = 1;
+		*reinterpret_cast<int32_t*>(req + ReqA10) = (Rand() << 16) ^ Rand();
+		*reinterpret_cast<int32_t*>(req + ReqA11) = (Rand() << 16) ^ Rand();
+	}
 	*reinterpret_cast<uint64_t*>(req + ReqFlags) = (f6 != 0 ? 8u : 0u) | (f7 != 0 ? 2u : 0u);
 	Unit* item = d2r::Engine<Unit* (*)(Game*, void*, int32_t) noexcept>(d2r::sig::ItemSpawn)(game, req, a9);
 	if (item == nullptr || d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::ItemQuality)(item) != QualityUnique) {
@@ -217,6 +227,69 @@ auto MakeUnique(Game* game, Unit* npc, int32_t row, uint32_t code) noexcept -> U
 	g_forceUnique = -1;
 	if (item != nullptr) {
 		d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag)(item, ItemFlagIdentified, 0);
+	}
+	return item;
+}
+
+// Kadala's Heirloom, PD2 0x10388cd0: a ring (`rin `), item level 99, quality 7, unique file index 352 (PD2's
+// uniqueitems.bin row 352 is Nethercrow, the row whose name string reads "Kadala's Heirloom"; it has no code, level or
+// properties), then these property sets through 1.13c #10914 (D2R's ApplyCubeMod, the same mod type 7). PD2's
+// properties.bin ids by code: levelreq 264, cheap 255, gold% 58, mag% 59, then one row of six (rand() % 6): fireskill
+// 103, coldskill 274, ltngskill 275, poisskill 276, magskill 277, dmg% 29, res-fire 31, res-cold 35, res-ltng 33,
+// res-pois 39, red-mag 6, red-dmg 3, res-all 41. PD2 writes the negative ranges high bound first (-10, -20); the roll
+// (1.13c 0x6fd964d0) swaps them, so they are written low first here. Resolved by code in our properties.txt.
+struct HeirloomSet {
+	const char* code;
+	int32_t min, max;
+};
+constexpr HeirloomSet HeirloomFixed[] = {{"levelreq", 75, 75}, {"cheap", 5, 10}, {"gold%", 50, 75}, {"mag%", 20, 30}};
+constexpr HeirloomSet HeirloomRolls[6][3] = {
+	{{"fireskill", 1, 1}, {"res-fire", 30, 40}, {"res-cold", -20, -10}},
+	{{"coldskill", 1, 1}, {"res-cold", 30, 40}, {"res-fire", -20, -10}},
+	{{"ltngskill", 1, 1}, {"res-ltng", 30, 40}, {"res-pois", -20, -10}},
+	{{"poisskill", 1, 1}, {"res-pois", 30, 40}, {"res-ltng", -20, -10}},
+	{{"magskill", 1, 1}, {"red-mag", 6, 10}, {"res-all", -5, -3}},
+	{{"dmg%", 30, 30}, {"red-dmg", 6, 10}, {"res-all", -5, -3}},
+};
+constexpr int32_t HeirloomOdds = 200;
+constexpr uint32_t RingCode = 0x206e6972;  // 'rin '
+constexpr char HeirloomRow[] = "Nethercrow";
+
+// Its row in this bank's uniqueitems, by name; -1 when it is missing
+auto FindHeirloomRow(const D2RL::DataTables::TableView& view) noexcept -> int32_t {
+	for (uint32_t i = 0; i < view.rowCount; ++i) {
+		const auto* rec = static_cast<const uint8_t*>(view.rows) + static_cast<size_t>(i) * view.rowSize;
+		if (std::strncmp(reinterpret_cast<const char*>(rec + UqName), HeirloomRow, UqNameSize) == 0) {
+			return static_cast<int32_t>(i);
+		}
+	}
+	return -1;
+}
+
+// The ring through the same store item maker as the uniques, its row taken as a loaded item's (no unique properties,
+// as PD2's), then PD2's sets; unidentified, as PD2's fill leaves it (1.13c #10977 clears 0x10). Null when a property
+// code or the row is missing, or the maker fails: then there is no Heirloom.
+auto MakeHeirloom(Game* game, Unit* npc, const D2RL::DataTables::TableView& view) noexcept -> Unit* {
+	const HeirloomSet* roll = HeirloomRolls[Rand() % 6];
+	int32_t ids[std::size(HeirloomFixed) + 3] {};
+	for (size_t i = 0; i < std::size(ids); ++i) {
+		ids[i] = propids::Resolve(i < std::size(HeirloomFixed) ? HeirloomFixed[i].code : roll[i - std::size(HeirloomFixed)].code);
+		if (ids[i] < 0) {
+			return nullptr;
+		}
+	}
+	const int32_t row = FindHeirloomRow(view);
+	if (row < 0) {
+		plog::Warn("gheed store: no uniqueitems row %s, no Kadala's Heirloom", HeirloomRow);
+		return nullptr;
+	}
+	g_forceExact = true;
+	Unit* item = MakeUnique(game, npc, row, RingCode);
+	g_forceExact = false;
+	for (size_t i = 0; item != nullptr && i < std::size(ids); ++i) {
+		const HeirloomSet& set = i < std::size(HeirloomFixed) ? HeirloomFixed[i] : roll[i - std::size(HeirloomFixed)];
+		int32_t property[4] = {ids[i], 0, set.min, set.max};
+		d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(d2r::sig::ApplyCubeMod)(item, property);
 	}
 	return item;
 }
@@ -357,6 +430,11 @@ auto BuildStock(Game* game, Unit* npc) noexcept -> bool {
 	SetMapEventSpawns(game, StockBuilt);
 	char rows[MaxUniques * 12] = "";
 	int32_t made = 0;
+	// PD2 rolls the Heirloom first; placed, it is one of the 5 (0x103846d0 starts its count at 1)
+	if (Rand() % HeirloomOdds == 0 && MakeHeirloom(game, npc, view) != nullptr) {
+		made = 1;
+		std::snprintf(rows, sizeof(rows), "heirloom");
+	}
 	int32_t row = Pick(view, tables, bank);
 	for (int32_t tries = MakeTries; row >= 0 && tries > 0 && made < MaxUniques; --tries) {
 		const auto* rec = static_cast<const uint8_t*>(view.rows) + static_cast<size_t>(row) * view.rowSize;
@@ -423,7 +501,7 @@ auto InstallGheedStore(const D2RL::PluginContext* context, char* report, size_t 
 	const bool found = d2r::sig::UnitRoom.state == sigscan::State::Ok && d2r::sig::RoomLevelId.state == sigscan::State::Ok &&
 	                   d2r::sig::ItemSpawn.state == sigscan::State::Ok && d2r::sig::SetItemFlag.state == sigscan::State::Ok &&
 	                   d2r::sig::ItemQuality.state == sigscan::State::Ok && d2r::sig::AiIdle.state == sigscan::State::Ok &&
-		                   d2r::sig::UnitStat.state == sigscan::State::Ok &&
+		                   d2r::sig::UnitStat.state == sigscan::State::Ok && d2r::sig::ApplyCubeMod.state == sigscan::State::Ok &&
 	                   sigscan::ScanUnique(context->exeBase, MakerPattern, 0, &maker) == 1 &&
 	                   sigscan::ScanUnique(context->exeBase, NpcThinkPattern, 0, &think) == 1 &&
 	                   sigscan::ScanUnique(context->exeBase, FillPattern, 0, &fill) == 1;
