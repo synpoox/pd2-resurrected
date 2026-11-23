@@ -1959,8 +1959,60 @@ static_assert(Pd2StunLength(100, 0, 1, true) == 100);              // any other 
 using StunFn = void (*)(Unit* attacker, Unit* target, int32_t frames) noexcept;
 StunFn g_stunApply = nullptr;
 std::atomic<uint32_t> g_stunChanged {0};
+std::atomic<uint32_t> g_stunKept {0};
+
+// --- Stun refresh between players (#1947) ---
+// PD2's stun apply, on a target already in state 21 (stunned; PD2 raw 21 = our 21), resolves 0x103749f0(attacker, 1)
+// and skips the refresh (no new end frame, no event) when that is a player and the target is a player; D2R's 0x451c30
+// refreshes on any attacker. 0x103749f0: a player is itself; a monster gives its AI owner (1.13c monster data +0x28
+// -> +0x30), a missile with flag 0x400 its owner (+0x94), and a monster found so gets its own AI owner in turn; no
+// owner: the unit itself. D2R's pieces: the AI owner getter 0x4a53c0 (from skill_functions' Blade Sentinel install)
+// and MissileOwner 0x490300 (no SDK service resolves a unit's owner). A first stun is untouched. Server side, so it
+// holds for joined clients.
+constexpr int StunnedState = 21;
+constexpr int MonsterDataAi = 0x30;  // 0x4a53c0 asserts on a monster without its AI block: checked before the call
+auto StunOwnerStep(Unit* unit, AiOwnerFn aiOwner) noexcept -> Unit* {
+	switch (At<int32_t>(unit, d2r::rva::UnitType)) {
+	case 1: {
+		const auto* data = At<const uint8_t*>(unit, d2r::rva::UnitData);
+		return data != nullptr && At<void*>(data, MonsterDataAi) != nullptr ? aiOwner(unit) : nullptr;
+	}
+	case 3:
+		return d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(d2r::sig::MissileOwner)(At<Game*>(unit, d2r::rva::UnitGame), unit);
+	default:
+		return nullptr;
+	}
+}
+auto StunOwner(Unit* unit, AiOwnerFn aiOwner) noexcept -> Unit* {
+	if (At<int32_t>(unit, d2r::rva::UnitType) == 0) {
+		return unit;
+	}
+	Unit* owner = StunOwnerStep(unit, aiOwner);
+	if (owner == nullptr) {
+		return unit;
+	}
+	Unit* next = At<int32_t>(owner, d2r::rva::UnitType) == 1 ? StunOwnerStep(owner, aiOwner) : nullptr;
+	return next != nullptr ? next : owner;
+}
+// True when PD2 keeps the target's current stun; false (D2R's refresh) when a piece is missing
+auto KeepsStun(Unit* attacker, Unit* target) noexcept -> bool {
+	const AiOwnerFn aiOwner = AiOwnerGetter();
+	if (aiOwner == nullptr || d2r::sig::MissileOwner.state != sigscan::State::Ok ||
+	    d2r::sig::UnitStateList.state != sigscan::State::Ok || At<int32_t>(target, d2r::rva::UnitType) != 0 ||
+	    d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(d2r::sig::UnitStateList)(target, StunnedState) == nullptr) {
+		return false;
+	}
+	const Unit* owner = StunOwner(attacker, aiOwner);
+	return owner != nullptr && At<int32_t>(owner, d2r::rva::UnitType) == 0;
+}
 
 void StunLength(Unit* attacker, Unit* target, int32_t frames) noexcept {
+	if (attacker != nullptr && target != nullptr && KeepsStun(attacker, target)) {
+		if (pd2::HotSample(g_stunKept)) {
+			plog::Info("stun: kept a player's stun (player-owned attacker)");
+		}
+		return;
+	}
 	void* skill = attacker != nullptr && target != nullptr ? d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::CurrentSkill)(attacker)
 	                                                         : nullptr;
 	if (skill != nullptr) {

@@ -5985,3 +5985,7 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              g_cyclerStarts.load(), g_frenzyHits.load(), g_allyBuffs.load(), g_sentinelHits.load(),
 	              g_sentinelUnits.load(), missiles);
 }
+
+auto AiOwnerGetter() noexcept -> AiOwnerFn {
+	return g_petOwner;
+}
