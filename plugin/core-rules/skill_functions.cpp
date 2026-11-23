@@ -3550,6 +3550,63 @@ auto BloodGolemHeal(Game* game, Unit* golem, Unit* target, int32_t, int32_t calc
 	return 1;
 }
 
+// --- Monster curse list (#2003) --------------------------------------------------------------------------------------
+// PD2's srvdo 112 (ProjectDiablo.dll 0x103b02d0, PD2.gpr; 0x103b0340 installed; Oblivion Knights and the void knights)
+// picks unit rand & 3 from {MonAmplifyDamage, MonWeaken, MonLowerRes, MonDecrepify} (PD2 raw 424, 420, 585, 427 at
+// 0x10450600) and fills 1.13c's curse context from that row: auralencalc frames, aurarangecalc radius, auratargetstate,
+// and per pick fixed stats valued by aurastatcalc1-5 at the cast level (decrepify also sets the context's +0xc flag),
+// then runs the stock area curse callback (1.13c D2Game +0x50250). D2R's srvdo 112 (93847 0x5794b0) picks rand % 5
+// from the player curses at 0x1d3e798 (66, 72, 82, 87, 91) and fills fixed stat values per pick before the same area
+// call (0x434390, callback 0x55a7e0, context = CurseParams). Its fill is per index, so a list swap alone would put
+// Life Tap's fill on MonLowerRes: core-rules redirects the area call and refills the context from PD2's pick. Ids are
+// the merged rows of PD2's names (tools/tests/test_monster_curse_list.py): D2R's compiled skills row holds no name
+// (its `skill` column is a key field, 0x302380's field table), so there is no name to look up at install.
+constexpr const char* MonCurseAreaCall =
+    "48 8d 45 a7 44 8b ce 48 89 44 24 28 4d 8b c7 48 8d 05 ?? ?? ?? ?? ba 03 00 00 00 49 8b ce 48 89 44 24 20 e8 ?? ?? ?? ?? "
+    "eb 02 33 c0";
+constexpr uint32_t MonCurseAreaCallAt = 35;
+constexpr int32_t MonCurses[] = {494, 490, 654, 497};  // MonAmplifyDamage, MonWeaken, MonLowerRes, MonDecrepify
+constexpr int MonCurseDecrepify = 3;
+// PD2's stat for each aurastatcalc, as the row's aurastat slot holding that stat: lower resist puts calc2 on coldresist
+// (aurastat3) and calc3 on lightresist (aurastat2); decrepify calc2 on item_fastercastrate (3), calc3 on attackrate (2)
+constexpr int MonCurseStatSlot[4][5] = {{0, -1, -1, -1, -1}, {0, -1, -1, -1, -1}, {0, 2, 1, 3, -1}, {0, 2, 1, 3, 4}};
+using MonCurseAreaFn = int64_t (*)(Game*, int32_t, Unit*, int32_t, void*, d2r::CurseParams*) noexcept;
+MonCurseAreaFn g_monCurseArea = nullptr;
+std::atomic<uint32_t> g_monCurseCasts {0};
+
+// D2R's pick and fill ran first (its row checks pass: player curses have a target state); the cast is redone here.
+auto MonCurseArea(Game* game, int32_t mode, Unit* unit, int32_t range, void* callback, d2r::CurseParams* c) noexcept
+    -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr || c == nullptr) {
+		return g_monCurseArea(game, mode, unit, range, callback, c);
+	}
+	const int pick = static_cast<int>(d2r::RandomBelow(d2r::api.unitSeed(unit), 4));
+	const int32_t skillId = MonCurses[pick];
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), skillId);
+	if (skill == nullptr || At<int16_t>(skill, SkAuraTargetState) < 0) {
+		return 0;  // PD2's exit for a missing row or state: no cast
+	}
+	const int32_t level = c->level;
+	c->skill = skillId;
+	c->pad10[1] = pick == MonCurseDecrepify ? 1 : 0;
+	c->frames = d2r::EvalCalc(game, unit, skill, SkAuraLenCalc, skillId, level);
+	for (int i = 0; i < 6; ++i) {
+		const int slot = i < 5 ? MonCurseStatSlot[pick][i] : -1;
+		const int16_t stat = slot < 0 ? -1 : At<int16_t>(skill, SkAuraStat1 + 2 * slot);
+		c->stats[i] = stat < 0 ? -1 : stat;
+		c->values[i] = stat < 0 ? 0 : d2r::EvalCalc(game, unit, skill, SkAuraStatCalc1 + 4 * i, skillId, level);
+	}
+	c->state = At<int16_t>(skill, SkAuraTargetState);
+	std::memset(reinterpret_cast<uint8_t*>(c) + sizeof(d2r::CurseParams), 0, 0x10);  // Life Tap's events, 0 elsewhere
+	const int32_t radius = d2r::EvalCalc(game, unit, skill, SkAuraRangeCalc, skillId, level);
+	if (const uint32_t n = ++g_monCurseCasts; pd2::HotSample(n)) {
+		plog::Info("monster curse: skill %d level %d, state %d, %d frames, radius %d, stat %d = %d (%u so far)", skillId,
+		           level, c->state, c->frames, radius, c->stats[0], c->values[0], n);
+	}
+	return g_monCurseArea(game, mode, unit, radius, callback, c);
+}
+
 // --- Mind Blast's stacks and damage only (#1946) ---------------------------------------------------------------------
 // PD2's srvdo 51 (ProjectDiablo.dll 0x103af800) and cltdo 8 (0x103aaf10). The server reads `had`, aurastat1 on the
 // caster's aurastate list (a new list starts at 0), raises it by 1 while under calc2, sets the list's life to
@@ -5999,6 +6056,16 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; mind blast stacks%s, no convert%s, mask%s",
 		              mindBlast ? "" : " FAILED", noConvert ? "" : " FAILED", mask ? "" : " FAILED");
+	}
+	const bool monCurse = d2r::api.unitSeed != nullptr && d2r::api.getSkillRecord != nullptr &&
+	                      RedirectCall(context, MonCurseAreaCall, MonCurseAreaCallAt, reinterpret_cast<uint64_t>(&MonCurseArea),
+	                                   reinterpret_cast<uint64_t*>(&g_monCurseArea));
+	plog::Info("monster curse: pd2 list %s (skills %d %d %d %d)", monCurse ? "on" : "FAILED (srvdo 112 area call signature or unit seed)",
+	           MonCurses[0], MonCurses[1], MonCurses[2], MonCurses[3]);
+	count({monCurse});
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; monster curse list%s", monCurse ? "" : " FAILED");
 	}
 	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
 	                                             sizeof(d2r::rva::BusyModeGateEntry), BusyModeGate, &g_gateOriginal);
