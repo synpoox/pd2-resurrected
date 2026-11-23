@@ -29,8 +29,8 @@ class RuleRegistry(unittest.TestCase):
                 self.assertNotIn(name + "(", text, f"{shared.name} still names {name}")
 
     def test_cmake_lists_skill_sources_only_by_glob(self):
-        lines = [l for l in (SKILL.parents[1] / "CMakeLists.txt").read_text(encoding="utf-8").splitlines()
-                 if "core-rules/skill/" in l and not l.lstrip().startswith("#")]
+        lines = [line for line in (SKILL.parents[1] / "CMakeLists.txt").read_text(encoding="utf-8").splitlines()
+                 if "core-rules/skill/" in line and not line.lstrip().startswith("#")]
         self.assertEqual(len(lines), 1, lines)
         self.assertIn("GLOB", lines[0])
 
