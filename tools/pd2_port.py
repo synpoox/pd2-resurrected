@@ -161,6 +161,7 @@ PLAIN_STRINGS = {k: f"{k}Map" for k in [
 # item type. Unique maps (t5m) count as tier 3, as PD2's wiki says (zone level 89, like tier 3).
 _TIER = {f"t{t}m": {"spelldescstr": "MapTierValue", "spelldesccalc": str(min(t, 3))} for t in (1, 2, 3, 5)}
 FIXES = {"itemstatcost": {("descstr2", k): {"descstr2": v} for k, v in PLAIN_STRINGS.items()},
+         "skills": {("skilldesc", "blade dance"): {"skilldesc": "Blade Dance"}, ("skilldesc", "self heal"): {"skilldesc": ""}},
          "magicsuffix": {("itype4", "amu"): {"itype4": "amul"}},
          "magicprefix": {("transformcolor", "dblue"): {"transformcolor": "dblu"},
                          ("mod1code", "map-mon-extra-mag"): {"mod1code": "", "mod1min": "", "mod1max": ""}},
