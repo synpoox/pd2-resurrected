@@ -64,7 +64,6 @@ Filed by this audit, each a sub-issue of [#1817](https://github.com/synpoox/pd2-
 - [#1852](https://github.com/synpoox/pd2-resurrected/issues/1852): blank-rarity unique rows weigh 0 (Embersworn drops for us). Data fix: Embersworn `spawnable` 1 to 0.
 
 Closed by triage as close enough (now not needed):
-- [#1836](https://github.com/synpoox/pd2-resurrected/issues/1836): Talic's Fire Pierce stacks. Close enough: the state comes only from the cut Uber Ancients' aura.
 - [#1840](https://github.com/synpoox/pd2-resurrected/issues/1840): frame advance and frame-event scheduler. Close enough: the 0x90 cap and event 4 are vanilla's; D2R `0x491240` runs the same loop.
 - [#1841](https://github.com/synpoox/pd2-resurrected/issues/1841): monster 991's leap hold. Close enough: monster 991 is `uberancientbarb3`, cut content.
 - [#1845](https://github.com/synpoox/pd2-resurrected/issues/1845): 5 or 20 stat and skill points per click. Close enough: D2R already has bulk stat assignment; only the 5/20 steps differ.
@@ -429,11 +428,11 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 |---|---|---|---|---|---|
 | 3: D2Game `+0x4d879`: `14` -> `08`<br>D2Game `+0x50ad1`: `0f` -> `08`<br>D2Game call `+0x51529` (to `0xa5da` D2Common#10704) -> PD2 `0x102fb2c0` | `+0x4d710`, `+0x509e0`, `+0x51340` | Valkyrie first think 20 to 8 frames (+0x4d879), Revive pet 15 to 8 (+0x50ad1), revive state 96 and path +0x44 capped at 2 (102fb2c0) | missing | [#1835](https://github.com/synpoox/pd2-resurrected/issues/1835); no port found | D2R's srvdo 16 and 58 |
 
-### Talic's Fire Pierce stacks
+### Fend, Zeal and Fury splash radius
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 1: D2Game call `+0x4dc46` (to `0xded30`) -> PD2 `0x10303a60` | - | Fend, Zeal and Fury (srvdo 13) hits add 20 passive_phys_pierce (478) to the attacker's state 224 (talicfirepierce) stat list before the melee hit (+0xded30 at +0x4dc46 to 10303a60) | not needed | close enough ([#1836](https://github.com/synpoox/pd2-resurrected/issues/1836) triage): state 224 comes only from the aura on colossal1, the cut Uber Ancients | D2R srvdo 13 0x5568e0 |
+| 1: D2Game call `+0x4dc46` (to `0xded30`) -> PD2 `0x10303a60` | - | Fend, Zeal and Fury (srvdo 13) hits add 20 inc_splash_radius (PD2 raw stat 478; merged 531) to the attacker's temp_skill_buff (PD2 raw state 224; merged 270) stat list, when it has one, then run the melee hit (`0x10303a50` in PD2.gpr). The list is permanent: PD2's srvst 37 (`0x103b6310`) makes it from aurastate and adds aurastatcalc1 (1) each start, and only srvst 78 / srvdo 163 set it | ported | [#1936](https://github.com/synpoox/pd2-resurrected/issues/1936): `SrvDoMeleeSplash` wraps D2R's srvdo 13 slot, +20 for the hit only; the stacking over hits and attacks is held for the owner ([deviations](../deviations.md)). [#1836](https://github.com/synpoox/pd2-resurrected/issues/1836) misnamed the ids from the merged tables | D2R srvdo 13 0x5568e0 |
 
 ### Life drain cap
 

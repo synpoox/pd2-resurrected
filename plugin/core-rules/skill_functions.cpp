@@ -4152,6 +4152,53 @@ auto SrvDoCharge(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	return VanillaSlot<SrvDoFn>(SrvDoTable, d2r::rva::SrvDoCharge)(game, unit, skillId, level);
 }
 
+// Fend, Zeal and Fury (srvdo 13, #1936). PD2 (ProjectDiablo.dll 0x10303a50 in PD2.gpr, 0x10303a60 installed, over
+// 1.13c D2Game's melee hit call +0x4dc46 to +0xded30) adds 20 inc_splash_radius to the attacker's temp_skill_buff list,
+// when it has one, then runs the hit, so this hit already splashes 1 wider. PD2's list is permanent (its srvst 37
+// 0x103b6310 makes it from aurastate and adds aurastatcalc1 on each start) and nothing seen resets it, so the 20 would
+// pile up over hits and attacks: that stacking is held for the owner (#1936); this gives +20 for the hit only. The
+// slot's own function (D2R's srvdo 13) is kept and called; no SDK service runs a skill's do function.
+constexpr int32_t SrvDoMeleeSplashSlot = 13;
+constexpr int32_t MeleeSplashRadius = 20;
+SrvDoFn g_srvDo13 = nullptr;
+std::atomic<uint32_t> g_meleeSplashHits {0};
+
+auto SrvDoMeleeSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const auto* tables = game != nullptr ? d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(DataTables)(d2r::DataFlag(game))
+	                                     : nullptr;
+	if (unit == nullptr || tables == nullptr || At<uint64_t>(tables, TablesStateCount) <= TempSkillBuff) {
+		return g_srvDo13(game, unit, skillId, level);  // not the merged data: the hit goes on without the stat
+	}
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const auto stateList = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList);
+	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);
+	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
+	void* list = stateList(unit, TempSkillBuff);
+	const bool made = list == nullptr;
+	if (made) {
+		TimedStatList(dataFlag, unit, unit, skillId, level, ChargeSplashFrames, TempSkillBuff,
+		              {{IncSplashRadius, MeleeSplashRadius}});
+		list = stateList(unit, TempSkillBuff);
+	} else {
+		setStat(dataFlag, list, IncSplashRadius, listStat(dataFlag, list, IncSplashRadius, 0) + MeleeSplashRadius, 0);
+	}
+	const int32_t during = list != nullptr ? listStat(dataFlag, list, IncSplashRadius, 0) : 0;
+	const int64_t ran = g_srvDo13(game, unit, skillId, level);
+	if (list != nullptr && stateList(unit, TempSkillBuff) == list) {  // the hit may have replaced or dropped it
+		if (made) {
+			DropStateList(dataFlag, unit, TempSkillBuff);
+		} else {
+			setStat(dataFlag, list, IncSplashRadius, listStat(dataFlag, list, IncSplashRadius, 0) - MeleeSplashRadius, 0);
+		}
+	}
+	if (pd2::HotSample(g_meleeSplashHits)) {
+		plog::Info("melee splash: skill %d level %d hit: inc_splash_radius %d during the hit (list %s), hit %u", skillId,
+		           level, during, made ? "made" : "kept", g_meleeSplashHits.load());
+	}
+	return ran;
+}
+
 // --- Revive's aura event (PD2 auraeventfunc 32, ProjectDiablo.dll 0x10347370) ---------------------------------------
 // Revive's row has auraevent1 domeleedamage: each melee hit of a revived monster runs proc_SplashDamage's do function
 // (PD2 358, merged 430) at level 1 from it, called directly as PD2 does. PD2's splash finds the struck unit on the
@@ -5702,6 +5749,18 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		                                              reinterpret_cast<uint64_t>(static_cast<SrvDoFn>(SrvDoAllyBuff)));
 	}
 	count({allyBuff});
+	// srvdo 13 (Fend, Zeal, Fury): the same table by signature, the slot's current function kept and called
+	bool meleeSplash = false;
+	if (d2r::sig::SrvDoTable.state == sigscan::State::Ok) {
+		const uint64_t slotRva = d2r::sig::SrvDoTable.rva + static_cast<uint64_t>(SrvDoMeleeSplashSlot) * 8;
+		uint64_t own = 0;
+		std::memcpy(&own, reinterpret_cast<const void*>(context->exeBase + slotRva), sizeof(own));
+		g_srvDo13 = reinterpret_cast<SrvDoFn>(own);
+		meleeSplash = own != 0 && context->PatchWriteU64(slotRva, &own, sizeof(own),
+		                                                 reinterpret_cast<uint64_t>(static_cast<SrvDoFn>(SrvDoMeleeSplash)));
+	}
+	plog::Info("fend/zeal/fury: PD2 +20 splash radius per hit %s", meleeSplash ? "on" : "FAILED (table signature or slot)");
+	count({meleeSplash});
 	used = std::strlen(report);
 	if (used < reportSize) {
 		const int n = std::snprintf(report + used, reportSize - used, "; srvdofunc %d ally buff%s", AllyBuffSlot,
