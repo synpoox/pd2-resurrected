@@ -46,7 +46,8 @@
 //   PlrMsg's imbue panel handler (93847: 0x4fd750 in 0x4fc230, panel mode 1; 0x4fc230 is called from the packet
 //   handlers 0x4ae280 and 0x4b6050, whose table entries 0x1d2a900 and 0x1d29fa8 point at them in the live image).
 //   No PluginSDK service runs inside the imbue (or keeps its personalized name), so that one call is redirected by
-//   signature; D2R's handler then personalizes and places the new item as it does the rare. PD2 rolls the C
+//   signature; D2R's handler then personalizes and places the new item as it does the rare. A failed unique roll still
+//   makes a rare `7cr2` (0x442d60 case 7): that item is freed and the stock request runs again. PD2 rolls the C
 //   runtime's rand(), not a game or item seed: a plugin-wide D2 seed started from the CPU clock stands in.
 //   `core-rules armageddon` (dev) swaps a Phase Blade in the inventory for the same unique through the SDK.
 // Flying monsters' loot needs no port: PD2 patches nothing in 1.13c's drop placement, which, as D2R's (0x444680),
@@ -59,6 +60,7 @@
 #include "hot_log.h"
 #include "sig.h"
 
+#include <D2RLPlugin/data_tables.h>
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/mutations.h>
@@ -512,16 +514,22 @@ constexpr int32_t QualityUnique = 7;
 // unique row + 1 (0x444680 passes it so; D2R's unique roll 0x443910 takes that row first, spawnable or not)
 constexpr int DropItemRow = 0x20, DropQuality = 0x40, DropQualityRow = 0x50;
 constexpr size_t DropRequestSize = 200;
-// DataTables (0x300a90): the uniqueitems records (0x15c bytes, base code at +0x28) and their count, as 0x443910 reads them
-constexpr int TablesUniques = 0x13c8, TablesUniqueCount = 0x13d0, UniqueRecordSize = 0x15c, UniqueCode = 0x28;
-// The imbue's ItemSpawn call (93847: 0x4fd750, `E8 rel32` at +15): the request at rbp+0x220, then PlrMsg's line 0x1908
+// A uniqueitems record's base code (the SDK gives the rows and their size; no SDK field names it)
+constexpr uint32_t UniqueCode = 0x28;
+// The imbue frees the old item (93847: 0x43ec10 (game, item), `E8 rel32` at +10), then calls ItemSpawn (0x43cd50, at +30):
+// the request at rbp+0x220, then PlrMsg's line 0x1908
 constexpr const char* ImbueSpawnPattern =
+	"48 8b 54 24 60 48 8b 4c 24 58 e8 ?? ?? ?? ?? "
 	"48 8b 4c 24 58 48 8d 95 20 02 00 00 45 33 c0 e8 ?? ?? ?? ?? 48 89 44 24 60 48 85 c0 75 ?? 48 8d 4c 24 ?? 88 44 24 "
 	"?? e8 ?? ?? ?? ?? 84 c0 74 01 cc 48 8b 44 24 60 41 b8 08 19 00 00";
-constexpr uint32_t ImbueSpawnCallAt = 15;
+constexpr uint32_t ImbueFreeCallAt = 10, ImbueSpawnCallAt = 30;
 
 using ItemSpawnFn = Unit* (*)(Game* game, uint8_t* drop, int32_t flag) noexcept;
+using ItemFreeFn = void (*)(Game* game, Unit* item) noexcept;
 ItemSpawnFn g_imbueSpawnOriginal = nullptr;
+ItemFreeFn g_itemFree = nullptr;
+bool g_armageddonInstalled = false;
+const char* g_armageddonOff = "the call redirect (MutationService)";  // the install report's reason when it is off
 uint32_t g_imbueSeed[2] = {};  // PD2's rand() stand-in (top of file); the game thread alone rolls it
 std::atomic<uint32_t> g_imbueRolls {0};
 std::atomic<uint32_t> g_armageddons {0};
@@ -529,6 +537,7 @@ const D2RL::PluginContext* g_context = nullptr;
 const D2RL::ItemService* g_items = nullptr;
 const D2RL::InventoryService* g_inventory = nullptr;
 const D2RL::ThreadService* g_threads = nullptr;
+const D2RL::DataTableService* g_tables = nullptr;
 
 struct ArmageddonRows {
 	int32_t phaseBlade = -1;  // items rows of 7cr and 7cr2
@@ -536,20 +545,26 @@ struct ArmageddonRows {
 	int32_t unique = -1;      // the one uniqueitems row on 7cr2
 };
 
-// The bank's rows, read from its own tables (every bank: one that lacks a row, or has two uniques on 7cr2, makes none)
+// The bank's rows, read from its own tables through the SDK (game thread; every bank: one that lacks a row, or has two
+// uniques on 7cr2, makes none)
 auto FindArmageddon(uint32_t dataFlag, ArmageddonRows* rows) noexcept -> bool {
-	const auto rowByCode = d2r::Engine<int32_t (*)(uint8_t, uint32_t) noexcept>(d2r::sig::ItemRowByCode);
-	rows->phaseBlade = rowByCode(static_cast<uint8_t>(dataFlag), CodePhaseBlade);
-	rows->blade = rowByCode(static_cast<uint8_t>(dataFlag), CodeArmageddon);
+	namespace dt = D2RL::DataTables;
+	const auto bank = static_cast<dt::Bank>(dataFlag);
+	dt::RowView phase {.structSize = dt::RowViewSize};
+	dt::RowView blade {.structSize = dt::RowViewSize};
+	dt::TableView uniques {.structSize = dt::TableViewSize};
 	rows->unique = -1;
-	const auto* tables = d2r::Engine<const uint8_t* (*)(uint32_t) noexcept>(d2r::sig::DataTables)(dataFlag);
-	if (tables == nullptr || rows->phaseBlade < 0 || rows->blade < 0) {
+	if (g_tables->findRowByCode(g_context, bank, dt::TableId::Items, CodePhaseBlade, &phase) != dt::Result::Success ||
+	    g_tables->findRowByCode(g_context, bank, dt::TableId::Items, CodeArmageddon, &blade) != dt::Result::Success ||
+	    g_tables->getTable(g_context, bank, dt::TableId::UniqueItems, &uniques) != dt::Result::Success ||
+	    uniques.rows == nullptr || uniques.rowSize < UniqueCode + sizeof(uint32_t)) {
 		return false;
 	}
-	const auto* uniques = d2r::At<const uint8_t*>(tables, TablesUniques);
-	const uint64_t count = uniques != nullptr ? d2r::At<uint64_t>(tables, TablesUniqueCount) : 0;
-	for (uint64_t i = 0; i < count; ++i) {
-		if (d2r::At<uint32_t>(uniques + i * UniqueRecordSize, UniqueCode) == CodeArmageddon) {
+	rows->phaseBlade = static_cast<int32_t>(phase.rowIndex);
+	rows->blade = static_cast<int32_t>(blade.rowIndex);
+	const auto* records = static_cast<const uint8_t*>(uniques.rows);
+	for (uint32_t i = 0; i < uniques.rowCount; ++i) {
+		if (d2r::At<uint32_t>(records + static_cast<size_t>(i) * uniques.rowSize, UniqueCode) == CodeArmageddon) {
 			if (rows->unique >= 0) {
 				return false;
 			}
@@ -584,13 +599,19 @@ auto ImbueSpawn(Game* game, uint8_t* drop, int32_t flag) noexcept -> Unit* {
 	uint8_t stock[DropRequestSize];
 	std::memcpy(stock, drop, sizeof(stock));
 	MakeArmageddonRequest(drop, rows);
-	if (Unit* item = g_imbueSpawnOriginal(game, drop, flag)) {
+	Unit* item = g_imbueSpawnOriginal(game, drop, flag);
+	// A failed unique roll (0x442d60: once per game, or the row's version) still makes an item, a rare 7cr2: free it
+	const int32_t quality = item != nullptr ? d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::ItemQuality)(item) : -1;
+	if (quality == QualityUnique) {
 		plog::Info("armageddon: imbued Phase Blade hit 1 in %u: 2H Phase Blade, unique row %d, item level %d (%u made)",
 		           ArmageddonOdds[difficulty], rows.unique, ArmageddonLevel, ++g_armageddons);
 		return item;
 	}
+	if (item != nullptr) {
+		g_itemFree(game, item);
+	}
 	std::memcpy(drop, stock, sizeof(stock));
-	plog::Warn("armageddon: the unique was not made, the plain imbue goes on");
+	plog::Warn("armageddon: the roll hit but the unique was not made (quality %d), the plain imbue goes on", quality);
 	return g_imbueSpawnOriginal(game, drop, flag);
 }
 
@@ -680,18 +701,35 @@ auto InstallArmageddon(const D2RL::PluginContext* context) noexcept -> bool {
 	Query(context, g_items, D2RL::HasItemServiceField, D2RL::ItemServiceRequiredSize);
 	Query(context, g_inventory, D2RL::HasInventoryServiceField, D2RL::InventoryServiceRequiredSize);
 	Query(context, g_threads, D2RL::HasThreadServiceField, D2RL::ThreadServiceRequiredSize);
+	Query(context, g_tables, D2RL::HasDataTableServiceField, D2RL::DataTableServiceRequiredSize);
 	const uint64_t clock = __rdtsc();
 	g_imbueSeed[0] = static_cast<uint32_t>(clock) | 1;
 	g_imbueSeed[1] = static_cast<uint32_t>(clock >> 32);
-	return d2r::sig::ItemRowByCode.state == sigscan::State::Ok && d2r::sig::DataTables.state == sigscan::State::Ok &&
-	       RedirectCall(context, ImbueSpawnPattern, ImbueSpawnCallAt, reinterpret_cast<uint64_t>(&ImbueSpawn),
-	                    reinterpret_cast<uint64_t*>(&g_imbueSpawnOriginal));
+	// The free item call from the same match (no shared entry names 0x43ec10)
+	uint64_t match = 0;
+	const int matches = sigscan::ScanUnique(context->exeBase, ImbueSpawnPattern, 0, &match);
+	const auto* freeCall = reinterpret_cast<const uint8_t*>(context->exeBase + match + ImbueFreeCallAt);
+	const char* missing = g_tables == nullptr                                ? "the SDK DataTable service"
+	                    : d2r::sig::ItemQuality.state != sigscan::State::Ok ? "signature ItemQuality"
+	                    : matches != 1                                       ? "the imbue call pattern (not one match)"
+	                    : freeCall[0] != 0xe8                                ? "the free item call"
+	                                                                         : nullptr;
+	if (missing != nullptr) {
+		g_armageddonOff = missing;
+		return false;
+	}
+	int32_t rel = 0;
+	std::memcpy(&rel, freeCall + 1, sizeof(rel));
+	g_itemFree = reinterpret_cast<ItemFreeFn>(freeCall + 5 + rel);
+	g_armageddonInstalled = RedirectCall(context, ImbueSpawnPattern, ImbueSpawnCallAt, reinterpret_cast<uint64_t>(&ImbueSpawn),
+	                                     reinterpret_cast<uint64_t*>(&g_imbueSpawnOriginal));
+	return g_armageddonInstalled;
 }
 
 }  // namespace
 
 auto QueueArmageddon(char* why, size_t whySize) noexcept -> bool {
-	const char* missing = g_context == nullptr || g_imbueSpawnOriginal == nullptr || d2r::api.unitDataFlag == nullptr
+	const char* missing = !g_armageddonInstalled || d2r::api.unitDataFlag == nullptr
 	                        ? "the imbue rule is not installed"
 	                    : g_items == nullptr || g_inventory == nullptr || g_threads == nullptr
 	                        ? "the SDK item, inventory or thread service is missing"
@@ -725,14 +763,14 @@ auto InstallLootRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                              &SealSweepModeCmd, &g_modeCmdInitOriginal);
 	const bool armageddon = InstallArmageddon(context);
 	std::snprintf(report, reportSize,
-	              "ethereal bonus%s; affix rare%s; weapon durability 1/2%s; ethereal durability%s; throwing quantity%s; unlimited ammo%s; staffmods%s; seal kills drop nothing%s; armageddon imbue%s",
+	              "ethereal bonus%s; affix rare%s; weapon durability 1/2%s; ethereal durability%s; throwing quantity%s; unlimited ammo%s; staffmods%s; seal kills drop nothing%s; armageddon imbue%s%s%s",
 	              !decoder ? " FAILED (decoder bytes differ)" : ethereal ? "" : " FAILED (bytes differ)",
 	              rare ? "" : " FAILED (bytes differ)", durability ? "" : " FAILED (bytes differ)",
 	              etherealDurability ? "" : " FAILED (signature or bytes differ)",
 	              throwing ? "" : " FAILED (signature or bytes differ)",
 	              ammo ? "" : " FAILED (signature or bytes differ)",
 	              staffMods ? "" : " FAILED (bytes differ)", seals ? "" : " FAILED (bytes differ)",
-	              armageddon ? "" : " FAILED (signature, bytes or relay)");
+	              armageddon ? "" : " FAILED (", armageddon ? "" : g_armageddonOff, armageddon ? "" : ")");
 	return (ethereal ? 1 : 0) + (rare ? 1 : 0) + (durability ? 1 : 0) + (etherealDurability ? 1 : 0) + (throwing ? 1 : 0) + (ammo ? 1 : 0) + (staffMods ? 1 : 0) + (seals ? 1 : 0) + (armageddon ? 1 : 0);
 }
 

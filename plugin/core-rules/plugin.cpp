@@ -207,7 +207,7 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	while (*args == ' ') {
 		++args;
 	}
-	if (std::strncmp(args, "armageddon", 10) == 0) {
+	if (std::strncmp(args, "armageddon", 10) == 0 && (args[10] == '\0' || args[10] == ' ')) {
 		char why[120];
 		const bool queued = QueueArmageddon(why, sizeof(why));
 		char answer[160];
