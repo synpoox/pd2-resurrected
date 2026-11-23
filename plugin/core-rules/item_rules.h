@@ -1,6 +1,7 @@
 // PD2 item rules: Ormus' Robes' random sorceress skill (properties func 25; skill on cast is the Cast Triggers
 // companion's, IR2), curses (max curses, curse resistance), skill while equipped and phasing, and IR3's combat
-// stats (critical and deadly strike, op bases, life steal cap, crushing blow), item_rules.cpp.
+// stats (critical and deadly strike, op bases, life steal cap, crushing blow), the dual wield attack rate (#1867),
+// item_rules.cpp.
 #pragma once
 
 #include <D2RLPlugin/api.h>

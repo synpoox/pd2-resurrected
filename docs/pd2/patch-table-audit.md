@@ -26,9 +26,9 @@ Status is one of four:
 
 | Status | Records | Units |
 |---|---|---|
-| ported | 123 | 70 |
+| ported | 126 | 71 |
 | deviation | 330 | 83 |
-| missing | 167 | 107 |
+| missing | 164 | 106 |
 | not needed | 495 | 261 |
 | **total** | **1115** | **521** |
 
@@ -846,7 +846,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 | 1: D2Common `+0x25804`..`+0x25807`: ptr PD2 `0x1030e290` | - | +0x25804: a pointer to 0x1030e290 written into code padding | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
 | 1: D2Common `+0x26473`..`+0x26474`: `03ee` -> `9090` | `+0x26190` | +0x26473: an add esi NOPed | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
 | 5: D2Common `+0x2d2c9`: `8d` -> `e8`<br>D2Common call `+0x2d2c9(8d)` (to `0x2f772`) -> PD2 `0x102fb040`<br>D2Common `+0x2d2ce`..`+0x2d2d0`: `00003b` -> `c20400` | `+0x2d2c0` | +0x2d2c0: replaced by a call to 0x102fb040 (a byte from a PD2 table lookup) and ret 4 | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
-| 3: D2Common `+0x334ac`..`+0x334cc`: `6a006a4456e8ba5600006a00..` -> `909090909090909090909090..`<br>D2Common `+0x334ac`: `6a` -> `e8`<br>D2Common call `+0x334ac(6a)` (to `0x56479eb1`) -> PD2 `0x103a37a0` | `+0x33110` | Units.cpp +0x334ac: two D2Common calls with 0x44 NOPed and replaced by 0x102fc0e0 | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
+| 3: D2Common `+0x334ac`..`+0x334cc`: `6a006a4456e8ba5600006a00..` -> `909090909090909090909090..`<br>D2Common `+0x334ac`: `6a` -> `e8`<br>D2Common call `+0x334ac(6a)` (to `0x56479eb1`) -> PD2 `0x103a37a0` | `+0x33110` | Units.cpp +0x334ac: the dual wield average of the two weapons' attackrate (68) is NOPed for 0x102fc0f0 (PD2.gpr 0x102fc0e0): a player takes the rate of the weapon with the higher 68 + item_fasterattackrate (93), the left on a tie; a monster keeps the average | ported | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); D2R `0x35129c` and `0x3513ff` in `0x350b40` (core-rules byte patches); [#1867](https://github.com/synpoox/pd2-resurrected/issues/1867) | - |
 | 8: D2Common call `+0x378eb`, `+0x379e6`, `+0x379fb`, `+0x37abb`, `+0x37b5f`, `+0x37c80`, `+0x37d00`, `+0x37d15` (to `0x376f0`) -> PD2 `0x102fbe10` | `+0x37840`, `+0x37920`, `+0x37a20`, `+0x37af0`, `+0x37c20`, `+0x37ca0` | +0x376f0 (8 sites) through 0x102fbe10: for a level above 136 a value is set from 0x1037f1a0 | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read; levels past 136 are PD2's maps) | - |
 | 3: D2Common `+0x3a74f`..`+0x3a750`: `4e5c` -> `ce90`<br>D2Common call `+0x3a75a` (to `0x3a280`) -> PD2 `0x102fae50` | `+0x3a740` | +0x3a740: a register change and a stat add moved to the unit at +0x5c (0x102fae50) | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
 | 19: D2Common call `+0x6ac1f`, `+0x6ac6a`, `+0x6acb5`, `+0x6ad00`, `+0x6ad4b`, `+0x6ad96`, `+0x6ade1`, `+0x6ae2c`, `+0x6ae77`, `+0x6aebc`, `+0x6af01`, `+0x6af3b`, `+0x6af77`, `+0x6afbf`, `+0x6afff`, `+0x6b044`, `+0x6b08c`, `+0x6b0d4`, `+0x6b122` (to `0x38a80`) -> PD2 `0x102fa820` | `+0x6abe0` | +0x6abe0 (19 sites): elemental min/max damage stats get their skill mastery (stats 329, 330, 357, 331, 332) added (0x102fa820) | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read); [#1868](https://github.com/synpoox/pd2-resurrected/issues/1868) | - |
