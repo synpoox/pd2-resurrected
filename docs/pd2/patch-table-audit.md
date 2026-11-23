@@ -991,7 +991,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvdofunc | 48 | `0x103af2f0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W21 gate A (w32-blade-fury.md) |
 | `0x1036ba20` | srvdofunc | 49 | `0x103af450` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 50 | `0x103af640` | documented | [w29-assassin-finishers](../research/skills/w29-assassin-finishers.md) |
-| `0x1036ba20` | srvdofunc | 51 | `0x103af800` | ported | `plugin/core-rules/skill_functions.cpp`: Mind Blast's radius stacks, D2R's radius call `0x570801` redirected ([#1946](https://github.com/synpoox/pd2-resurrected/issues/1946)) |
+| `0x1036ba20` | srvdofunc | 51 | `0x103af800` | ported | `plugin/core-rules/skill_functions.cpp`: Mind Blast's radius stacks (PD2's published numbers), damage only and mask `0x8583`: D2R's radius call `0x570801` redirected, its convert call `0x56e5cb` and mask argument `0x57099d` patched ([#1946](https://github.com/synpoox/pd2-resurrected/issues/1946)) |
 | `0x1036ba20` | srvdofunc | 54 | `0x103afac0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 55 | `0x103afb40` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 56 | `0x103afea0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W14's golem count rule, the Golem start deviation |

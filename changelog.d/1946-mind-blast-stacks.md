@@ -1,3 +1,3 @@
 #### Bug Fixes
 
-- Fixed Mind Blast not growing its radius with quick consecutive casts, as in PD2 (#1946).
+- Fixed Mind Blast: consecutive casts widen it, and it no longer converts monsters (#1946).
