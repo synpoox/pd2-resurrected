@@ -55,15 +55,19 @@ owner-path-end distance are not ported.
 last step, the minion-to-leader walk (`+0x9cb30`, called at `+0x9cdc5`), for `0x103606e0` (PD2.gpr `0x10360670`). For a
 monster whose AI owner (AI control `+0x2c` id, `+0x30` type) is a player, other than AI 106 (returns 0: its think
 leashes) and 102 (1.13c's step): nothing without a walk mode (monstats2 mWL, `0x103a2240(class, 2)`, the test 1.13c's
-step makes), at velocity 0 (monstats `+0x32`) or with a dead owner; else the ShadowMaster leash's rule above (the
-tick's target is still empty, so only the path target counts as one). Mercenaries skip it on PD2's own game flag
+step makes), at velocity 0 (monstats `+0x32`) or with a dead owner; else the ShadowMaster leash's rule above with
+its own target: the tick's (still empty), else the path target (`0x103096c0`), else the AI target search `0x103a54c0`
+(1.13c `+0xb1bc0`, the search the Hireable think calls at `+0x1e03a`), kept when it is not the owner, not in mode 0 or
+12, a player or monster, and the pet is within 1155.2 squared of its path's target point (no test at 0,0). Such a
+target puts the leash on 3.2 x 361 and turns off step-aside and wander. Mercenaries skip it on PD2's own game flag
 `+0x2702` (`0x1037f720`). This is the mover that replaces the Hireable think's follow: PD2 patches that think's warp
 past 100, run, walk, step aside and wander away (`+0x1deb3`, `+0x1ded6`, `+0x1defb`, `+0x1e0eb`, `+0x1e11c`).
 
 D2R's pre-think (`0x4a3a20`) inlines the leader walk (`0x4a3b50`; leader `+0x3c`/`+0x40` of the AI control) after a
 step of its own, so core-rules' `pet-leash` redirects the AI tick's one call of it (`0x4a2bbb`): D2R's pre-think first,
 then, when it lets the think run, the leash for a player's pet (owner `+0x68`/`+0x6c`, monstats AI `+0x52`, velocity
-`+0x68`, monstats2 modes `+0xf0`). The Hireable think's sites are `0x5bec54`, `0x5bec7b`, `0x5becab`, `0x5befe9` and
+`+0x68`, monstats2 modes `+0xf0`), with the target search `0x595f80` found at the Hireable think's call `0x5bee51`
+(1.13c `+0x1e03a`: the same call, then the same `distance < 25` test). The 1155 test measures the pet to the target. The Hireable think's sites are `0x5bec54`, `0x5bec7b`, `0x5becab`, `0x5befe9` and
 `0x5bf043`, patched only once the redirect is in.
 
 ## The ShadowMaster init (#1801; 1.13c `+0xa4320`, D2R `0x5cec80`)

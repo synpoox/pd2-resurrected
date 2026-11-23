@@ -8,8 +8,9 @@
 // - skipped (0) when the monster has no walk mode (monstats2 mWL, the same test as 1.13c's step), velocity 0 (monstats
 //   +0x32), or a dead owner;
 // - otherwise PD2's leash (skill/common.h, the ShadowMaster think's rule) with the AI tick's target, which the
-//   dispatcher has not filled yet: walk back past 1.0 x 361 squared (3.2 x 361 with a path target within 1155),
-//   warp at 0x900, step aside within 5, wander one think in 12. A move skips the think.
+//   dispatcher has not filled yet, else the path target, else the AI target search (0x103a54c0: 1.13c +0xb1bc0, D2R
+//   0x595f80, the Hireable think's own search), kept when not the owner, alive, a player or monster and within 1155:
+//   walk back past 1.0 x 361 squared (3.2 x 361 with such a target), warp at 0x900, step aside within 5, wander one think in 12. A move skips the think.
 // PD2 also skips mercenaries (its class ids) on a game flag of its own (game +0x2702); D2R has no such flag.
 // D2R 93847 inlines the step in its pre-think (0x4a3a20, the leader walk at 0x4a3b50), so the dispatcher's one call of
 // the pre-think (0x4a2bbb in 0x4a2a00's AI tick) is redirected: D2R's pre-think runs first, and when it lets the think
@@ -42,6 +43,10 @@ using d2r::Unit;
 // The dispatcher's pre-think call: lea r8,[rbp-0x51] (the AI tick); rdx unit, rcx game; E8 at +14
 constexpr const char* PreThinkCall = "4C 8D 45 AF 48 89 7D 07 49 8B D6 49 8B CF E8 ?? ?? ?? ?? 85 C0 0F 85";
 constexpr uint32_t PreThinkCallAt = 14;
+// The Hireable think's AI target search call (0x5bee51 -> 0x595f80; 1.13c +0x1e03a -> +0xb1bc0, PD2's 0x103a54c0), then
+// its `distance < 25` test; E8 at +19
+constexpr const char* SearchCall = "4C 8D 8C 24 B0 00 00 00 48 8B D7 4C 8D 44 24 40 48 8B CD E8 ?? ?? ?? ?? 48 85 C0 74 ?? 83 7C 24 40 19";
+constexpr uint32_t SearchCallAt = 19;
 
 // D2R's AI tick (0x4a2a00): +0x00 AI control, +0x28 monstats record, +0x30 monstats2 record
 constexpr int TickAi = 0x00, TickMonStats = 0x28, TickMonStats2 = 0x30;
@@ -60,7 +65,7 @@ using UnitDeadFn = int32_t (*)(Unit*) noexcept;
 
 PreThinkFn g_preThink = nullptr;
 leash::Engine g_leash;
-std::atomic<uint32_t> g_calls {0}, g_moves[6] {}, g_logged {0};
+std::atomic<uint32_t> g_calls {0}, g_moves[6] {}, g_logged {0}, g_held {0}, g_noOwner {0};
 
 auto PreThink(Game* game, Unit* unit, uint8_t* tick) noexcept -> int32_t {
 	const int32_t stock = g_preThink(game, unit, tick);
@@ -80,17 +85,27 @@ auto PreThink(Game* game, Unit* unit, uint8_t* tick) noexcept -> int32_t {
 	}
 	Unit* owner = d2r::Engine<FindUnitFn>(d2r::sig::FindUnit)(game, 0, At<uint32_t>(ai, AiOwnerId));
 	if (owner == nullptr || d2r::Engine<UnitDeadFn>(d2r::sig::UnitDead)(owner) != 0) {
+		if (pd2::HotSample(g_noOwner)) {
+			plog::Info("pet-leash: class %d (ai %d) owner %u %s, no leash", At<int32_t>(unit, d2r::rva::UnitClassId), row,
+			           At<uint32_t>(ai, AiOwnerId), owner == nullptr ? "not found" : "dead");
+		}
 		return 0;
 	}
 	++g_calls;
 	int64_t d2 = -1;
 	int32_t move = leash::MoveNone;
-	const uint64_t moved = leash::Leash(g_leash, game, unit, nullptr, owner, WalkRadius, g_moves, &d2, &move);
+	bool fighting = false;
+	const uint64_t moved = leash::Leash(g_leash, game, unit, nullptr, owner, WalkRadius, g_moves, &d2, &move, &fighting);
 	const bool warp = move == leash::MoveWarp;
+	const char* limit = fighting ? "3.2" : "1.0";
 	if ((warp || move == leash::MoveBack) && pd2::HotSample(g_logged)) {
-		plog::Info("pet-leash: class %d (ai %d) %s, owner %lld squared away, mover %llu (%u leashed so far)",
-		           At<int32_t>(unit, d2r::rva::UnitClassId), row, warp ? "warps" : "walks back", static_cast<long long>(d2),
+		plog::Info("pet-leash: class %d (ai %d) %s, owner %lld squared away (limit %s x 361), mover %llu (%u leashed so far)",
+		           At<int32_t>(unit, d2r::rva::UnitClassId), row, warp ? "warps" : "walks back", static_cast<long long>(d2), limit,
 		           static_cast<unsigned long long>(moved), g_calls.load());
+	} else if (move == leash::MoveNone && d2 > 361 && pd2::HotSample(g_held)) {
+		// past the idle limit but kept: the pet is fighting (3.2 limit), the think runs
+		plog::Info("pet-leash: class %d (ai %d) fights, owner %lld squared away (limit %s x 361), no walk back (%u so far)",
+		           At<int32_t>(unit, d2r::rva::UnitClassId), row, static_cast<long long>(d2), limit, g_held.load());
 	}
 	return moved != 0 ? 1 : 0;
 }
@@ -115,8 +130,15 @@ constexpr Site Sites[] = {
 }  // namespace
 
 auto InstallPetLeash(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
+	uint64_t search = 0;
 	const bool engine = d2r::sig::FindUnit.state == sigscan::State::Ok && d2r::sig::UnitDead.state == sigscan::State::Ok &&
-	                    leash::Find(context->exeBase, &g_leash);
+	                    leash::Find(context->exeBase, &g_leash) &&
+	                    sigscan::ScanUnique(context->exeBase, SearchCall, SearchCallAt, &search) == 1;
+	if (engine) {
+		int32_t rel = 0;
+		std::memcpy(&rel, reinterpret_cast<const void*>(context->exeBase + search + 1), sizeof(rel));
+		g_leash.search = reinterpret_cast<leash::SearchFn>(context->exeBase + search + 5 + static_cast<int64_t>(rel));
+	}
 	const bool leashOn = engine && RedirectCall(context, PreThinkCall, PreThinkCallAt, reinterpret_cast<uint64_t>(&PreThink),
 	                                            reinterpret_cast<uint64_t*>(&g_preThink));
 	// Fail safe: without the leash the Hireable think keeps its own follow
@@ -132,11 +154,12 @@ auto InstallPetLeash(const D2RL::PluginContext* context, char* report, size_t re
 	for (size_t i = 0; follow && i < std::size(Sites); ++i) {
 		follow = context->PatchBytes(rvas[i], Sites[i].from, 2, Sites[i].to, 2);
 	}
-	plog::Info("pet-leash: pre-think leash %s; merc follow patches %s", leashOn ? "on" : "FAILED", follow ? "on" : "FAILED");
+	const char* followState = !leashOn ? "skipped" : follow ? "on" : "FAILED";
+	plog::Info("pet-leash: pre-think leash %s; merc follow patches %s", leashOn ? "on" : "FAILED", followState);
 	const size_t used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; pet-leash: leash %s, merc follow %s", leashOn ? "on" : "FAILED",
-		              follow ? "on" : "FAILED");
+		              followState);
 	}
 	return leashOn;
 }

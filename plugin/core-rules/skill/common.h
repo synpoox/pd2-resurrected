@@ -47,10 +47,14 @@ static_assert(Move(100, false, true) == MoveWander && Move(100, true, true) == M
 using MoverFn = uint64_t (*)(d2r::Game*, d2r::Unit* owner, d2r::Unit* pet, int32_t kind, int32_t, int32_t, uint8_t radius) noexcept;
 using PathTargetFn = d2r::Unit* (*)(d2r::Game*, d2r::Unit*) noexcept;
 using IsDeadFn = int32_t (*)(d2r::Unit*) noexcept;
+// D2R's AI target search (0x595f80, 1.13c +0xb1bc0): (game, unit, out distance block, out flag block); it also points
+// the unit's path at what it finds, as in PD2
+using SearchFn = d2r::Unit* (*)(d2r::Game*, d2r::Unit*, void*, void*) noexcept;
 struct Engine {
 	MoverFn mover = nullptr;
 	PathTargetFn pathTarget = nullptr;
 	IsDeadFn isDead = nullptr;
+	SearchFn search = nullptr;  // pre-think leash only (PD2 0x103606e0); the ShadowMaster leash has none
 };
 
 // D2R's leash 0x5bd1e0: its one mover call (rcx game, rdx owner, r8 pet, r9d kind, two zeros, the radius byte); E8 at +19
@@ -87,10 +91,11 @@ inline auto Dist2(d2r::Unit* a, d2r::Unit* b) noexcept -> int64_t {
 	return int64_t {ax - bx} * (ax - bx) + int64_t {ay - by} * (ay - by);
 }
 
-// PD2's leash: non-zero once the pet moved. `moves` counts each kind (6 entries); `lastD2` and `lastMove` get the
-// distance and the kind picked.
+// PD2's leash: non-zero once the pet moved. `moves` counts each kind (6 entries); `lastD2`, `lastMove` and
+// `lastFighting` get the distance, the kind picked and whether the 3.2 limit applied.
 inline auto Leash(const Engine& engine, d2r::Game* game, d2r::Unit* pet, d2r::Unit* target, d2r::Unit* owner, int32_t radius,
-                  std::atomic<uint32_t>* moves, int64_t* lastD2 = nullptr, int32_t* lastMove = nullptr) noexcept -> uint64_t {
+                  std::atomic<uint32_t>* moves, int64_t* lastD2 = nullptr, int32_t* lastMove = nullptr,
+                  bool* lastFighting = nullptr) noexcept -> uint64_t {
 	// PD2 leashes only a player's pet
 	if (game == nullptr || pet == nullptr || owner == nullptr || d2r::At<int32_t>(owner, d2r::rva::UnitType) != 0) {
 		return 0;
@@ -104,14 +109,23 @@ inline auto Leash(const Engine& engine, d2r::Game* game, d2r::Unit* pet, d2r::Un
 	}
 	bool fighting = target != nullptr;
 	if (!fighting) {
-		// PD2: the unit the pet's path is after, a live player or monster within 34 subtiles
+		// PD2: the unit the pet's path is after, else (pre-think only) the AI target search's pick; a live player or
+		// monster within 34 subtiles. shortcut: 1155 is measured pet to that unit; PD2 measures the pet to its path's
+		// target point (skipped at 0,0). Upgrade if pets drop targets they should keep.
 		d2r::Unit* chase = engine.pathTarget(game, pet);
+		if (chase == nullptr && engine.search != nullptr) {
+			uint8_t distance[0x40] = {}, flags[0x40] = {};
+			chase = engine.search(game, pet, distance, flags);
+		}
 		fighting = chase != nullptr && chase != owner && d2r::At<int32_t>(chase, d2r::rva::UnitType) <= 1 &&
 		           engine.isDead(chase) == 0 && Dist2(pet, chase) >= 0 && Dist2(pet, chase) <= 1155;
 	}
 	uint32_t* seed = d2r::api.unitSeed != nullptr ? d2r::api.unitSeed(pet) : nullptr;
 	const bool wander = seed != nullptr && d2r::RandomBelow(seed, 12) == 0;
 	const int32_t move = Move(d2, fighting, wander);
+	if (lastFighting != nullptr) {
+		*lastFighting = fighting;
+	}
 	++moves[move];
 	if (lastMove != nullptr) {
 		*lastMove = move;
