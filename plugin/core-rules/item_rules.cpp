@@ -470,7 +470,6 @@ constexpr uint32_t StatDamageResist = 36;
 constexpr uint32_t StatPlayerCount = 100;   // monster_playercount
 constexpr uint32_t StatCbEfficiency = 394;  // item_crushingblow_efficiency (PD2's 268)
 constexpr int32_t OverlayCrushingBlow = 147;  // PD2's 0x93
-constexpr int32_t Hirelings[] = {271, 338, 359, 560, 561};  // 1.13c's D2Common #11104
 
 std::atomic<uint32_t> g_blows {0};
 
@@ -488,7 +487,7 @@ auto BlowDivisor(Game* game, Unit* target) noexcept -> double {
 		return 8.0;
 	}
 	const int32_t classId = At<int32_t>(target, UnitClassId);
-	for (int32_t hireling : Hirelings) {
+	for (int32_t hireling : HirelingClasses) {
 		if (classId == hireling) {
 			return 10.0;
 		}

@@ -2808,11 +2808,10 @@ auto CltDoDeathNova(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 std::atomic<uint32_t> g_staticFields {0};
 std::atomic<uint32_t> g_staticFieldHits {0};  // the first cast that hits a unit is logged too
 constexpr int32_t StaticField = 42, MercStaticField = 528, StaticFieldProc = 679;  // merged ids
-// Monsters PD2's damage pass skips, as merged monstats ids: monhydra3, dopplezonnew, rathmaBone, rathmaPoison,
-// rathmaBoneClone, wraithMapMod
+// Monsters PD2's damage pass skips, as merged monstats ids: uberdiablonew, rathmaBone, rathmaPoison, rathmaBoneClone,
+// rathmaPoisonClone, Lucion
 constexpr int32_t NoStaticField[] = {806, 950, 951, 952, 953, 1129};
-// Mercenaries (D2Common #11104's hireling classes), as merged monstats ids: their resist reductions are never halved
-constexpr int32_t Hirelings[] = {271, 338, 359, 561, 562};
+// Mercenaries (HirelingClasses in skill_functions.h): their resist reductions are never halved
 
 // PD2's a * b / max(c, 1) in doubles, truncated, INT32_MAX past it (0x1037c4c0)
 constexpr auto MulDiv(int32_t a, double b, int32_t c) noexcept -> int32_t {
@@ -2918,7 +2917,7 @@ auto StaticFieldDebuffOne(d2r::AreaContext* area, Unit* victim) noexcept -> int3
 	}
 	const int32_t classId = At<int32_t>(victim, UnitClassId);
 	const bool monster = At<int32_t>(victim, UnitType) != 0 &&
-	                     std::find(std::begin(Hirelings), std::end(Hirelings), classId) == std::end(Hirelings);
+	                     std::find(std::begin(HirelingClasses), std::end(HirelingClasses), classId) == std::end(HirelingClasses);
 	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
 	StatValue stats[AuraStats] {};
 	for (size_t i = 0; i < debuff->count; i++) {
@@ -4056,8 +4055,8 @@ auto AllyBuffOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 		return 0;
 	}
 	const int32_t type = At<int32_t>(victim, UnitType);
-	const bool hireling = type == UnitMonster && std::find(std::begin(Hirelings), std::end(Hirelings),
-	                                                       At<int32_t>(victim, UnitClassId)) != std::end(Hirelings);
+	const bool hireling = type == UnitMonster && std::find(std::begin(HirelingClasses), std::end(HirelingClasses),
+	                                                       At<int32_t>(victim, UnitClassId)) != std::end(HirelingClasses);
 	const bool divide = (type == 0 && victim != area->unit) || At<int32_t>(victim, UnitMainFlags) < 0 || hireling;
 	const bool enchantOnRevive =
 		(buff->state == Enchant || buff->state == ColdEnchant) &&
