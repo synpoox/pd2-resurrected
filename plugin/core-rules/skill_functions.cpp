@@ -2808,11 +2808,10 @@ auto CltDoDeathNova(Unit* unit, int32_t skillId, int32_t level) noexcept -> int3
 std::atomic<uint32_t> g_staticFields {0};
 std::atomic<uint32_t> g_staticFieldHits {0};  // the first cast that hits a unit is logged too
 constexpr int32_t StaticField = 42, MercStaticField = 528, StaticFieldProc = 679;  // merged ids
-// Monsters PD2's damage pass skips, as merged monstats ids: monhydra3, dopplezonnew, rathmaBone, rathmaPoison,
-// rathmaBoneClone, wraithMapMod
+// Monsters PD2's damage pass skips, as merged monstats ids: uberdiablonew, rathmaBone, rathmaPoison, rathmaBoneClone,
+// rathmaPoisonClone, Lucion
 constexpr int32_t NoStaticField[] = {806, 950, 951, 952, 953, 1129};
-// Mercenaries (D2Common #11104's hireling classes), as merged monstats ids: their resist reductions are never halved
-constexpr int32_t Hirelings[] = {271, 338, 359, 561, 562};
+// Mercenaries (HirelingClasses in skill_functions.h): their resist reductions are never halved
 
 // PD2's a * b / max(c, 1) in doubles, truncated, INT32_MAX past it (0x1037c4c0)
 constexpr auto MulDiv(int32_t a, double b, int32_t c) noexcept -> int32_t {
@@ -2918,7 +2917,7 @@ auto StaticFieldDebuffOne(d2r::AreaContext* area, Unit* victim) noexcept -> int3
 	}
 	const int32_t classId = At<int32_t>(victim, UnitClassId);
 	const bool monster = At<int32_t>(victim, UnitType) != 0 &&
-	                     std::find(std::begin(Hirelings), std::end(Hirelings), classId) == std::end(Hirelings);
+	                     std::find(std::begin(HirelingClasses), std::end(HirelingClasses), classId) == std::end(HirelingClasses);
 	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
 	StatValue stats[AuraStats] {};
 	for (size_t i = 0; i < debuff->count; i++) {
@@ -3101,9 +3100,10 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 // = the skill level, and each aurastat SET to calc(level) * stacks / max(calc4, 1) (0x1037c4c0), attackrate's value
 // also on other_animrate. D2R's srvdo 9 (93847: 0x567e80) calls its helper (0x566d60) at 0x567fd6: stacks capped by
 // the level, aurastats ADDED by 0x574480 at the stack count as level. The redirect calls D2R's helper first (its list
-// create, timer, state event and client update stay) and then writes PD2's values over the list. Only rows with
-// calc4 > 0 (Frenzy): PD2's monster frenzies are 1.13c srvdo 109 (+0xb6790), whose call of the helper (+0xb6828) PD2
-// leaves stock, and Berserk (calc4 blank, PD2 would zero its aurastats) keeps D2R's (docs/deviations.md).
+// create, timer, state event and client update stay) and then writes PD2's values over the list. PD2's monster
+// frenzies are 1.13c srvdo 109 (+0xb6790), whose call of the helper (+0xb6828) PD2 leaves stock, so monsters on a
+// calc4-blank row keep D2R's. Berserk (calc4 blank) gets its aurastats at the skill level with no stacks, as its
+// tooltip says; PD2's cap would zero them (#1900, docs/deviations.md).
 // No SDK service runs a skill's per-hit aura stack, so this redirects the one call by signature.
 constexpr const char* FrenzyHelperCall = "45 8b cf 48 89 74 24 20 45 8b c4 48 8b d3 48 8b cd e8 ?? ?? ?? ?? b8 01 00 00 00";
 constexpr uint32_t FrenzyHelperCallAt = 17;
@@ -3119,14 +3119,43 @@ using AttackRescheduleFn = void (*)(Game*, Unit*, int32_t, int32_t) noexcept;
 AttackRescheduleFn g_attackReschedule = nullptr;
 std::atomic<uint32_t> g_frenzyHits {0};
 
+// --- Dragon Talon kick damage (#1862) ------------------------------------------------------------------------------
+// PD2 patches 1.13c's Dragon Talon hit builder (D2Game +0x92bb0, srvdo 42's; only Dragon Talon has srvdo 42): at
+// +0x92c5a the kick's damage% Param1 + (lvl-1) x Param2 (record +0x148 / +0x14c) becomes calc2 (+0x13c) through
+// 0x10302290, and at +0x92c19 the last kick's result flags | 0xc (get-hit + knockback) become | 0x4 (get-hit only).
+// D2R 93847's builder 0x572eb0 (from srvdo 42 0x570420) is 1.13c's: Param1/Param2 (+0x1b8 / +0x1bc) into the damage
+// block's +0x1c, then the fill 0x573af0 (game, block, attacker, target, skill, level). No SDK service builds a skill
+// hit, so the fill call is redirected by signature (calc2 written over the block's damage%) and the OR's imm8 patched.
+constexpr const char* KickBuilder =
+    "66 89 44 24 44 a8 01 74 ?? 39 9d 50 01 00 00 74 ?? 66 83 c8 ?? 66 89 44 24 44 41 0f b6 8e 06 01 00 00 41 8b d4 "
+    "e8 ?? ?? ?? ?? 48 85 c0 74 ?? 85 f6 7e ?? 8d 5e ff 0f af 98 bc 01 00 00 03 98 b8 01 00 00 89 74 24 28 48 8d 54 24 "
+    "40 4d 8b cf 44 89 64 24 20 4c 8b c7 89 5c 24 5c 49 8b ce e8";
+constexpr uint32_t KickFlagsAt = 0x14, KickFillCallAt = 0x5e;  // the `or ax,0xc` imm8, the fill's E8
+constexpr int KickBlockPercent = 0x1c;
+using KickFillFn = void (*)(Game*, uint8_t*, Unit*, Unit*, int32_t, int32_t) noexcept;
+KickFillFn g_kickFill = nullptr;
+
+// D2R's builder leaves the damage% 0 without a record or at level 0; so does this.
+auto KickFill(Game* game, uint8_t* block, Unit* unit, Unit* target, int32_t skillId, int32_t level) noexcept -> void {
+	const uint8_t* skill = game != nullptr && level > 0 ? d2r::api.getSkillRecord(d2r::DataFlag(game), skillId) : nullptr;
+	if (skill != nullptr && block != nullptr) {
+		const int32_t percent = d2r::EvalCalc(game, unit, skill, d2r::rva::SkCalc2, skillId, level);
+		std::memcpy(block + KickBlockPercent, &percent, sizeof(percent));
+	}
+	g_kickFill(game, block, unit, target, skillId, level);
+}
+
 auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* event) noexcept -> int64_t {
 	using namespace d2r::rva;
 	const uint32_t dataFlag = game != nullptr ? d2r::DataFlag(game) : 0;
 	const uint8_t* skill = game != nullptr ? d2r::api.getSkillRecord(dataFlag, skillId) : nullptr;
 	const int32_t calc4 = skill != nullptr ? d2r::EvalCalc(game, unit, skill, SkCalc4, skillId, level) : 0;
-	if (calc4 <= 0 || unit == nullptr) {
+	// calc4 blank (Berserk, #1900): each aurastat at the skill level, no stacks, as its tooltip says. Monster frenzies
+	// (srvdo 9, calc4 blank) keep D2R's ramp by the stack count.
+	if (unit == nullptr || (calc4 <= 0 && At<int32_t>(unit, UnitType) == UnitMonster)) {
 		return g_frenzyHelper(game, unit, skillId, level, event);
 	}
+	const int32_t cap = std::max(calc4, 1);
 	const auto stateList = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(UnitStateList);
 	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);
 	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
@@ -3142,26 +3171,28 @@ auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* 
 	if (list == nullptr) {
 		return result;
 	}
-	const int32_t stacks = std::min(current + 1, calc4);
+	const int32_t stacks = std::min(current + 1, cap);
 	setStat(dataFlag, list, SkillFrenzyStat, stacks, 0);
 	setStat(dataFlag, list, ModifierListLevel, level, 0);
 	const uint64_t statCount = At<uint64_t>(tables, TablesStatCount);
-	int32_t firstStat = -1, firstValue = 0;
+	const bool sample = pd2::HotSample(g_frenzyHits);
+	char values[96] = {};
+	size_t used = 0;
 	for (int i = 0; i < 6; ++i) {
 		const int32_t stat = At<int16_t>(skill, SkAuraStat1 + 2 * i);
 		if (stat < 0 || static_cast<uint64_t>(stat) >= statCount) {
 			continue;
 		}
 		const double scaled = static_cast<double>(d2r::EvalCalc(game, unit, skill, SkAuraStatCalc1 + 4 * i, skillId, level)) *
-		                      stacks / calc4;
+		                      stacks / cap;
 		const int32_t value = scaled <= 2147483647.0 ? static_cast<int32_t>(scaled) : INT32_MAX;  // as 0x1037c4c0
 		setStat(dataFlag, list, stat, value, 0);
 		if (stat == StatAttackRate) {
 			setStat(dataFlag, list, StatOtherAnimRate, value, 0);
 		}
-		if (firstStat < 0) {
-			firstStat = stat;
-			firstValue = value;
+		if (sample && used < sizeof(values)) {
+			const int n = std::snprintf(values + used, sizeof(values) - used, " %d=%d", stat, value);
+			used += n > 0 ? static_cast<size_t>(n) : 0;
 		}
 	}
 	// D2R's helper ends with this reschedule (0x490ef0 clears the unit's pending attack events, then queues them from
@@ -3169,10 +3200,145 @@ auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* 
 	if (g_attackReschedule != nullptr && event != nullptr) {
 		g_attackReschedule(game, unit, At<int32_t>(event, 0x24), At<int32_t>(event, 0x28));
 	}
-	if (pd2::HotSample(g_frenzyHits)) {
-		plog::Info("frenzy: skill %d level %d stacks %d/%d %d=%d", skillId, level, stacks, calc4, firstStat, firstValue);
+	if (sample) {
+		plog::Info("frenzy: skill %d level %d stacks %d/%d%s", skillId, level, stacks, calc4, values);
 	}
 	return result;
+}
+
+// --- Mind Blast's stacks and damage only (#1946) ---------------------------------------------------------------------
+// PD2's srvdo 51 (ProjectDiablo.dll 0x103af800) and cltdo 8 (0x103aaf10). The server reads `had`, aurastat1 on the
+// caster's aurastate list (a new list starts at 0), raises it by 1 while under calc2, sets the list's life to
+// max(had, 1) x auralencalc frames and searches around the target; its per-unit callback (0x10304a90) only deals the
+// copied damage block (0x10305760). The client draws the blast missile at the radius from its own copy of the list.
+// The radius follows PD2's published numbers (wiki: +1.33 / 2.66 / 4 yards at 1 / 2 / 3+ stacks): aurarangecalc +
+// the count after this cast's raise x calc1. The DLL as decoded uses the count before the raise, (max(had, 1) - 1)
+// x calc1 (docs/deviations.md).
+// D2R 93847's srvdo 51 (0x570780) takes its radius from the call at 0x570801 (prgcalc by D2R's progressive flag, which
+// Mind Blast lacks, so 0 and then aurarangecalc) and never stacks; its cltdo 8 (0x2b3020) evaluates aurarangecalc at
+// 0x2b30b9; its per-unit callback (0x56e590, used by srvdo 51 alone) first rolls vanilla's convert (0x5727e0, called
+// only there: calc1 % for calc2 + rand(Param4) frames, the monster then taking no damage). The radius calls are
+// redirected and the convert call becomes `xor eax,eax` (not converted: the damage follows), all by signature: no SDK
+// service reaches a skill's area radius or its per-unit step.
+constexpr const char* MindBlastRangeCall =
+    "4c 89 a4 24 10 02 00 00 44 8b c6 48 8b d7 48 8b cb e8 ?? ?? ?? ?? 44 8b e0 85 c0 75 ?? 45 8b 86 84 00 00 00";
+constexpr uint32_t MindBlastRangeCallAt = 17;
+constexpr const char* MindBlastDrawCall =
+    "44 8b 83 84 00 00 00 44 8b cd 48 8b d6 44 89 7c 24 20 41 0f b6 ce e8 ?? ?? ?? ?? 0f 57 c0";
+constexpr uint32_t MindBlastDrawCallAt = 22;
+constexpr const char* MindBlastConvertCall =
+    "48 8b 71 18 48 8b fa 4c 8b c2 48 8b d9 48 8b 51 08 4c 8b ce 48 8b 09 e8 ?? ?? ?? ?? 85 c0 0f 85";
+constexpr uint32_t MindBlastConvertCallAt = 23;
+using MindBlastRangeFn = int32_t (*)(Game*, Unit*, int32_t, int32_t) noexcept;
+using CalcFn = int32_t (*)(uint32_t, Unit*, int32_t, int32_t, int32_t) noexcept;
+MindBlastRangeFn g_mindBlastRange = nullptr;  // D2R's, unused: PD2's do never reads prgcalc
+CalcFn g_mindBlastDrawCalc = nullptr;
+std::atomic<uint32_t> g_mindBlasts {0};
+
+constexpr auto MindBlastNext(int32_t had, int32_t cap) noexcept -> int32_t {
+	return had < cap ? had + 1 : had;
+}
+constexpr auto MindBlastRadius(int32_t range, int32_t had, int32_t perStack, int32_t cap) noexcept -> int32_t {
+	return range + MindBlastNext(had, cap) * perStack;
+}
+// Mind Blast's row: aurarangecalc 4 at 1 hard point, calc1 2, calc2 3. Fast casts 1-4: 6, 8, 10, 10 (subtiles).
+static_assert(MindBlastRadius(4, 0, 2, 3) == 6 && MindBlastRadius(4, 1, 2, 3) == 8 && MindBlastRadius(4, 2, 2, 3) == 10 &&
+              MindBlastRadius(4, 3, 2, 3) == 10);
+static_assert(MindBlastNext(0, 3) == 1 && MindBlastNext(2, 3) == 3 && MindBlastNext(3, 3) == 3);
+
+// aurastat1 on the unit's aurastate list (0 with no list), or -1 when the row has no such pair
+auto MindBlastStacks(uint32_t dataFlag, Unit* unit, const uint8_t* skill) noexcept -> int32_t {
+	const int32_t state = At<int16_t>(skill, d2r::rva::SkAuraState), stat = At<int16_t>(skill, d2r::rva::SkAuraStat1);
+	if (state <= 0 || stat < 0) {
+		return -1;
+	}
+	void* list = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(d2r::sig::UnitStateList)(unit, state);
+	return list != nullptr ? d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(d2r::sig::ListStatValue)(
+	                             dataFlag, list, stat, 0)
+	                       : 0;
+}
+
+// Server: PD2's stack step, then the radius (D2R takes aurarangecalc when this returns 0).
+// shortcut: NewStateList refuses a recast at a lower level than the running list's, which then keeps its count and
+// life; PD2 raises and extends it. Upgrade if a cast after losing +skills mid-chain matters.
+auto MindBlastRange(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_t {
+	using namespace d2r::rva;
+	const uint32_t dataFlag = game != nullptr ? d2r::DataFlag(game) : 0;
+	const uint8_t* skill = game != nullptr && unit != nullptr ? d2r::api.getSkillRecord(dataFlag, skillId) : nullptr;
+	if (skill == nullptr) {
+		return 0;
+	}
+	const int32_t range = d2r::EvalCalc(game, unit, skill, SkAuraRangeCalc, skillId, level);
+	const int32_t had = MindBlastStacks(dataFlag, unit, skill);
+	if (had < 0) {
+		return range;
+	}
+	const int32_t state = At<int16_t>(skill, SkAuraState), stat = At<int16_t>(skill, SkAuraStat1);
+	// PD2's life: casts must come under auralencalc apart to build to calc2; at the cap the list lasts 3 x auralencalc
+	const int32_t frames = std::max(had, 1) * d2r::EvalCalc(game, unit, skill, SkAuraLenCalc, skillId, level);
+	const int32_t perStack = d2r::EvalCalc(game, unit, skill, SkCalc1, skillId, level);
+	const int32_t cap = d2r::EvalCalc(game, unit, skill, SkCalc2, skillId, level);
+	const int32_t next = MindBlastNext(had, cap);
+	d2r::StateListRequest request {unit, unit, skillId, level, frames, -1, 0, state,
+	                               d2r::Engine<void (*)()>(d2r::sig::SkillStateExpired)};
+	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(d2r::sig::NewStateList)(&request);
+	if (list != nullptr) {
+		// set on a new list too: a replaced one (another level) keeps PD2's count
+		d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(d2r::sig::SetListStat)(dataFlag, list,
+		                                                                                                stat, next, 0);
+		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::SetStateGfxFlag)(unit, state, 1);
+	}
+	const int32_t radius = MindBlastRadius(range, had, perStack, cap);
+	if (pd2::HotSample(g_mindBlasts)) {
+		plog::Info("mind blast: skill %d level %d stacks %d -> %d, %d frames, radius %d (base %d)%s", skillId, level, had,
+		           next, frames, radius, range, list != nullptr ? "" : ", list refused");
+	}
+	return radius;
+}
+
+// Client: the drawn radius. The client draws before the server's raise for this cast reaches its copy of the list,
+// so it raises the count it holds (0 with no list) the way the server does.
+auto MindBlastDrawRange(uint32_t dataFlag, Unit* unit, int32_t calc, int32_t skillId, int32_t level) noexcept -> int32_t {
+	const int32_t range = g_mindBlastDrawCalc(dataFlag, unit, calc, skillId, level);
+	const uint8_t* skill = unit != nullptr ? d2r::api.getSkillRecord(dataFlag, skillId) : nullptr;
+	const int32_t had = skill != nullptr ? MindBlastStacks(dataFlag, unit, skill) : -1;
+	if (had < 0) {
+		return range;
+	}
+	const auto calcOf = [&](int field) {
+		return d2r::api.evalSkillCalc(dataFlag, unit, At<int32_t>(skill, field), skillId, level);
+	};
+	return MindBlastRadius(range, had, calcOf(d2r::rva::SkCalc1), calcOf(d2r::rva::SkCalc2));
+}
+
+// The convert call in srvdo 51's per-unit callback becomes `xor eax,eax; nop dword [rax]` (expected: its E8 call)
+auto PatchMindBlastConvert(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t match = 0;
+	if (sigscan::ScanUnique(context->exeBase, MindBlastConvertCall, 0, &match) != 1) {
+		return false;
+	}
+	const uint64_t at = match + MindBlastConvertCallAt;
+	uint8_t stock[5];
+	std::memcpy(stock, reinterpret_cast<const void*>(context->exeBase + at), sizeof(stock));
+	static constexpr uint8_t NotConverted[5] = {0x31, 0xc0, 0x0f, 0x1f, 0x00};
+	return stock[0] == 0xe8 && context->PatchBytes(at, stock, sizeof(stock), NotConverted, sizeof(NotConverted));
+}
+
+// PD2's srvdo 51 searches with the fixed unit mask 0x8583; D2R's passes the row's aurafilter (Mind Blast 33667 =
+// 0x8383). In D2R's mask test (0x439c10) 0x200 asks a clear line from the centre (collision test 0x363f20) and 0x400
+// a valid target (unit +0x124 bit 3), so PD2 hits through walls only units that can be targeted. At 0x57099d
+// `mov eax,[r14+0x70]; mov [rsp+0x28],eax` becomes `mov dword [rsp+0x28],0x8583`.
+constexpr const char* MindBlastMaskArg =
+    "c7 44 24 50 34 0b 00 00 48 8b cb 48 89 44 24 48 48 8d 44 24 68 c7 44 24 40 00 00 00 00 48 89 44 24 38 48 8d 05 ?? "
+    "?? ?? ?? 48 89 44 24 30 41 8b 46 70 89 44 24 28 44 89 64 24 20 e8";
+constexpr uint32_t MindBlastMaskArgAt = 46;
+
+auto PatchMindBlastMask(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t match = 0;
+	static constexpr uint8_t RowFilter[8] = {0x41, 0x8b, 0x46, 0x70, 0x89, 0x44, 0x24, 0x28};
+	static constexpr uint8_t Pd2Mask[8] = {0xc7, 0x44, 0x24, 0x28, 0x83, 0x85, 0x00, 0x00};
+	return sigscan::ScanUnique(context->exeBase, MindBlastMaskArg, 0, &match) == 1 &&
+	       context->PatchBytes(match + MindBlastMaskArgAt, RowFilter, sizeof(RowFilter), Pd2Mask, sizeof(Pd2Mask));
 }
 
 // --- Leap, Leap Attack, Leap Attack Korlic (PD2 srvdofunc 153 -> 172, cltdofunc 97 -> 115) ------------------------------
@@ -3987,6 +4153,104 @@ auto SrvDoRevive(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		           At<int32_t>(target, d2r::rva::UnitClassId), g_revives.load());
 	}
 	return result;
+}
+
+// --- Frozen Armor and Enchant on allies (PD2 srvdofunc 25, #1870) ----------------------------------------------------
+// Read from ProjectDiablo.dll: srvdo 25 at 0x103aec40 (installed 0x103aecb0), its per-unit callback 0x1036c920.
+// D2R's srvdo 25 (0x553650) puts aurastate on one unit (the skill's target, else the caster). PD2's builds
+// {skill, level, auralencalc, auratargetstate, aurastat1-6, their aurastatcalc values, divisor 2}, runs the callback
+// on the caster, then on every other unit within aurarangecalc that aurafilter takes (D2Game's area search 0xa0c70,
+// D2R's AreaUnits, which skips the caster; flag 1). The callback halves each value (a tenth for enchant/coldenchant on
+// a revive) for another player, a hireling or a unit whose flags +0xc4 (D2R +0x124) have the top bit; the caster and
+// its other pets get the full value. The row's own tooltip says allies get half.
+std::atomic<uint32_t> g_allyBuffs {0};
+SrvDoFn g_srvDo25 = nullptr;  // the slot's own function (D2R's srvdo 25), for rows with no aurafilter
+
+struct AllyBuff {
+	int32_t skillId, level, frames, state;
+	StatValue stats[AuraStats] {};
+	size_t count = 0;
+	int32_t units = 0, divided = 0;  // for the log
+};
+
+// PD2's divisor rule in 0x1036c920: `divide` is another player, a hireling or a top-bit flagged unit.
+constexpr auto AllyBuffValue(int32_t value, bool divide, bool enchantOnRevive) noexcept -> int32_t {
+	return divide ? value / (enchantOnRevive ? 10 : 2) : value;
+}
+static_assert(AllyBuffValue(41, true, false) == 20);
+static_assert(AllyBuffValue(41, true, true) == 4);
+static_assert(AllyBuffValue(41, false, true) == 41);
+
+// One unit (PD2's 0x1036c920 with srvdo 25's block; its slowmissiles branch never runs for these states).
+auto AllyBuffOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
+	using namespace d2r::rva;
+	auto* buff = static_cast<AllyBuff*>(area->arg);
+	auto* game = static_cast<Game*>(area->game);
+	if (victim == nullptr || game == nullptr || buff->frames < 1) {
+		return 0;
+	}
+	const int32_t type = At<int32_t>(victim, UnitType);
+	const bool hireling = type == UnitMonster && std::find(std::begin(HirelingClasses), std::end(HirelingClasses),
+	                                                       At<int32_t>(victim, UnitClassId)) != std::end(HirelingClasses);
+	const bool divide = (type == 0 && victim != area->unit) || At<int32_t>(victim, UnitMainFlags) < 0 || hireling;
+	const bool enchantOnRevive =
+		(buff->state == Enchant || buff->state == ColdEnchant) &&
+		d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(victim, StateRevive) != 0;
+	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	StatValue stats[AuraStats] {};
+	for (size_t i = 0; i < buff->count; i++) {
+		const StatValue& s = buff->stats[i];
+		const int32_t value = ImmuneHalved(s.value, s.stat, type != 0 && !hireling, unitStat(victim, s.stat, 0));
+		stats[i] = {s.stat, AllyBuffValue(value, divide, enchantOnRevive)};
+	}
+	TimedStatList(d2r::DataFlag(game), area->unit, victim, buff->skillId, buff->level, buff->frames, buff->state, stats,
+	              stats + buff->count);
+	++buff->units;
+	buff->divided += divide ? 1 : 0;
+	return 1;
+}
+
+// PD2 srvdofunc 25 for a row with an aurafilter (Frozen Armor, Enchant); D2R's own for the others (D2R's Cold and
+// Lightning Enchant rows, which PD2 does not have). 0 when aurastat1 is not a stat, as PD2.
+auto SrvDoAllyBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	const auto mask = At<uint32_t>(skill, SkAuraFilter);
+	if (mask == 0) {
+		return g_srvDo25(game, unit, skillId, level);
+	}
+	const auto calc = [&](int field) { return d2r::EvalCalc(game, unit, skill, field, skillId, level); };
+	AllyBuff buff {skillId, level, calc(SkAuraLenCalc), At<int16_t>(skill, SkAuraTargetState)};
+	for (int i = 0; i < static_cast<int>(AuraStats); i++) {
+		const int32_t stat = At<int16_t>(skill, SkAuraStat1 + i * 2);
+		// shortcut: PD2 also drops a stat past itemstatcost's end; the merged rows name none. Upgrade if a row ever does.
+		if (stat < 0) {
+			if (i == 0) {
+				return 0;
+			}
+			continue;
+		}
+		buff.stats[buff.count++] = {stat, calc(SkAuraStatCalc1 + i * 4)};
+	}
+	d2r::AreaContext self {game, unit, 1, &buff};
+	AllyBuffOne(&self, unit);
+	const int32_t radius = calc(SkAuraRangeCalc);
+	if (radius > 0) {  // AreaUnits asserts on a radius under 1
+		d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit), 0, 0};  // 0, 0: at the caster
+		d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, mask, AllyBuffOne, &buff, 1);
+	}
+	if (pd2::HotSample(g_allyBuffs)) {
+		plog::Info("ally buff: skill %d level %d: state %d for %d frames, radius %d, mask 0x%x, stat %d %d; units %d, "
+		           "halved %d, cast %u", skillId, level, buff.state, buff.frames, radius, mask, buff.stats[0].stat,
+		           buff.stats[0].value, buff.units, buff.divided, g_allyBuffs.load());
+	}
+	return 1;
 }
 
 // --- Holy Sword and Smite starts (PD2 srvstfunc 73, 75), Smite's crushing blow (srvdo 150) -------------------------
@@ -5100,6 +5364,24 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		                            d2r::rva::SrvDoRevive, reviveDo ? "" : " FAILED (slot is not D2R's Revive)");
 		used += n > 0 ? static_cast<size_t>(n) : 0;
 	}
+	// srvdo 25: the table by signature, the slot's current function kept (expected value) for rows with no aurafilter
+	constexpr int AllyBuffSlot = 25;
+	bool allyBuff = false;
+	if (d2r::sig::SrvDoTable.state == sigscan::State::Ok) {
+		const uint64_t slotRva = d2r::sig::SrvDoTable.rva + static_cast<uint64_t>(AllyBuffSlot) * 8;
+		uint64_t own = 0;
+		std::memcpy(&own, reinterpret_cast<const void*>(context->exeBase + slotRva), sizeof(own));
+		g_srvDo25 = reinterpret_cast<SrvDoFn>(own);
+		allyBuff = own != 0 && context->PatchWriteU64(slotRva, &own, sizeof(own),
+		                                              reinterpret_cast<uint64_t>(static_cast<SrvDoFn>(SrvDoAllyBuff)));
+	}
+	installed += allyBuff ? 1 : 0;
+	used = std::strlen(report);
+	if (used < reportSize) {
+		const int n = std::snprintf(report + used, reportSize - used, "; srvdofunc %d ally buff%s", AllyBuffSlot,
+		                            allyBuff ? "" : " FAILED (table signature or slot)");
+		used += n > 0 ? static_cast<size_t>(n) : 0;
+	}
 	const bool valkyrieThink = PatchThinkDelay(context, ValkyrieThinkDelay, 21, 0x14, "valkyrie");
 	const bool reviveThink = PatchThinkDelay(context, ReviveThinkDelay, 16, 0x0f, "revive");
 	if (sigscan::ScanUnique(context->exeBase, CollisionRefreshEntry, 0, &g_collisionRefresh) != 1) {
@@ -5124,6 +5406,45 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; frenzy stacks%s", frenzy ? "" : " FAILED");
+	}
+	// shortcut: if the redirect fails after the flag patch, the flag stays PD2's; undo it if that ever happens.
+	static constexpr uint8_t KickKnockback[] = {0x0c}, KickGetHit[] = {0x04};
+	uint64_t kickAt = 0;
+	const bool kick = sigscan::ScanUnique(context->exeBase, KickBuilder, 0, &kickAt) == 1 &&
+	                  context->PatchBytes(kickAt + KickFlagsAt, KickKnockback, sizeof(KickKnockback), KickGetHit,
+	                                      sizeof(KickGetHit)) &&
+	                  RedirectCall(context, KickBuilder, KickFillCallAt, reinterpret_cast<uint64_t>(&KickFill),
+	                               reinterpret_cast<uint64_t*>(&g_kickFill));
+	plog::Info("dragon talon: PD2 kick damage calc2, no knockback %s", kick ? "on" : "FAILED (srvdo 42 builder signature or bytes)");
+	installed += kick ? 1 : 0;
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; dragon talon kick%s", kick ? "" : " FAILED");
+	}
+	bool entries = true;
+	for (const sigscan::Entry* e : {&d2r::sig::UnitStateList, &d2r::sig::ListStatValue, &d2r::sig::SetListStat,
+	                                &d2r::sig::NewStateList, &d2r::sig::SetStateGfxFlag, &d2r::sig::SkillStateExpired}) {
+		entries = entries && e->state == sigscan::State::Ok;
+	}
+	// the client draw first: alone (the server's redirect failing) it draws the base radius, as no list is ever made
+	const bool mindBlast = entries &&
+	                       RedirectCall(context, MindBlastDrawCall, MindBlastDrawCallAt,
+	                                    reinterpret_cast<uint64_t>(&MindBlastDrawRange),
+	                                    reinterpret_cast<uint64_t*>(&g_mindBlastDrawCalc)) &&
+	                       RedirectCall(context, MindBlastRangeCall, MindBlastRangeCallAt,
+	                                    reinterpret_cast<uint64_t>(&MindBlastRange),
+	                                    reinterpret_cast<uint64_t*>(&g_mindBlastRange));
+	plog::Info("mind blast: PD2 radius stacks %s", mindBlast ? "on" : "FAILED (srvdo 51 / cltdo 8 call signature or entries)");
+	const bool noConvert = PatchMindBlastConvert(context);
+	const bool mask = PatchMindBlastMask(context);
+	plog::Info("mind blast: damage only, no convert %s; unit mask 0x8583 %s",
+	           noConvert ? "on" : "FAILED (srvdo 51 callback signature or bytes)",
+	           mask ? "on" : "FAILED (srvdo 51 area call signature or bytes)");
+	installed += (mindBlast ? 1 : 0) + (noConvert ? 1 : 0) + (mask ? 1 : 0);
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; mind blast stacks%s, no convert%s, mask%s",
+		              mindBlast ? "" : " FAILED", noConvert ? "" : " FAILED", mask ? "" : " FAILED");
 	}
 	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
 	                                             sizeof(d2r::rva::BusyModeGateEntry), BusyModeGate, &g_gateOriginal);
@@ -5176,8 +5497,9 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 
 auto SkillFunctionCount() noexcept -> int {
 	// + the srvdo router, the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the two first-think patches and the
-	// revive size cap, Frenzy's stacks, the busy mode gate, the spin skill on hit, the holy sword parry and the hit window
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 13;
+	// revive size cap, Frenzy's stacks, Dragon Talon's kick, the busy mode gate, the spin skill on hit, the holy sword
+	// parry, the hit window, srvdo 25's ally buff, Mind Blast's stacks, its no-convert patch and its unit mask
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 18;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
@@ -5192,7 +5514,7 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "novas %u, client %u, item novas %u, static fields %u, vengeances %u, links %u, jousts %u, fire claws %u, hits %u, "
 	              "client %u, wolf starts %u, refused %u, dragon flights %u, hits %u, holy sword starts %u, "
 	              "smite starts %u, smite events %u, gate logs %u, poison egg spawns %u, client %u, nest spawns %u, "
-	              "nests full %u, cycler starts %u, frenzy hits %u, %s",
+	              "nests full %u, cycler starts %u, frenzy hits %u, ally buffs %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
@@ -5206,5 +5528,5 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              g_fireClawClients.load(), g_wolfStarts.load(), g_wolfRefusals.load(), g_dragonFlights.load(),
 	              g_dragonFlightHits.load(), g_holySwordStarts.load(), g_smiteStarts.load(), g_smiteEvents.load(),
 	              g_gateLogs.load(), g_eggSpawns.load(), g_eggSpawnClients.load(), g_nestSpawns.load(), g_nestFull.load(),
-	              g_cyclerStarts.load(), g_frenzyHits.load(), missiles);
+	              g_cyclerStarts.load(), g_frenzyHits.load(), g_allyBuffs.load(), missiles);
 }

@@ -2,11 +2,13 @@
 # PD2 Resurrected (#189, #243): rare jewels always roll 4 affixes; other rares roll PD2's
 # count (ProjectDiablo.dll 0x10384080, 0x10384010 in PD2.gpr, over 1.13c D2Game +0x152bf):
 # a minimum of 3, 4 at ilvl 45, 5 at 65, 6 at 85, then an even roll from the minimum up
-# to 6. Magic weapons and armor are forced to two affixes at ilvl 65+ (85+ rings,
-# amulets, jewels; 90+ charms): PD2 sets the force flag of the 1.13c D2Game +0x103c0
-# affix pick at ilvl > 64 / > 84 / > 89. Quivers and other types keep the vanilla roll
-# (#1829). [crafted] is D2R's own roll:
+# to 6. Magic items other than charms, rings, amulets and jewels are forced to two
+# affixes at ilvl 65+ (85+ rings, amulets, jewels; 90+ charms): PD2 sets the force flag
+# of the 1.13c D2Game +0x103c0 affix pick at ilvl > 64 / > 84 / > 89. Quivers are
+# included (#1829, #1882). Crafted is D2R's own roll:
 # max(rand 0-4, 1/2/3/4 from ilvl 1/31/51/71).
+# The whole file uses the advanced format ([[...]] category tables): the plugin rejects
+# a file that mixes it with simple-format single-bracket tables, and then patches nothing.
 # Increases the number of affixes generated as an item's hidden item level
 # (ilvl) rises. It does not change which affixes are eligible to roll.
 # Restart D2R after editing this file.
@@ -15,35 +17,76 @@
 # Master switch. false keeps vanilla affix-count generation and installs no patch.
 enabled = true
 
-[magic]
-# At or above each ilvl, Magic items in that group are forced to roll both one
-# prefix and one suffix. Below the threshold, D2R keeps its vanilla roll.
-# Valid ilvl values are 1 to 255.
-weapons_and_armor = 65
-jewels_rings_and_amulets = 85
-charms = 90
+# Magic: at or above each step's ilvl, Magic items in that category are forced to roll
+# both one prefix and one suffix. Below it, D2R keeps its vanilla roll. First match
+# wins, so the specific categories come first; "*" takes every other type (weapons,
+# armor, quivers and the rest) and must be last. Valid ilvl values are 1 to 255.
+[[magic.categories]]
+name = "jewels_rings_and_amulets"
+item_types = ["jewl", "ring", "amul"]
+[[magic.categories.steps]]
+minimum_item_level = 85
+minimum_affixes = 2
 
-[rare_jewels]
-# Each row starts at the ilvl written in its name and remains active until the
-# next row. Values are [chance for 3 affixes, chance for 4 affixes].
-# Percentages may use up to two decimals and every row must total exactly 100.
-from_level_1  = [0, 100]
+[[magic.categories]]
+name = "charms"
+item_types = ["char"]
+[[magic.categories.steps]]
+minimum_item_level = 90
+minimum_affixes = 2
 
-[regular_rare_items]
-# Applies to every Rare item except Rare Jewels.
-# Values are [chance for 3, 4, 5, and 6 affixes] and must total exactly 100.
-from_level_1  = [25,   25,    25,    25]
-from_level_45 = [0,    33.33, 33.33, 33.34]
-from_level_65 = [0,    0,    50,   50]
-from_level_85 = [0,    0,    0,    100]
+[[magic.categories]]
+name = "all_other_items"
+item_types = ["*"]
+[[magic.categories.steps]]
+minimum_item_level = 65
+minimum_affixes = 2
 
-[crafted]
-# Controls only the random affixes added beside a recipe's fixed properties.
-# Values are [chance for 1, 2, 3, and 4 random affixes] and must total 100.
-from_level_1  = [40, 20, 20, 20]
-from_level_31 = [0,  60, 20, 20]
-from_level_51 = [0,  0,  80, 20]
-from_level_71 = [0,  0,  0,  100]
+# Rare and Crafted: counts lists the affix counts a category can roll. Each step,
+# from its minimum_item_level until the next step, gives one integer weight per
+# count. Each category starts at ilvl 1; first match wins and "*" must be last.
+[[rare.categories]]
+name = "rare_jewels"
+item_types = ["jewl"]
+counts = [3, 4]
+[[rare.categories.steps]]
+minimum_item_level = 1
+weights = [0, 100]
+
+[[rare.categories]]
+name = "regular_rare_items"
+item_types = ["*"]
+counts = [3, 4, 5, 6]
+[[rare.categories.steps]]
+minimum_item_level = 1
+weights = [2500, 2500, 2500, 2500]
+[[rare.categories.steps]]
+minimum_item_level = 45
+weights = [0, 3333, 3333, 3334]
+[[rare.categories.steps]]
+minimum_item_level = 65
+weights = [0, 0, 5000, 5000]
+[[rare.categories.steps]]
+minimum_item_level = 85
+weights = [0, 0, 0, 10000]
+
+# Crafted counts are only the random affixes added beside a recipe's fixed properties.
+[[crafted.categories]]
+name = "crafted_items"
+item_types = ["*"]
+counts = [1, 2, 3, 4]
+[[crafted.categories.steps]]
+minimum_item_level = 1
+weights = [40, 20, 20, 20]
+[[crafted.categories.steps]]
+minimum_item_level = 31
+weights = [0, 60, 20, 20]
+[[crafted.categories.steps]]
+minimum_item_level = 51
+weights = [0, 0, 80, 20]
+[[crafted.categories.steps]]
+minimum_item_level = 71
+weights = [0, 0, 0, 100]
 
 [diagnostics]
 # Logs one bounded sample for type resolution and each quality selection.

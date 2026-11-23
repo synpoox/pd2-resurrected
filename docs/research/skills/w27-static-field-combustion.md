@@ -30,8 +30,8 @@ damage and adds a second pass.
 
 ### Damage pass (`0x10302830`, per unit)
 
-The area context is {game, caster, ?, &block}. Skips monsters of class 789, 933-936, 1112 (PD2's monhydra3,
-dopplezonnew, rathmaBone, rathmaPoison, rathmaBoneClone, wraithMapMod; merged 806, 950-953, 1129), a unit with
+The area context is {game, caster, ?, &block}. Skips monsters of class 789, 933-936, 1112 (PD2's uberdiablonew,
+rathmaBone, rathmaPoison, rathmaBoneClone, rathmaPoisonClone, Lucion; merged 806, 950-953, 1129), a unit with
 life (stat 6, in 1/256) under 256, and a unit whose life percent (D2Common #11027: `(life >> 8) * 100 / (max >> 8)`)
 is not over StaticFieldMin (PD2: 55, 70, 85 by difficulty). `MulDiv` is `0x1037c4c0`: a * b / max(c, 1) in doubles,
 truncated, `INT32_MAX` past it.

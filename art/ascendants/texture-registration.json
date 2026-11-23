@@ -1,0 +1,16 @@
+[
+  {
+    "filename": "data/hd/vfx/textures/gradient/T_FX_DarkFlame_Gradient_02.texture",
+    "treatAsDecal": false,
+    "type": 2,
+    "width": 256,
+    "height": 16,
+    "depth": 1,
+    "levels": 1,
+    "format": 31,
+    "layoutType": 0,
+    "layoutData": 0,
+    "thumbnailMip": 1,
+    "thumbnailBase64": "AAAAAAQAAAA="
+  }
+]

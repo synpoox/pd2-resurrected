@@ -6,7 +6,7 @@ golem			0	1		1	1	1	StrUI0	1	2	earthgolumicon	290	bloodgolumicon		292	firegolumic
 skeleton			0	1		1	1	1	StrUI1	1	2	skeletonicon												
 skeletonmage			0	1		1	1	1	StrUI2	1	2	skeletonmageicon												
 revive			0	1		1	1	1	StrUI3	1	2	revivedicon												
-hireable			1	1		1		1		1		barbhirable_icon	271	rogueicon		338	act2hireableicon		359	act3hireableicon		1056	act4hireableicon	
+hireable			1	1		1		1		1		barbhirable_icon	271	rogueicon		338	act2hireableicon		359	act3hireableicon		1073	ruff_a4_portrait	
 dopplezon			0				1	1		1	2													
 invis			0	1																				
 raven			0	1					strUI5		2	raven												
@@ -30,3 +30,4 @@ PoisonCreeper			0	1		1	1	1	Creeper	1	2	plaguepoppy	426
 rathmasummon			0																					
 dopplezonnew			0		1		1	1	DopplezonNew	1	2	rogueicon												
 vine2			0	1		1	1	1	Solar	1	1	vines	427											
+hireablelight			1	1		1		1		1		ruff_a4_light	1322	ruff_a4_light										

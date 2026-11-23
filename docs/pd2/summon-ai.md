@@ -12,8 +12,8 @@ patch table (20-byte records at file offset `0x49b028`-`0x4a0744`, [plrmodes](pl
 
 | monai row | PD2 change | Ported |
 |---|---|---|
-| 106 ShadowMaster (Valkyrie, Decoy `dopplezonnew`, Shadow Master) | think kept, 7 patches (below); init replaced by `0x10360af0` | think: yes (core-rules `summons`); init: no |
-| 105 ShadowWarrior | init and think replaced (`0x10360a10`, `0x10360240`) | no |
+| 106 ShadowMaster (Valkyrie, Decoy `dopplezonnew`, Shadow Master) | think kept, 7 patches (below); init replaced by `0x10360af0` | think: yes (core-rules `summons`); init: yes ([#1801](https://github.com/synpoox/pd2-resurrected/issues/1801), below) |
+| 105 ShadowWarrior | init and think replaced (`0x10360a10`, `0x10360240`, PD2.gpr's build) | yes (core-rules `summons`, [#1800](https://github.com/synpoox/pd2-resurrected/issues/1800): init wrapped, think replaced; [core-rules](../features/core-rules.md)) |
 | 110 Vines (Poison Creeper) | 30 bytes NOPed at `+0xab494`: its "target already poisoned / poison immune" skip | yes (core-rules `summons`, below) |
 | 111 CycleOfLife (Carrion Vine, Solar Creeper) | one byte at `+0xab26e` (a flag stored 0 becomes 1) | yes (core-rules `summons`, below) |
 | 61 Hireable (mercenaries) | think `0x1035a270` runs PD2's rules, then 1.13c's think (`+0x1dd40`), which 8 patch-table records patch | partly: Battle Orders, Whirlwind, A4 AmpDmg and the target-search roll (core-rules `mercai`, [#1803](https://github.com/synpoox/pd2-resurrected/issues/1803)); the follow rework, aura restart and party/pet Battle Orders are open on the issue |
@@ -48,6 +48,23 @@ beyond it, warp at `0x900` and over, else walk back; with a target, nothing; els
 think in 12. core-rules' `summons` part hooks D2R's leash and applies this rule to the two think calls only (by return
 address), with D2R's mover kinds (1 walk back, 3 warp, 4 wander, 5 step aside); PD2's own walker and its
 owner-path-end distance are not ported.
+
+## The ShadowMaster init (#1801; 1.13c `+0xa4320`, D2R `0x5cec80`)
+
+D2R's row-106 init is 1.13c's code and is the one the live AI table points at (`0x2397bd8` in the 93847 dump). PD2's
+`0x10360af0` (PD2.gpr's build; installed `0x10360b60`) keeps 1.13c's steps: the owner's level in the
+summoning skill (monstats `aip8`: Valkyrie 32, Dopplezon 28, Shadow Master 279) into the AI block, then every skill of
+the owner's class list (D2Common's list, not PD2's own `0x1037fd70`) through 1.13c's filter `+0xa3d60` (PD2 calls it
+through `0x103a2490`; D2R `0x5cc810`: not the skill that summons this pet, pet type in range) at 1.13c's level
+`+0xa3d00` (through `0x103a24b0`: owner's level / 2 + summon level / 2, 1 to 24; inlined in D2R). It adds:
+
+| PD2 (`0x10360af0`) | D2R (`0x5cec80`) | Pets | Effect |
+|---|---|---|---|
+| left and right skill = the pet's first skill, if it has one (`0x10360b9c`-`0x10360bfa`) | both Attack (`0x33ec70`, `0x33ef10` with 0) | all three | the aura slot the think fills (aitype 6) starts on the monstats skill; no aura pet here, so no visible change |
+| sumskill1-5 of the summoning skill's skills.txt row (`0x1037c110`: `+0xb98` record, `+0xc4` ids, `+0xd0` calcs), each at its sumskcalc for the owner (`0x1030ad70`), after the class copy | none in the init; srvdo 16 applies them for the Valkyrie (`0x55ef80`, loop `0x55f446`); srvdo 49 (`0x5710c0`) has no sumskill loop | Decoy (DoppleZonStrafe at its level, Critical Strike, Pierce, Penetrate at the owner's base level); Valkyrie (same skills either way); Shadow Master: none (skill 279 has no sumskills) | the Decoy shoots PD2's strafe and gets the owner's passive levels |
+
+core-rules' `summons` part wraps D2R's init (`ShadowMaster init`): it reads the pet's first skill before D2R's init
+runs, then sets both slots to it and applies the five sumskills with D2R's calc (`0x3b5160`).
 
 ## The vine thinks (#1802)
 

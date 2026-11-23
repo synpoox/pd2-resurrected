@@ -873,6 +873,16 @@ auto MapEventSpawns(Game* game) noexcept -> int32_t {
 	return game != nullptr ? Get(game, SpawnsKey) : 0;
 }
 
+auto SetMapEventSpawns(Game* game, int32_t spawns) noexcept -> void {
+	if (game != nullptr) {
+		Set(game, SpawnsKey, spawns);
+	}
+}
+
+auto IsMapLevel(int32_t level) noexcept -> bool {
+	return Tier(level) != nullptr;
+}
+
 auto MapEventNotify(Game* game, int32_t event, const char* key) noexcept -> void {
 	NotifyKeyText(game, event, key);
 }
