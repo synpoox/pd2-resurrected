@@ -381,7 +381,7 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Deviation | Gate |
 |---|---|
 | Act 1 mercenary wields bows, crossbows and quivers | `monstats.roguehire.rightArmItemType` `monstats.roguehire.leftArmItemType` |
-| Act 3, Act 5 and Act 4 mercenaries take PD2's weapon types | `monstats.act3hire.rightArmItemType` `monstats.act3hire.leftArmItemType` `monstats.act5hire1.rightArmItemType` `monstats.act5hire1.leftArmItemType` `monstats.act5hire2.rightArmItemType` `itemtypes.mwa3.*` `itemtypes.mwa5.*` `itemtypes.mwsm.*` `itemtypes.mwsh.*` `itemtypes.mwpl.*` `itemtypes.axe.Equiv2` `itemtypes.hamm.Equiv2` `itemtypes.swor.Equiv2` `itemtypes.mace.Equiv2` `itemtypes.wand.Equiv2` `itemtypes.scep.Equiv2` `itemtypes.orb.Equiv1` `itemtypes.shie.Equiv2` `itemtypes.ashd.Equiv2` |
+| Act 3 and Act 5 mercenaries take PD2's weapon types | `monstats.act3hire.rightArmItemType` `monstats.act3hire.leftArmItemType` `monstats.act5hire1.rightArmItemType` `monstats.act5hire1.leftArmItemType` `monstats.act5hire2.rightArmItemType` `itemtypes.mwa3.*` `itemtypes.mwa5.*` `itemtypes.mwsm.*` `itemtypes.mwsh.*` `itemtypes.mwpl.*` `itemtypes.axe.Equiv2` `itemtypes.hamm.Equiv2` `itemtypes.swor.Equiv2` `itemtypes.mace.Equiv2` `itemtypes.wand.Equiv2` `itemtypes.scep.Equiv2` `itemtypes.orb.Equiv1` `itemtypes.shie.Equiv2` `itemtypes.ashd.Equiv2` |
 | Act 2 mercenary wields spears and polearms | `itemtypes.pas.Equiv1` |
 | Greiz no longer offers the Holy Freeze Act 2 mercenary | `hireling.100/10/*.Seller` `hireling.100/34/*.Seller` |
 | Mercenaries wear an amulet, two rings, gloves, a belt and boots | `itemtypes.tors.Equiv2` `itemtypes.ring.Equiv2` `itemtypes.amul.Equiv2` `itemtypes.glov.Equiv2` `itemtypes.boot.Equiv2` `itemtypes.belt.Equiv2` |
