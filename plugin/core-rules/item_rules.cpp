@@ -1372,6 +1372,68 @@ auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
 	return applied;
 }
 
+// --- Boss curse (#1902): the curse umod's area callback, 93847 0x4a06b0 (1.13c D2Game 0x24030) ----------------------
+// D2R's callback puts Amplify Damage with NewStateList itself, past ApplyCurse and so past the curse rules above. PD2
+// swaps it for 0x1036e880, which hands the curse to its curse helper 0x1036d7d0; here the callback is replaced by an
+// ApplyCurse call through CurseApply, its params filled as the curse srvdo (0x55c840) fills them.
+// "44 89 4c 24 20 ... 48 83 b8 b8 11 00 00 42": the entry, its hostility call, the skills.txt row 66 bounds check
+constexpr char BossCursePattern[] =
+    "44 89 4c 24 20 55 56 41 54 41 56 41 57 48 8b ec 48 81 ec 80 00 00 00 45 8b f9 4d 8b f0 4c 8b e2 48 8b f1 "
+    "e8 ?? ?? ?? ?? 85 c0 0f 84 ?? ?? ?? ?? 0f b6 8e 06 01 00 00 48 89 9c 24 b0 00 00 00 e8 ?? ?? ?? ?? 48 8b d8 "
+    "48 83 b8 b8 11 00 00 42";
+constexpr int BossCurseHostileCall = 0x23;  // e8 rel32: (game, caster, target) -> non-zero when the target is fair game
+// mov [rsp+0x20],r9d / push rbp / push rsi / push r12 / push r14 / push r15 / mov rbp,rsp
+constexpr uint8_t BossCurseEntry[] = {0x44, 0x89, 0x4c, 0x24, 0x20, 0x55, 0x56, 0x41,
+                                      0x54, 0x41, 0x56, 0x41, 0x57, 0x48, 0x8b, 0xec};
+constexpr int32_t SkillAmplifyDamage = 66;  // the skill the callback reads (1.13c reads the same row)
+constexpr int SkAuraTargetState = 0xa2;     // int16 auratargetstate: the state the callback puts
+
+// ApplyCurse reads past CurseParams: 0x60 and 0x68 hold the skill's +0xa4 and +0xac, which its state send reads
+struct BossCurseParams {
+	d2r::CurseParams curse;
+	uint64_t sendA;
+	uint64_t sendB;
+};
+static_assert(offsetof(BossCurseParams, sendA) == 0x60 && offsetof(BossCurseParams, sendB) == 0x68);
+
+using BossCurseFn = void (*)(Game*, Unit*, Unit*, int32_t) noexcept;
+BossCurseFn g_bossCurseOriginal = nullptr;  // never called: the replacement does the whole job
+int32_t (*g_bossCurseHostile)(Game*, Unit*, Unit*) noexcept = nullptr;
+std::atomic<uint32_t> g_bossCurses {0};
+
+auto BossCurse(Game* game, Unit* caster, Unit* target, int32_t level) noexcept -> void {
+	using namespace d2r::rva;
+	if (game == nullptr || caster == nullptr || target == nullptr || g_bossCurseHostile(game, caster, target) == 0) {
+		return;  // the callback's own first check, ahead of MakeRoom touching the target's curses
+	}
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), SkillAmplifyDamage);
+	if (skill == nullptr || At<int16_t>(skill, SkAuraTargetState) < 0) {
+		return;
+	}
+	BossCurseParams p {};
+	d2r::CurseParams& c = p.curse;
+	c.game = game;
+	c.caster = caster;
+	c.skill = SkillAmplifyDamage;
+	c.level = level;
+	c.key = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(caster);
+	c.frames = d2r::EvalCalc(game, caster, skill, SkAuraLenCalc, SkillAmplifyDamage, level);
+	for (int i = 0; i < 6; ++i) {
+		const int16_t stat = At<int16_t>(skill, SkAuraStat1 + 2 * i);
+		c.stats[i] = stat < 0 ? -1 : stat;
+		c.values[i] = stat < 0 ? 0 : d2r::EvalCalc(game, caster, skill, SkAuraStatCalc1 + 4 * i, SkillAmplifyDamage, level);
+	}
+	c.state = At<int16_t>(skill, SkAuraTargetState);
+	p.sendA = At<uint64_t>(skill, SkSendStateA);
+	p.sendB = At<uint64_t>(skill, SkSendStateB);
+	const int64_t applied = CurseApply(target, &c);
+	if (const uint32_t n = ++g_bossCurses; pd2::HotSample(n)) {
+		plog::Info("boss curse: state %d (skill %d level %d, %d frames) on %s through the curse rules, %s, %u so far",
+		           c.state, c.skill, level, c.frames, At<int32_t>(target, UnitType) == 0 ? "player" : "monster",
+		           applied != 0 ? "landed" : "refused", n);
+	}
+}
+
 // --- Skill while equipped and phasing (docs/research/items/ir7-equipped-items.md) -------------------------------------
 // PD2 copies D2's item aura for item_skillonequip (0x1036f640, 0x10345cc0): the skill runs as an item aura at the
 // stat's level. D2R's stat callback has no case for stat 375, so core-rules hands it item_aura's case, and the aura's
@@ -2478,6 +2540,16 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                                          reinterpret_cast<uint64_t>(static_cast<BlowFn>(CrushingBlow)));
 	const bool curses = context->InstallInlineHook(ApplyCurse, ApplyCurseEntry, sizeof(ApplyCurseEntry), CurseApply,
 	                                               &g_applyCurseOriginal);
+	// Only with the curse hook: without it the boss curse would skip the rules all the same
+	uint64_t bossCurseAt = 0;
+	const bool bossCurse = curses && sigscan::ScanUnique(context->exeBase, BossCursePattern, 0, &bossCurseAt) == 1 && [&] {
+		const uint64_t call = context->exeBase + bossCurseAt + BossCurseHostileCall;
+		g_bossCurseHostile = reinterpret_cast<int32_t (*)(Game*, Unit*, Unit*) noexcept>(
+			call + 5 + *reinterpret_cast<const int32_t*>(call + 1));
+		plog::Info("found BossCurse at 0x%llx", static_cast<unsigned long long>(bossCurseAt));
+		return context->InstallInlineHook(bossCurseAt, BossCurseEntry, sizeof(BossCurseEntry), BossCurse,
+		                                  &g_bossCurseOriginal);
+	}();
 	// Both or neither: a callback without the tick would start item_skillonequip's aura and stop it at its first tick
 	const bool tick = context->InstallInlineHook(ItemAuraTick, ItemAuraTickEntry, sizeof(ItemAuraTickEntry),
 	                                             EquipAuraTick, &g_itemAuraTickOriginal);
@@ -2531,7 +2603,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s; boss curse%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
@@ -2543,15 +2615,16 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              telekinesis ? "" : " FAILED (signature or bytes differ)",
 	              curseLength ? "" : " FAILED (signature, bytes or states.txt)",
 	              shrinePotions ? "" : " FAILED (signature or bytes differ)",
-	              pierceCap ? "" : " FAILED (signature or bytes differ)");
+	              pierceCap ? "" : " FAILED (signature or bytes differ)",
+	              bossCurse ? "" : " FAILED (curse hook, signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
 	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0) +
-	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (shrinePotions ? 1 : 0) + (pierceCap ? 1 : 0);
+	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (shrinePotions ? 1 : 0) + (pierceCap ? 1 : 0) + (bossCurse ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 19;
+	return 20;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
