@@ -1994,6 +1994,62 @@ static void ClientPierceRoll(Unit* missile, Unit* owner) noexcept {
 	}
 }
 
+// --- Crafted level requirement (#1866) -----------------------------------------------------------------------------
+// PD2 NOPs 1.13c D2Common's `add ebp,esi` (+0x26473), so a crafted item (quality 8) needs only the highest requirement
+// of its base and affixes, not that plus 10 + 3 per affix. D2R's level requirement (93847: 0x376de0, (item, player))
+// is a D2RLoader thunk, `jmp [slot]` into D2RCore.dll; its image body (bonus at 0x3770a7) is dead. D2RCore's body
+// (1.3.1: +0x3d4170, socket fillers by direct recursion) adds the bonus once, at `add ebx,r14d` (+0x3d45a1): bonus
+// plus highest affix requirement, then capped at max level - 1. That becomes `mov ebx,r14d`. Server equip checks and
+// client tooltips both end there. No SDK service covers it and the MutationService patches only D2R.exe, so the three
+// bytes are written into D2RCore's code here, found by signature in the module the slot leads to, refused on any
+// other bytes. The way there starts at a live caller: D2R's requirement check (0x36c06d).
+constexpr const char* LevelReqCall = "48 8b d5 48 8b cf e8 ?? ?? ?? ?? 4c 8b 7c 24 40 44 8b f0 83 f8 ff 74";
+constexpr int LevelReqCallAt = 6;
+constexpr const char* CraftedBonusAdd =
+    "41 83 f8 08 75 ?? 0f b6 8e bd 01 00 00 31 d2 49 89 c7 ff 15 ?? ?? ?? ?? 89 c1 4c 89 f8 ff c9 44 01 f3 39 d9 0f 4c d9";
+constexpr int CraftedBonusAddAt = 31;
+constexpr uint64_t CraftedBonusReach = 0x1000;  // the site lies this close after the body's entry (1.3.1: +0x431)
+
+static auto PatchCraftedLevelReq(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t call = 0;
+	if (sigscan::ScanUnique(context->exeBase, LevelReqCall, LevelReqCallAt, &call) != 1) {
+		return false;
+	}
+	const auto* site = reinterpret_cast<const uint8_t*>(context->exeBase + call);
+	const uint8_t* const thunk = site + 5 + *reinterpret_cast<const int32_t*>(site + 1);
+	if (thunk[0] != 0xff || thunk[1] != 0x25) {  // not D2RLoader's thunk: D2R's own body runs, leave it
+		return false;
+	}
+	const auto* stub = *reinterpret_cast<const uint8_t* const*>(thunk + 6 + *reinterpret_cast<const int32_t*>(thunk + 2));
+	HMODULE core = nullptr;
+	if (stub == nullptr || stub[0] != 0xe9 ||
+	    !GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+	                        reinterpret_cast<LPCWSTR>(stub), &core)) {
+		return false;
+	}
+	const uint64_t base = reinterpret_cast<uint64_t>(core);
+	const uint64_t body = reinterpret_cast<uint64_t>(stub) + 5 + *reinterpret_cast<const int32_t*>(stub + 1) - base;
+	uint64_t add = 0;
+	if (sigscan::ScanUnique(base, CraftedBonusAdd, CraftedBonusAddAt, &add) != 1 || add < body ||
+	    add - body >= CraftedBonusReach) {
+		return false;
+	}
+	static constexpr uint8_t AddEbxR14[] = {0x44, 0x01, 0xf3};
+	static constexpr uint8_t MovEbxR14[] = {0x44, 0x89, 0xf3};
+	auto* const code = reinterpret_cast<uint8_t*>(base + add);
+	DWORD old = 0;
+	if (std::memcmp(code, AddEbxR14, sizeof(AddEbxR14)) != 0 ||
+	    VirtualProtect(code, sizeof(MovEbxR14), PAGE_EXECUTE_READWRITE, &old) == 0) {
+		return false;
+	}
+	std::memcpy(code, MovEbxR14, sizeof(MovEbxR14));
+	VirtualProtect(code, sizeof(MovEbxR14), old, &old);
+	FlushInstructionCache(GetCurrentProcess(), code, sizeof(MovEbxR14));
+	plog::Info("crafted level requirement: +10 +3 per affix bonus dropped at D2RCore+0x%llx",
+	           static_cast<unsigned long long>(add));
+	return true;
+}
+
 // --- Charm rows (#358) ---------------------------------------------------------------------------------------------
 // PD2's inventory is 10x8 and a charm works only in its lower four rows (the grid's y 4 to 7, by the charm's top row).
 // D2R's own charm-active body (93847: 0x36ae00) is not called: D2RLoader rewrote its callers to a thunk in its .maho
@@ -2569,6 +2625,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool telekinesis = PatchTelekinesisArrows(context);
 	const bool shrinePotions = PatchShrinePotions(context);
 	const bool curseLength = PatchCurseLength(context);
+	const bool craftedReq = PatchCraftedLevelReq(context);
 	// One rule, ok only with both halves: a client roll capped apart from the server's draws the missile stopping early.
 	// Both sites are scanned before either hook goes in, so a build that moved one leaves both rolls stock.
 	// shortcut: if the loader refuses the second hook after the first went in, the first stays; undo it if that ever happens.
@@ -2603,7 +2660,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s; boss curse%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s; boss curse%s; crafted level requirement%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
@@ -2616,15 +2673,17 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              curseLength ? "" : " FAILED (signature, bytes or states.txt)",
 	              shrinePotions ? "" : " FAILED (signature or bytes differ)",
 	              pierceCap ? "" : " FAILED (signature or bytes differ)",
-	              bossCurse ? "" : " FAILED (curse hook, signature or bytes differ)");
+	              bossCurse ? "" : " FAILED (curse hook, signature or bytes differ)",
+	              craftedReq ? "" : " FAILED (thunk, signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
 	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0) +
-	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (shrinePotions ? 1 : 0) + (pierceCap ? 1 : 0) + (bossCurse ? 1 : 0);
+	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (shrinePotions ? 1 : 0) + (pierceCap ? 1 : 0) + (bossCurse ? 1 : 0) +
+	       (craftedReq ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 20;
+	return 21;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {

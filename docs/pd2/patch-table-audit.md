@@ -26,9 +26,9 @@ Status is one of four:
 
 | Status | Records | Units |
 |---|---|---|
-| ported | 122 | 69 |
+| ported | 123 | 70 |
 | deviation | 330 | 83 |
-| missing | 168 | 108 |
+| missing | 167 | 107 |
 | not needed | 495 | 261 |
 | **total** | **1115** | **521** |
 
@@ -844,7 +844,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 | 2: D2Common `+0x1efe3`: `7f` -> `7d`<br>D2Common `+0x1eff5`: `7f` -> `7d` | `+0x1ef90` | +0x1ef90: two jg become jge | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
 | 3: D2Common call `+0x2155d`, `+0x213fc` (to `0x251c0`) -> PD2 `0x102fb080`<br>D2Common `+0x252cd`: `03` -> `04` | `+0x21300`, `+0x21420`, `+0x251c0` | +0x2155d, +0x213fc: +0x251c0 replaced by PD2's item function 0x102fb080 (also called from D2Client); +0x252cd: an add becomes another opcode | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
 | 1: D2Common `+0x25804`..`+0x25807`: ptr PD2 `0x1030e290` | - | +0x25804: a pointer to 0x1030e290 written into code padding | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
-| 1: D2Common `+0x26473`..`+0x26474`: `03ee` -> `9090` | `+0x26190` | +0x26473: an add esi NOPed | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
+| 1: D2Common `+0x26473`..`+0x26474`: `03ee` -> `9090` | `+0x26190` | +0x26473: the crafted item level requirement bonus (10 + 3 per affix) is no longer added | ported | plugin/core-rules/item_rules.cpp ([#1866](https://github.com/synpoox/pd2-resurrected/issues/1866)) | D2RCore `+0x3d45a1` (body of D2R's thunk `0x376de0`) |
 | 5: D2Common `+0x2d2c9`: `8d` -> `e8`<br>D2Common call `+0x2d2c9(8d)` (to `0x2f772`) -> PD2 `0x102fb040`<br>D2Common `+0x2d2ce`..`+0x2d2d0`: `00003b` -> `c20400` | `+0x2d2c0` | +0x2d2c0: replaced by a call to 0x102fb040 (a byte from a PD2 table lookup) and ret 4 | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
 | 3: D2Common `+0x334ac`..`+0x334cc`: `6a006a4456e8ba5600006a00..` -> `909090909090909090909090..`<br>D2Common `+0x334ac`: `6a` -> `e8`<br>D2Common call `+0x334ac(6a)` (to `0x56479eb1`) -> PD2 `0x103a37a0` | `+0x33110` | Units.cpp +0x334ac: two D2Common calls with 0x44 NOPed and replaced by 0x102fc0e0 | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read) | - |
 | 8: D2Common call `+0x378eb`, `+0x379e6`, `+0x379fb`, `+0x37abb`, `+0x37b5f`, `+0x37c80`, `+0x37d00`, `+0x37d15` (to `0x376f0`) -> PD2 `0x102fbe10` | `+0x37840`, `+0x37920`, `+0x37a20`, `+0x37af0`, `+0x37c20`, `+0x37ca0` | +0x376f0 (8 sites) through 0x102fbe10: for a level above 136 a value is set from 0x1037f1a0 | missing | [#1848](https://github.com/synpoox/pd2-resurrected/issues/1848); - (needs a read; levels past 136 are PD2's maps) | - |
