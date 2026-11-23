@@ -3,7 +3,7 @@
 // Stock: PD2 0x103846d0 replaces 1.13c's gamble fill (D2Game +0xbe2a0) for NPC 147 in a map level whose event is Gheed.
 // Once per game (game +0x2628, the event's state, set to 2) it makes a store of its own (act index -1, so not the act's
 // store) holding: 1 in 200 Kadala's Heirloom (0x10388cd0, not ported: docs/deviations.md), then up to 5 random unique
-// items (below), item level 99, unidentified, and none of the plain stock. Here the stock goes in his trade store: D2R's
+// items (below), item level 99, unidentified (identified here: MakeUnique), and none of the plain stock. Here the stock goes in his trade store: D2R's
 // trade fill (0x53c9f0 in build 93847) is wrapped, and for the map's Gheed its plain stock is not made; each unique is
 // made through D2R's own store item maker (0x540ea0: makes, checks and places an item in the NPC's store), whose item
 // creation (0x43d530) is wrapped so that, during this call only, the drop request also names the unique row.
@@ -172,15 +172,14 @@ auto CreateItem(Unit* unit, int32_t row, Game* game, int32_t mode, int32_t quali
 	return item;
 }
 
-// PD2 0x103841d0 (item level 99, mode 4, unique row forced) and 0x10314290 (into the store), unidentified (1.13c #10977
-// clears flag 0x10) as PD2 leaves it
+// PD2 0x103841d0 (item level 99, mode 4, unique row forced) and 0x10314290 (into the store). PD2 leaves it unidentified
+// (1.13c #10977 clears flag 0x10) for its gamble window; in the trade window it stays identified as the maker leaves it:
+// the client is sent an unidentified item without its properties, so its price differs from the server's and D2R's buy
+// (0x53d850) refuses it with result 7, "That item has just been traded."
 auto MakeUnique(Game* game, Unit* npc, int32_t row, uint32_t code) noexcept -> Unit* {
 	g_forceUnique = row;
 	Unit* item = g_maker(npc, code, game, 0, QualityUnique, ItemLevel, 0);
 	g_forceUnique = -1;
-	if (item != nullptr) {
-		d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag)(item, ItemFlagIdentified, 0);
-	}
 	return item;
 }
 
