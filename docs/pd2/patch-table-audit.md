@@ -978,7 +978,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | cltdofunc | 117 | `0x103ac8b0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Find Potion/Item, Lightning Bolt/Fury, Split Throw) |
 | `0x1036ba20` | cltdofunc | 118 | `0x103ac910` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Find Potion/Item, Lightning Bolt/Fury, Split Throw) |
 | `0x1036ba20` | cltdofunc | 119 | `0x103acb70` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x1036ba20` | srvdofunc | 4 | `0x103ae650` | missing | [#1873](https://github.com/synpoox/pd2-resurrected/issues/1873) |
+| `0x1036ba20` | srvdofunc | 4 | `0x103ae650` | ported | `plugin/core-rules/skill_functions.cpp` (SrvDoUnsummon, [#1873](https://github.com/synpoox/pd2-resurrected/issues/1873)) |
 | `0x1036ba20` | srvdofunc | 6 | `0x103ae7c0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 8 | `0x103ae930` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules router (Multiple Shot, Multiple Shot Proc, TraitorBossStunSpear) |
 | `0x1036ba20` | srvdofunc | 23 | `0x103aebf0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
