@@ -47,8 +47,8 @@ static_assert(Move(100, false, true) == MoveWander && Move(100, true, true) == M
 using MoverFn = uint64_t (*)(d2r::Game*, d2r::Unit* owner, d2r::Unit* pet, int32_t kind, int32_t, int32_t, uint8_t radius) noexcept;
 using PathTargetFn = d2r::Unit* (*)(d2r::Game*, d2r::Unit*) noexcept;
 using IsDeadFn = int32_t (*)(d2r::Unit*) noexcept;
-// D2R's AI target search (0x595f80, 1.13c +0xb1bc0): (game, unit, out distance block, out flag block); it also points
-// the unit's path at what it finds, as in PD2
+// D2R's AI target search (0x595f80, 1.13c +0xb1bc0): (game, unit, out distance block, out flag block); it probes a path
+// to the pick (restoring the path's target, point and type), as in PD2
 using SearchFn = d2r::Unit* (*)(d2r::Game*, d2r::Unit*, void*, void*) noexcept;
 struct Engine {
 	MoverFn mover = nullptr;
