@@ -1,7 +1,7 @@
 ItemType	Code	Equiv1	Equiv2	Repair	Body	BodyLoc1	BodyLoc2	Shoots	Quiver	Throwable	Reload	ReEquip	AutoStack	Magic	Rare	Normal	Beltable	MaxSockets1	MaxSocketsLevelThreshold1	MaxSockets2	MaxSocketsLevelThreshold2	MaxSockets3	TreasureClass	Rarity	StaffMods	Class	VarInvGfx	InvGfx1	InvGfx2	InvGfx3	InvGfx4	InvGfx5	InvGfx6	StorePage	*eol	UICategory	RunewordCategory1	RunewordCategory2	Restricted
 None				0	0					0	0	0	0			0	0	0	25	0	40	0	0	3			0								0				
 None	none			0	0					0	0	0	0			0	0	0	25	0	40	0	0	3			0								0				
-Shield	shie	shld		1	1	rarm	larm			0	0	0	0		1	0	0	3	25	3	40	4	0	3			0							armo	0	shlds	r_off		
+Shield	shie	shld	mwsh	1	1	rarm	larm			0	0	0	0		1	0	0	3	25	3	40	4	0	3			0							armo	0	shlds	r_off		
 Armor	tors	armo	merc	1	1	tors	tors			0	0	0	0		1	0	0	3	25	4	40	6	0	3			0							armo	0	armor	r_arm		
 Gold	gold	misc		0	0					0	0	0	0			1	0	0	25	0	40	0	0	3			0								0				
 Bow Quiver	bowq	misl		0	1	rarm	larm		bow	0	0	0	0		1	0	0	1	25	2	40	2	0	3			0							misc	0	ammo			
@@ -23,19 +23,19 @@ Gem	gem	sock	ggm	0	0					0	0	0	1			1	0	0	25	0	40	0	0	3			0							misc	0	gems
 Torch	torc	misc		0	1					0	0	0	0			1	0	0	25	0	40	0	0	3			0							misc	0				
 Scroll	scro	misc		0	0					0	0	0	0			1	1	0	25	0	40	0	0	3			0							misc	0				
 Not Used				0	0					0	0	0	0			0	0	0	25	0	40	0	0	3			0								0				
-Scepter	scep	rod	gen	1	1	rarm	larm			0	0	0	0		1	0	0	3	25	5	40	6	0	1	pal		0							weap	0	scept	r_mel		
-Wand	wand	rod		1	1	rarm	larm			0	0	0	0		1	0	0	2	25	2	40	2	0	1	nec		0							weap	0	wands	r_mel		
+Scepter	scep	rod	mwa3	1	1	rarm	larm			0	0	0	0		1	0	0	3	25	5	40	6	0	1	pal		0							weap	0	scept	r_mel		
+Wand	wand	rod	mwa3	1	1	rarm	larm			0	0	0	0		1	0	0	2	25	2	40	2	0	1	nec		0							weap	0	wands	r_mel		
 Staff	staf	rod		1	1	rarm	larm			0	0	0	0		1	0	0	5	25	6	40	6	0	1	sor		0							weap	0	stave	r_mel		
 Bow	bow	miss	rng	0	1	rarm	larm	bowq		0	0	0	0		1	0	0	3	25	4	40	6	1	3			0							weap	0	bows	r_mel		
-Axe	axe	mgen		1	1	rarm	larm			0	0	0	0		1	0	0	4	25	5	40	6	0	3			0							weap	0	axes	r_mel		
+Axe	axe	mgen	mwa5	1	1	rarm	larm			0	0	0	0		1	0	0	4	25	5	40	6	0	3			0							weap	0	axes	r_mel		
 Club	club	blun		1	1	rarm	larm			0	0	0	0		1	0	0	3	25	4	40	6	0	3	dru		0							weap	0	maces	r_mel		
-Sword	swor	mgen		1	1	rarm	larm			0	0	0	0		1	0	0	3	25	4	40	6	0	3			0							weap	0	sword	r_mel		
-Hammer	hamm	blun		1	1	rarm	larm			0	0	0	0		1	0	0	3	25	4	40	6	0	3			0							weap	0	maces	r_mel		
+Sword	swor	mgen	mwsm	1	1	rarm	larm			0	0	0	0		1	0	0	3	25	4	40	6	0	3			0							weap	0	sword	r_mel		
+Hammer	hamm	blun	mwa5	1	1	rarm	larm			0	0	0	0		1	0	0	3	25	4	40	6	0	3			0							weap	0	maces	r_mel		
 Knife	knif	mgen	asm	1	1	rarm	larm			0	0	0	0		1	0	0	2	25	3	40	3	0	3	ass		0							weap	0	daggs	r_mel		
 Spear	spea	mele	pas	1	1	rarm	larm			0	0	0	0		1	0	0	3	25	4	40	6	0	3			0							weap	0	spear	r_mel		
 Polearm	pole	mele	pas	1	1	rarm	larm			0	0	0	0		1	0	0	3	25	4	40	6	0	3			0							weap	0	poles	r_mel		
 Crossbow	xbow	miss	rng	1	1	rarm	larm	xboq		0	0	0	0		1	0	0	3	25	4	40	6	0	3			0							weap	0	xbows	r_mis		
-Mace	mace	blun		1	1	rarm	larm			0	0	0	0		1	0	0	3	25	4	40	6	0	3			0							weap	0	maces	r_mel		
+Mace	mace	blun	mwsm	1	1	rarm	larm			0	0	0	0		1	0	0	3	25	4	40	6	0	3			0							weap	0	maces	r_mel		
 Helm	helm	armo		1	1	head	head			0	0	0	0		1	0	0	2	25	2	40	3	0	3			0							armo	0	helms	r_hel		
 Missile Potion	tpot	thro		0	1	rarm	larm			1	1	1	1			1	0	0	25	0	40	0	0	3			0							misc	0	throw			
 Quest	ques			0	0					0	0	0	1			0	0	0	25	0	40	0	0	3			0								0				
@@ -69,9 +69,9 @@ Assassin Item	assn	clas	asm	0	0					0	0	0	0		1	0	0	0	25	0	40	0	0	2		ass	0							
 Druid Item	drui	clas		0	0					0	0	0	0		1	0	0	0	25	0	40	0	0	1		dru	0								0				
 Warlock Item	warl	clas		0	0					0	0	0	0		1	0	0	0	25	0	40	0	0	1	war	war	0							armo	0				
 Hand to Hand	h2h	mele	assn	1	1	rarm	larm			0	0	0	0		1	0	0	2	25	3	40	3	0	2	ass	ass	0							weap	0	assas	r_mel		
-Orb	orb	weap	sorc	1	1	rarm	larm			0	0	0	0		1	0	0	2	25	3	40	3	0	1	sor	sor	0							weap	0	sorce	r_mel		
+Orb	orb	mwa3	sorc	1	1	rarm	larm			0	0	0	0		1	0	0	2	25	3	40	3	0	1	sor	sor	0							weap	0	sorce	r_mel		
 Voodoo Heads	head	shld	necr	1	1	rarm	larm			0	0	0	0		1	0	0	2	25	3	40	3	0	1	nec	nec	0							armo	0	necro	r_arm		
-Auric Shields	ashd	shld	pala	1	1	rarm	larm			0	0	0	0		1	0	0	3	25	4	40	4	0	1		pal	0							armo	0	palad	r_off		
+Auric Shields	ashd	shld	mwpl	1	1	rarm	larm			0	0	0	0		1	0	0	3	25	4	40	4	0	1		pal	0							armo	0	palad	r_off		
 Primal Helm	phlm	helm	barb	1	1	head	head			0	0	0	0		1	0	0	2	25	3	40	3	0	1	bar	bar	0							armo	0	barbh	r_hel		
 Pelt	pelt	helm	drui	1	1	head	head			0	0	0	0		1	0	0	2	25	3	40	3	0	1	dru	dru	0							armo	0	druid	r_hel		
 Cloak	cloa	tors	assn	1	1	tors	tors			0	0	0	0		1	0	0	0	25	0	40	0	0	1	ass	ass	0							armo	0		r_arm		
@@ -247,3 +247,8 @@ Light Shield	lshi			1	1	rarm	larm			0	0	0	0		1	0	0	3	25	3	40	4	0	3			0							arm
 Polearm and Spear	pas	sppl		1	1					0	0	0	0		1	0	0	0	25	0	40	0	1	3			0								0				
 CartographerMap	cmap	misc		0	0					0	0	0	0	0	1	0	0	0	25	0	40	0	0	3			0							misc	0				
 Mercenary Gear	merc			0	0					0	0	0	0		1	0	0	0	25	0	40	0	0	3			0								0				
+Mercenary Act 3 Weapon	mwa3	weap		0	0					0	0	0	0		1	0	0	0	25	0	40	0	0	3			0								0				
+Mercenary Act 5 Weapon	mwa5			0	0					0	0	0	0		1	0	0	0	25	0	40	0	0	3			0								0				
+Mercenary Sword and Mace	mwsm	mwa3	mwa5	0	0					0	0	0	0		1	0	0	0	25	0	40	0	0	3			0								0				
+Mercenary Act 3 Shield	mwsh			0	0					0	0	0	0		1	0	0	0	25	0	40	0	0	3			0								0				
+Mercenary Paladin Shield Link	mwpl	pala	mwsh	0	0					0	0	0	0		1	0	0	0	25	0	40	0	0	3			0								0				

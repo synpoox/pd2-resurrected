@@ -44,6 +44,32 @@ class MercInventory(unittest.TestCase):
         rogue = next(m for m in data_tables.rows("monstats") if m["Id"] == "roguehire")
         self.assertEqual((rogue["rightArmItemType"], rogue["leftArmItemType"]), ("miss", "misl"))
 
+    def test_merc_weapon_types_match_pd2(self):
+        # PD2's mercenary equip check (#1990): each hireling's arm types, resolved down the Equiv chain
+        data_tables.need(self)
+        types = {t["Code"]: t for t in data_tables.rows("itemtypes") if t["Code"]}
+
+        def is_a(code, parent):
+            t = types[code]
+            return code == parent or any(t[c] and is_a(t[c], parent) for c in ("Equiv1", "Equiv2"))
+
+        probe = ("swor", "mace", "wand", "scep", "orb", "axe", "hamm", "shie", "ashd", "staf", "club", "spea", "head")
+
+        def accepts(parent):
+            return {c for c in probe if is_a(c, parent)}
+
+        hire = {m["Id"]: (m["rightArmItemType"], m["leftArmItemType"]) for m in data_tables.rows("monstats") if m["Id"].startswith(("act3hire", "act4hire", "act5hire"))}
+        self.assertEqual(accepts(hire["act3hire"][0]), {"swor", "mace", "wand", "scep", "orb"})
+        self.assertEqual(accepts(hire["act3hire"][1]), {"shie", "ashd"})
+        for h in ("act5hire1", "act5hire2"):
+            self.assertEqual(accepts(hire[h][0]), {"axe", "swor", "mace", "hamm"}, h)
+        self.assertEqual(hire["act5hire1"][1], hire["act5hire1"][0])
+        self.assertEqual(hire["act5hire2"][1], "none")
+        self.assertEqual(hire["act4hire"], ("staf", "none"))
+        # the new parents add groupings only: the old ancestors stay reachable
+        for code, parent in (("ashd", "shld"), ("ashd", "pala"), ("scep", "gen"), ("orb", "weap"), ("orb", "sorc"), ("scep", "rod")):
+            self.assertTrue(is_a(code, parent), (code, parent))
+
     def test_hireling_rows_have_the_new_rects(self):
         # the server refuses a body slot whose rect is -1 (#1627)
         data_tables.need(self)
