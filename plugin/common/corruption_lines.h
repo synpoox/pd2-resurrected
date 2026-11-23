@@ -26,12 +26,25 @@ inline auto Split(std::string_view text) -> std::vector<std::string_view> {
 	}
 }
 
-// `with`: the item's lines; `without`: the same item's lines with the corruption's values taken off. Each line of `with`
-// that `without` lacks (an equal line counts once) is wrapped Red ... Blue, every other byte stays as it is. False, and
-// `with` untouched, when nothing differs or the result would not fit in `size` bytes with its terminator.
-inline auto Mark(char* with, size_t size, std::string_view without) -> bool {
+// Takes `line` out of `spare` (each equal line counts once); false when it is not there.
+inline auto Take(std::vector<std::string_view>& spare, std::string_view line) -> bool {
+	for (std::string_view& s : spare) {
+		if (s.data() != nullptr && s == line) {
+			s = {};  // used
+			return true;
+		}
+	}
+	return false;
+}
+
+// `with`: the item's lines; `lower` and `higher`: the same item's lines with the corruption's values lowered and raised.
+// A line is the corruption's when neither has it: a line it did not touch is in at least one of them, also when a
+// changed value splits or joins a group line (All Resistances, all Attributes), which only one direction can do. Each
+// such line is wrapped Red ... Blue, every other byte stays as it is. False, and `with` untouched, when no line is the
+// corruption's or the result would not fit in `size` bytes with its terminator.
+inline auto Mark(char* with, size_t size, std::string_view lower, std::string_view higher) -> bool {
 	const std::string_view text(with, strnlen(with, size));
-	std::vector<std::string_view> spare = Split(without);
+	std::vector<std::string_view> spareLow = Split(lower), spareHigh = Split(higher);
 	std::string out;
 	bool marked = false, first = true;
 	for (const std::string_view line : Split(text)) {
@@ -39,15 +52,8 @@ inline auto Mark(char* with, size_t size, std::string_view without) -> bool {
 			out += '\n';
 		}
 		first = false;
-		bool found = false;
-		for (std::string_view& s : spare) {
-			if (s.data() != nullptr && s == line) {
-				s = {};  // used
-				found = true;
-				break;
-			}
-		}
-		if (found || line.empty()) {
+		const bool low = Take(spareLow, line), high = Take(spareHigh, line);
+		if (low || high || line.empty()) {
 			out += line;
 		} else {
 			out.append(Red).append(line).append(Blue);

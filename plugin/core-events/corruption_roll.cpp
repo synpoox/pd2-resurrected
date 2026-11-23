@@ -54,7 +54,6 @@ auto CorruptItem(Game* game, Unit* item, bool desecrate, const char* label) noex
 		return false;
 	}
 	const auto record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(CubeRecipe);
-	const auto itemRecord = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ItemRecord);
 	const int32_t rows = d2r::Engine<int32_t (*)(uint32_t) noexcept>(CubeRecipeCount)(dataFlag);
 	int32_t floor = desecrate ? DesecrateFloor : 0;
 	int32_t roll = desecrate ? DesecrateFloor + RollRand() % (1000 - DesecrateFloor) : 0;
@@ -65,12 +64,7 @@ auto CorruptItem(Game* game, Unit* item, bool desecrate, const char* label) noex
 			continue;
 		}
 		const uint8_t* in = r + CubeInputs;
-		const int32_t shard = At<int32_t>(in + CubeInputSize, 2);
-		const uint8_t* shardRecord = shard > 0 ? itemRecord(dataFlag, shard) : nullptr;
-		if (shardRecord != nullptr && At<uint32_t>(shardRecord, ItCode) != 0x20737377) {  // 'wss '
-			continue;
-		}
-		if (!pd2::CubeInputMatches(in, item)) {
+		if (!pd2::CorruptionShardOk(dataFlag, r) || !pd2::CubeInputMatches(in, item)) {
 			continue;
 		}
 		const int32_t value = At<int32_t>(r, CubeValue);

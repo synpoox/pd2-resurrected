@@ -8,7 +8,7 @@
 namespace corruption_marks {
 
 // Reads cubemain's corruption outcomes' properties (properties.txt, itemstatcost.txt) and hooks D2R's property lines
-// (0x2dc4b0). Returns the report for the log.
+// (by signature). Returns the report for the log.
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept;
 
 // The hook's counters, for the status command.

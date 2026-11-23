@@ -4,10 +4,11 @@
 // How a line is known to be the corruption's: a corruption puts its outcome's code (cubemain's `corrupt` mod value) in
 // the item's `corrupted` stat (413). The cubemain rows with that code whose first input matches the item (PD2's own
 // check, cube_input_match.h) name the properties the outcome put on; properties.txt names their stats. D2R's property
-// lines (0x2dc4b0) are built once as they are, then again with each of those stats lowered by its row's minimum on the
-// client copy (and set back right after), and only the lines that differ go red (corruption_lines.h). A merged line (the
-// item's own +200% and the corruption's +40% Enhanced Damage) is therefore red as a whole, and a line the corruption did
-// not touch never is. When a value cannot be lowered (the stat is not on the item's magic or base list) its line stays blue.
+// lines (0x2dc4b0) are built once as they are, then twice more with each of those stats lowered and raised by its row's
+// minimum on the client copy (set back right after each), and a line is red only when neither of those builds has it
+// (corruption_lines.h). A merged line (the item's own +200% and the corruption's +40% Enhanced Damage) is therefore red
+// as a whole, and a line the corruption did not touch never is, also when the corruption split a group line such as All
+// Resistances. When a value cannot be lowered (the stat is not on the item's magic or base list) its line stays blue.
 // Client copy only, UI thread, as item_quantity's tab counts: the server's item and the save are untouched.
 #include "corruption_marks.h"
 
@@ -16,6 +17,7 @@
 #include "log.h"
 #include "pd2_engine.h"
 #include "property_ids.h"
+#include "sig_hook.h"
 
 #include <algorithm>
 #include <atomic>
@@ -34,8 +36,9 @@ using d2r::Unit;
 namespace lines = pd2::corruption_lines;
 
 // D2Client mods.cpp: (item, out, size, ...) writes the item's blue property lines to `out`, one per LF, no colour codes
-// (d2rAI-toolkit knowledge/d2r-93847-addresses.md, "Item property lines"). The entry 0x2da760 it calls is D2RLoader's.
-constexpr uint64_t PropertyLines = 0x2dc4b0;
+// (d2rAI-toolkit knowledge/d2r-93847-addresses.md, "Item property lines"; 0x2dc4b0 on 93847). The 0x2da760 it calls
+// is D2RLoader's. Found by signature (AGENTS.md): its first 24 bytes match once in the 93847 dump.
+constexpr const char* PropertyLinesPattern = "48 89 5c 24 20 55 56 57 41 54 41 55 41 56 41 57 48 8d ac 24 c0 fb ff ff";
 constexpr uint8_t PropertyLinesEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x20, 0x55, 0x56, 0x57, 0x41, 0x54, 0x41, 0x55, 0x41, 0x56, 0x41, 0x57};
 using LinesFn = void (*)(Unit* item, char* out, int32_t size, int32_t a4, uint32_t a5, int32_t a6, uint32_t a7, uint32_t a8,
                          void* a9, uint64_t* a10) noexcept;
@@ -51,7 +54,7 @@ std::vector<Property> g_props;     // by properties.txt row number (propids)
 std::vector<int32_t> g_valShift;   // by itemstatcost id
 int32_t g_corrupt = -1, g_corruptNum = -1;
 
-std::atomic<uint32_t> g_items {0}, g_marked {0};
+std::atomic<uint32_t> g_calls {0}, g_corrupted {0}, g_rows {0}, g_items {0}, g_marked {0};
 
 // The stats a property function sets with no stat column of its own (D2R's property functions 5, 6 and 7)
 auto FixedStats(int32_t func, std::vector<int32_t>* out) -> void {
@@ -70,15 +73,12 @@ auto Load(const D2RL::PluginContext* context) -> bool {
 		return false;
 	}
 	const lines::Table stats = lines::ParseTable(statText);
-	const int name = stats.Column("Stat"), id = stats.Column("*ID"), shift = stats.Column("ValShift");
+	// D2R numbers stats by row, as properties (the *ID column is only a comment, #1355)
+	const int name = stats.Column("Stat"), shift = stats.Column("ValShift");
 	std::map<std::string_view, int32_t> statIds;
 	for (const auto& row : stats.rows) {
-		const int32_t n = lines::Number(lines::Table::Cell(row, id));
-		statIds[lines::Table::Cell(row, name)] = n;
-		if (n >= 0 && n < 4096) {
-			g_valShift.resize(std::max<size_t>(g_valShift.size(), n + 1));
-			g_valShift[n] = lines::Number(lines::Table::Cell(row, shift));
-		}
+		statIds[lines::Table::Cell(row, name)] = static_cast<int32_t>(g_valShift.size());
+		g_valShift.push_back(lines::Number(lines::Table::Cell(row, shift)));
 	}
 	const lines::Table props = lines::ParseTable(propText);
 	const int code = props.Column("code");
@@ -111,13 +111,13 @@ auto Load(const D2RL::PluginContext* context) -> bool {
 	return g_corrupt >= 0 && g_corruptNum >= 0;
 }
 
-// One stat lowered for the second build: on the magic list (list != null) or the base list
+// One stat moved by `by` for the comparison builds: on the magic list (list != null) or the base list
 struct Lowered {
 	int32_t stat, by, was;
 	void* list;
 };
 
-// The corruption's stats on `item`, each lowered by its row's minimum (shifted by the stat's ValShift). Empty when the
+// The corruption's stats on `item`, each with its row's minimum (shifted by the stat's ValShift). Empty when the
 // item is not corrupted, or its outcome has no property that is on the item.
 auto Collect(Unit* item, std::vector<Lowered>* out) noexcept -> void {
 	using namespace d2r::rva;
@@ -125,6 +125,7 @@ auto Collect(Unit* item, std::vector<Lowered>* out) noexcept -> void {
 	if (outcome == 0) {
 		return;
 	}
+	g_corrupted.fetch_add(1, std::memory_order_relaxed);
 	const uint32_t dataFlag = d2r::Engine<uint8_t (*)(Unit*) noexcept>(UnitDataFlag)(item);
 	const auto record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(CubeRecipe);
 	const int32_t rows = d2r::Engine<int32_t (*)(uint32_t) noexcept>(CubeRecipeCount)(dataFlag);
@@ -140,9 +141,11 @@ auto Collect(Unit* item, std::vector<Lowered>* out) noexcept -> void {
 			const uint8_t* mod = r + CubeOutMods + m * CubeModSize;
 			ours = At<int32_t>(mod, 0) == g_corrupt && At<int16_t>(mod, 6) == outcome;
 		}
-		if (!ours || !pd2::CubeInputMatches(r + CubeInputs, item)) {
+		// sockets not tested: the + sockets outcome gives the item the sockets its row's `nos` refuses
+		if (!ours || !pd2::CorruptionShardOk(dataFlag, r) || !pd2::CubeInputMatches(r + CubeInputs, item, false)) {
 			continue;
 		}
+		g_rows.fetch_add(1, std::memory_order_relaxed);
 		for (int m = 0; m < 5; ++m) {
 			const uint8_t* mod = r + CubeOutMods + m * CubeModSize;
 			const int32_t prop = At<int32_t>(mod, 0);
@@ -192,6 +195,7 @@ void Set(Unit* item, uint32_t dataFlag, const Lowered& l, int32_t value) noexcep
 
 void Lines(Unit* item, char* out, int32_t size, int32_t a4, uint32_t a5, int32_t a6, uint32_t a7, uint32_t a8, void* a9,
            uint64_t* a10) noexcept {
+	g_calls.fetch_add(1, std::memory_order_relaxed);
 	std::vector<Lowered> lowered;
 	if (item != nullptr && out != nullptr && size > 0 && At<int32_t>(item, d2r::rva::UnitType) == 4) {
 		Collect(item, &lowered);
@@ -201,23 +205,30 @@ void Lines(Unit* item, char* out, int32_t size, int32_t a4, uint32_t a5, int32_t
 		return;
 	}
 	g_items.fetch_add(1, std::memory_order_relaxed);
-	// the second build gets what the first one got: the buffer's text so far and its own copy of a10, which the build clears
-	std::string alt(out, strnlen(out, size));
-	alt.resize(size, '\0');
+	// the comparison builds get what the first one got: the buffer's text so far and their own copy of a10, which a build clears
+	const std::string start(out, strnlen(out, size));
 	uint64_t a10Copy[2] = {};
 	if (a10 != nullptr) {
 		std::memcpy(a10Copy, a10, sizeof(a10Copy));
 	}
 	g_lines(item, out, size, a4, a5, a6, a7, a8, a9, a10);
 	const uint32_t dataFlag = d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::rva::UnitDataFlag)(item);
-	for (const Lowered& l : lowered) {
-		Set(item, dataFlag, l, l.was - l.by);
-	}
-	g_lines(item, alt.data(), size, a4, a5, a6, a7, a8, a9, a10 != nullptr ? a10Copy : nullptr);
-	for (const Lowered& l : lowered) {
-		Set(item, dataFlag, l, l.was);
-	}
-	if (lines::Mark(out, static_cast<size_t>(size), std::string_view(alt.c_str()))) {
+	const auto build = [&](int32_t sign) noexcept {
+		std::string text = start;
+		text.resize(size, '\0');
+		uint64_t copy[2] = {a10Copy[0], a10Copy[1]};
+		for (const Lowered& l : lowered) {
+			Set(item, dataFlag, l, l.was + sign * l.by);
+		}
+		g_lines(item, text.data(), size, a4, a5, a6, a7, a8, a9, a10 != nullptr ? copy : nullptr);
+		for (const Lowered& l : lowered) {
+			Set(item, dataFlag, l, l.was);
+		}
+		text.resize(strnlen(text.c_str(), size));
+		return text;
+	};
+	const std::string lower = build(-1), higher = build(1);
+	if (lines::Mark(out, static_cast<size_t>(size), lower, higher)) {
 		g_marked.fetch_add(1, std::memory_order_relaxed);
 	}
 }
@@ -229,13 +240,15 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (properties.txt or itemstatcost.txt not read, or no corrupt property)");
 		return;
 	}
-	const bool hook = context->InstallInlineHook(PropertyLines, PropertyLinesEntry, sizeof(PropertyLinesEntry), Lines, &g_lines);
+	const bool hook = sigscan::HookBySignature(context, "ItemPropertyLines", PropertyLinesPattern, 0, PropertyLinesEntry,
+	                                           sizeof(PropertyLinesEntry), Lines, &g_lines);
 	std::snprintf(report, size, hook ? "corrupted items show the lines their corruption changed in red (%zu properties read)"
-	                                 : "FAILED (property lines entry bytes differ)", g_props.size());
+	                                 : "FAILED (property lines signature not found once, or its entry bytes differ)", g_props.size());
 }
 
 void Counters(char* out, size_t size) noexcept {
-	std::snprintf(out, size, "corruption: %u corrupted tooltips built, %u with red lines", g_items.load(), g_marked.load());
+	std::snprintf(out, size, "corruption: %u property builds, %u of a corrupted item, %u outcome rows matched, %u with stats lowered, %u with red lines",
+	              g_calls.load(), g_corrupted.load(), g_rows.load(), g_items.load(), g_marked.load());
 }
 
 }  // namespace corruption_marks
