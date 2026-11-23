@@ -908,7 +908,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 89 Megademon think | `0x10357710` | ported | `plugin/core-events/lane-c/megademon_ai.cpp` ([#1871](https://github.com/synpoox/pd2-resurrected/issues/1871)) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 93 ArcaneTower think | `0x1035cb30` | missing | [#1872](https://github.com/synpoox/pd2-resurrected/issues/1872) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 99 TrappedSoul think | `0x1035bc60` | ported | `plugin/core-events/dclone_ai.cpp`, `plugin/core-events/nihlathak_ai.cpp`, `plugin/core-events/nihlathak_ai.h` |
-| `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 102 BladeCreeper think | `0x1035fd10` | missing | [#1869](https://github.com/synpoox/pd2-resurrected/issues/1869) |
+| `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 102 BladeCreeper think | `0x1035fd10` | ported | `plugin/core-rules/skill_functions.cpp` ([#1869](https://github.com/synpoox/pd2-resurrected/issues/1869)): the area hit every 12 frames, the skill's ToHit on item_tohit_percent and a monster owner's tohit; the missile is made once, not every 6 frames as the issue read it |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 105 ShadowWarrior init | `0x10360a10` | documented | [summon-ai](summon-ai.md) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 105 ShadowWarrior think | `0x10360240` | documented | [summon-ai](summon-ai.md) |
 | `0x10361150` | AI table (D2Game `+0x10e788`, 16-byte rows by monai row) | row 106 ShadowMaster init | `0x10360af0` | ported | `plugin/core-rules/summon_ai.cpp` |
@@ -984,7 +984,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvdofunc | 23 | `0x103aebf0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 25 | `0x103aec40` | ported | `plugin/core-rules/skill_functions.cpp` ([#1870](https://github.com/synpoox/pd2-resurrected/issues/1870)): the caster and every unit aurafilter takes within aurarangecalc; another player, a hireling or a unit with flag `0x80000000` gets half (the issue's reading missed the halving) |
 | `0x1036ba20` | srvdofunc | 39 | `0x103aee00` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x1036ba20` | srvdofunc | 44 | `0x103aee30` | missing | [#1869](https://github.com/synpoox/pd2-resurrected/issues/1869) |
+| `0x1036ba20` | srvdofunc | 44 | `0x103aee30` | deviation | D2R's srvdo 44 kept, wrapped for PD2's owner write (a monster caster becomes the sentinel's AI owner) ([#1869](https://github.com/synpoox/pd2-resurrected/issues/1869)): PD2 spawns the sentinel 1 subtile toward the target and moves the far path point 1 to 3 subtiles on |
 | `0x1036ba20` | srvdofunc | 45 | `0x103af080` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 46 | `0x103af1a0` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
 | `0x1036ba20` | srvdofunc | 47 | `0x103af270` | unchecked | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) |
