@@ -6,7 +6,7 @@
 // On the client, PD2 bytes cltdo 41's bit 12 test (#10338 at D2Client +0xc7083, `push esi; call` -> `nop; mov eax,1`):
 // the client draws the ward for any corpse. 1.13c cltst 28 (D2Client +0xc6350) already calls #10678 (+0xc638f), as D2R's
 // cltst 28 0x230440 calls 0x33a5c0: nothing needed. PD2's client swap at +0xc49da is cltst 51 (+0xc4990, Hunger and
-// fenris rage), not Grim Ward's: D2R's cltst 51 0x2b97a0 calls 0x33a510 at 0x2b97d5; out of scope, follow-up issue.
+// fenris rage), not Grim Ward's: D2R's cltst 51 0x2b97a0 calls 0x33a510 at 0x2b97d5; out of scope, follow-up #2067.
 //
 // D2R 93847: 0x33a510 is #10096 (bit 7 and, through 0x34fa60, bit 12), 0x33a5c0 is #10678 (bit 7 only). Grim Ward's
 // srvdo 75 (0x5682e0) calls 0x33a510 at 0x568356: that call is redirected to 0x33a5c0. Its starts (srvst 34 0x569c00,
