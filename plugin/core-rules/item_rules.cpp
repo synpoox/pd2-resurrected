@@ -2779,9 +2779,25 @@ void __cdecl HookMagicMaker(const D2RL::PluginContext* context, const D2RL::Life
 	}
 }
 
+static int g_itemTotal = 0;
+
 auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	using namespace d2r::rva;
 	g_context = context;
+	int installed = 0;
+	int total = 0;  // every rule below: ItemRuleCount() reports it, so there is no literal to keep
+	size_t used = 0;
+	const auto rule = [&](bool ok, const char* name, const char* fail = " FAILED (bytes differ)") {
+		installed += ok ? 1 : 0;
+		++total;
+		if (used < reportSize) {
+			const int n = std::snprintf(report + used, reportSize - used, "%s%s%s", used ? "; " : "", name, ok ? "" : fail);
+			used += n > 0 ? static_cast<size_t>(n) : 0;
+		}
+	};
+	if (reportSize > 0) {
+		report[0] = 0;
+	}
 	if (context->QueryService(&g_threads) != D2RL::ServiceQueryResult::Success ||
 	    !D2RL::HasThreadServiceField(g_threads, D2RL::ThreadServiceRequiredSize)) {
 		g_threads = nullptr;  // the server stats still work; only the client's tooltips miss them
@@ -2798,19 +2814,28 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	                      context->PatchWriteU64(PropertyFuncTable + static_cast<uint64_t>(PropertySlot) * 8, Empty,
 	                                             sizeof(Empty),
 	                                             reinterpret_cast<uint64_t>(static_cast<PropertyFn>(PropSorcSkillRandCtc)));
+	char ormus[40];
+	std::snprintf(ormus, sizeof(ormus), "property func %d ormus", PropertySlot);
+	rule(property, ormus, " FAILED (slot not empty)");
 	const bool weaponStrike = PatchWeaponCrit(context);
+	rule(weaponStrike, "weapon strike");
 	const bool missileStrike = context->InstallInlineHook(MissileCritRoll, MissileCritRollEntry,
 	                                                      sizeof(MissileCritRollEntry), MissileStrike, &g_missileRollOriginal);
+	rule(missileStrike, "missile strike");
 	const bool blowRoll = PatchHitEvents(context);
+	rule(blowRoll, "crushing blow roll", " FAILED (call sites)");
 	const bool lifeCap = context->InstallInlineHook(AddLife, AddLifeEntry, sizeof(AddLifeEntry),
 	                                                CappedAddLife, &g_addLifeOriginal);
+	rule(lifeCap, "life steal cap");
 	// The slot holds whatever the image or D2RCore put there; PD2's blow replaces it whole, so it is not kept
 	const uint64_t blowSlot = *reinterpret_cast<const uint64_t*>(d2r::imageBase + CrushingBlowApplySlot);
 	using BlowFn = int32_t (*)(Game*, Unit*, Unit*, d2r::CrushingBlowArgs*) noexcept;
 	const bool blow = blowSlot != 0 && context->PatchWriteU64(CrushingBlowApplySlot, &blowSlot, sizeof(blowSlot),
 	                                                          reinterpret_cast<uint64_t>(static_cast<BlowFn>(CrushingBlow)));
+	rule(blow, "crushing blow", " FAILED (slot write)");
 	const bool curses = context->InstallInlineHook(ApplyCurse, ApplyCurseEntry, sizeof(ApplyCurseEntry), CurseApply,
 	                                               &g_applyCurseOriginal);
+	rule(curses, "curses");
 	// Only with the curse hook: without it the boss curse would skip the rules all the same
 	uint64_t bossCurseAt = 0;
 	const bool bossCurse = curses && sigscan::ScanUnique(context->exeBase, BossCursePattern, 0, &bossCurseAt) == 1 && [&] {
@@ -2821,28 +2846,39 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 		return context->InstallInlineHook(bossCurseAt, BossCurseEntry, sizeof(BossCurseEntry), BossCurse,
 		                                  &g_bossCurseOriginal);
 	}();
+	rule(bossCurse, "boss curse", " FAILED (curse hook, signature or bytes differ)");
 	// Both or neither: a callback without the tick would start item_skillonequip's aura and stop it at its first tick
 	const bool tick = context->InstallInlineHook(ItemAuraTick, ItemAuraTickEntry, sizeof(ItemAuraTickEntry),
 	                                             EquipAuraTick, &g_itemAuraTickOriginal);
 	const bool equip = tick && context->InstallInlineHook(StatCallbackInit, StatCallbackInitEntry,
 	                                                      sizeof(StatCallbackInitEntry), EquipStatCallbackInit,
 	                                                      &g_statCallbackInitOriginal);
+	rule(equip, "skill on equip and op bases");
 	// The scheduler first: the handler alone would only see events that durability or quantity items schedule
 	const bool replenish = context->InstallInlineHook(ScheduleReplenish, ScheduleReplenishEntry,
 	                                                  sizeof(ScheduleReplenishEntry), ReplenishSchedule,
 	                                                  &g_scheduleReplenishOriginal) &&
 	                       context->InstallInlineHook(ReplenishEvent, ReplenishEventEntry, sizeof(ReplenishEventEntry),
 	                                                  ChargesReplenishEvent, &g_replenishEventOriginal);
+	rule(replenish, "replenish charges");
 	// Unlimited books (IR5): D2R's item spell table is data; its free entry 17 gets the Town Portal handlers and 18
 	// none (core-events' hooks identify all), both with keep 1, so the book stays after its use
 	const bool unlimited = PatchUnlimitedBooks(context);
+	rule(unlimited, "unlimited books", " FAILED (entries not empty, or no mutation service)");
 	const bool charms = InstallCharmRows(context);
+	rule(charms, "charm rows", " FAILED (signature or bytes differ)");
 	const bool telekinesis = PatchTelekinesisArrows(context);
+	rule(telekinesis, "telekinesis no arrows", " FAILED (signature or bytes differ)");
 	const bool shrinePotions = PatchShrinePotions(context);
+	rule(shrinePotions, "shrine potions", " FAILED (signature or bytes differ)");
 	const bool curseLength = PatchCurseLength(context);
+	rule(curseLength, "curse length", " FAILED (signature, bytes or states.txt)");
 	const bool halfFreeze = PatchHalfFreeze(context);
+	rule(halfFreeze, "half freeze", " FAILED (signature or bytes differ)");
 	const bool chillRates = PatchChillRates(context);
+	rule(chillRates, "chill rates", " FAILED (signature, call or relay)");
 	const bool stunLength = PatchStunLength(context);
+	rule(stunLength, "stun length", " FAILED (signature, call or relay)");
 	// One rule, ok only with both halves: a client roll capped apart from the server's draws the missile stopping early.
 	// Both sites are scanned before either hook goes in, so a build that moved one leaves both rolls stock.
 	// shortcut: if the loader refuses the second hook after the first went in, the first stays; undo it if that ever happens.
@@ -2858,11 +2894,15 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	if (pierceCap) {
 		plog::Info("pierce cap: server and client missile pierce rolls hooked, PD2's cap 10 (6 for Lightning Fury)");
 	}
+	rule(pierceCap, "pierce cap", " FAILED (signature or bytes differ)");
 	const bool dualWield = PatchDualWieldRate(context);
+	rule(dualWield, "dual wield rate", " FAILED (signature, bytes or relay)");
 	const char* const dye = InstallDyeTint(context);
+	rule(dye[0] == 0, "dye tint", dye);
 	const bool mapStack = sigscan::HookBySignature(
 	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
 	    d2r::rva::ItemsCanMergeEntry, sizeof(d2r::rva::ItemsCanMergeEntry), MapStackEqual, &g_stackEqualOriginal);
+	rule(mapStack, "map stacking");
 	// 0x442d60 by signature (calls are masked); the entry is whole instructions. 0x442c60 waits for the tables (HookMagicMaker).
 	static constexpr uint8_t ItemMakerEntry[] = {0x40, 0x53, 0x55, 0x41, 0x56, 0x48, 0x83, 0xec, 0x50, 0x4c, 0x8b, 0xf1, 0x49, 0x8b, 0xe8, 0x48, 0x8b, 0x0a};
 	const D2RL::LifecycleService* lifecycle = nullptr;
@@ -2876,35 +2916,14 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool mapMakerLog = sigscan::HookBySignature(
 	    context, "ItemMaker", "40 53 55 41 56 48 83 EC 50 4C 8B F1 49 8B E8 48 8B 0A 48 8B DA 48 85 C9 74 0A E8 ?? ?? ?? ?? 83 F8 04 74 14", 0,
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
-	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
-	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s; boss curse%s; half freeze%s; chill rates%s; stun length%s; dual wield rate%s",
-	              PropertySlot, property ? "" : " FAILED (slot not empty)",
-	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
-	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
-	              blow ? "" : " FAILED (slot write)", curses ? "" : " FAILED (bytes differ)",
-	              equip ? "" : " FAILED (bytes differ)", replenish ? "" : " FAILED (bytes differ)",
-	              unlimited ? "" : " FAILED (entries not empty, or no mutation service)",
-	              charms ? "" : " FAILED (signature or bytes differ)", dye, mapStack ? "" : " FAILED (bytes differ)",
-	              noMagicMaps ? " (hooked when tables load)" : " FAILED (no table listener)", mapMakerLog ? "" : " FAILED (signature or bytes differ)",
-	              telekinesis ? "" : " FAILED (signature or bytes differ)",
-	              curseLength ? "" : " FAILED (signature, bytes or states.txt)",
-	              shrinePotions ? "" : " FAILED (signature or bytes differ)",
-	              pierceCap ? "" : " FAILED (signature or bytes differ)",
-	              bossCurse ? "" : " FAILED (curse hook, signature or bytes differ)",
-	              halfFreeze ? "" : " FAILED (signature or bytes differ)",
-	              chillRates ? "" : " FAILED (signature, call or relay)",
-	              stunLength ? "" : " FAILED (signature, call or relay)",
-	              dualWield ? "" : " FAILED (signature, bytes or relay)");
-	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
-	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
-	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0) +
-	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (shrinePotions ? 1 : 0) + (pierceCap ? 1 : 0) + (bossCurse ? 1 : 0) +
-	       (halfFreeze ? 1 : 0) + (chillRates ? 1 : 0) + (stunLength ? 1 : 0) + (dualWield ? 1 : 0);
+	rule(noMagicMaps, noMagicMaps ? "no magic maps (hooked when tables load)" : "no magic maps", " FAILED (no table listener)");
+	rule(mapMakerLog, "map maker log", " FAILED (signature or bytes differ)");
+	g_itemTotal = total;
+	return installed;
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 24;
+	return g_itemTotal;  // set by InstallItemRules, which every caller runs first
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
