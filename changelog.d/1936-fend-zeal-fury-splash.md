@@ -1,3 +1,3 @@
 #### Bug Fixes
 
-- Fixed Fend, Zeal and Fury splashing 1 radius short of PD2 (#1936).
+- Fixed Fend, Zeal and Fury hits not widening their splash with each hit as in PD2 (#1936).
