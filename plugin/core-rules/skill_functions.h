@@ -26,3 +26,7 @@ struct Unit;
 // #1889): item_rules' HitEvent calls it after D2R's own event dispatch.
 auto SpinSplashes(d2r::Game* game, int32_t event, d2r::Unit* unit, d2r::Unit* target, const uint8_t* damage) noexcept
 	-> void;
+// D2R's AI owner getter (93847: 0x4a53c0, (monster) -> its owner unit or null), as the Blade Sentinel install read it
+// from the think's call sites; null before that install or when it missed. The stun refresh rule (#1947) reads it too.
+using AiOwnerFn = d2r::Unit* (*)(d2r::Unit* monster) noexcept;
+auto AiOwnerGetter() noexcept -> AiOwnerFn;
