@@ -28,6 +28,9 @@ auto LeapAttackLeech(d2r::Unit* unit, d2r::Unit* victim) noexcept -> void;
 // Baal's throne wave delay (#2014), baal_wave_delay.cpp: true when installed; appends its part to `report`.
 auto InstallBaalWaveDelay(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
+// Monster life per extra player, PD2's 70% steps (#2025), monster_life_per_player.cpp; appends its part to `report`.
+auto InstallMonsterLifePerPlayer(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
+
 // Whirlwind hit rate (#2015), whirlwind.cpp: a player's Whirlwind hits every Param3 frames; appends its part to `report`.
 auto InstallWhirlwind(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
