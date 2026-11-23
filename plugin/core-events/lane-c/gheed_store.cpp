@@ -11,6 +11,10 @@
 // Standing still: PD2's Npc think (0x10357340, monai row 32) idles Gheed for 25 frames (0x103a1910) in a map level; D2R's
 // Npc think lets him walk. His think is registered on row 32 (ai_registry), every other NPC keeps D2R's.
 //
+// Bought once (#1923): D2R's restock-on-buy check (0x38c7d0, called five times by the buy handler) says "keep a copy in
+// stock" for an item whose base has PermStoreItem 1 and a vendor Min, so a unique quiver would be sold without limit.
+// During a buy of the map Gheed's stock it is hooked to say no, and the buy takes the store's own unit as for any item.
+//
 // Bought identified (#1962): D2R's server buy handler (0x53d850) is wrapped; once it returns, a buy of his stock whose
 // item now sits in the buyer's inventory is identified by D2R's own identify (0x46e8c0, the one its gamble buy calls).
 //
@@ -328,6 +332,18 @@ constexpr uint8_t BuyEntry[] = {0x4c, 0x8b, 0xdc, 0x55, 0x53, 0x56, 0x57, 0x48, 
 using BuyFn = uint64_t (*)(Game* game, Unit* player, Unit* npc, uint32_t itemId, uint32_t x, uint32_t y, uint64_t slot,
                            uint32_t price, uint8_t gamble, uint8_t a10, uint8_t a11) noexcept;
 BuyFn g_buy = nullptr;
+
+// D2R 0x38c7d0 (difficulty, game flag, npc class, item): 1 = the vendor keeps a copy of the bought item. No SDK service
+// reaches it, so it is a hook (by signature); it only differs from D2R while Buy below runs a buy of the map Gheed's stock.
+constexpr char KeepPattern[] =
+	"48 89 5c 24 08 48 89 74 24 10 57 48 83 ec 20 49 8b d9 41 8b f0 0f b6 f9 84 d2 74 27 48 8b cb e8 ?? ?? ?? ?? 48 8d 15 ?? ?? ?? ?? 48 8d 0d";
+constexpr uint8_t KeepEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x74, 0x24, 0x10, 0x57, 0x48, 0x83, 0xec, 0x20};
+using KeepFn = uint64_t (*)(uint8_t, uint8_t, uint32_t, Unit*) noexcept;
+KeepFn g_keep = nullptr;
+thread_local bool t_mapGheedBuy = false;  // the server's buy runs on one thread per call
+auto Keep(uint8_t difficulty, uint8_t gameFlag, uint32_t npcClass, Unit* item) noexcept -> uint64_t {
+	return t_mapGheedBuy ? 0 : g_keep(difficulty, gameFlag, npcClass, item);
+}
 constexpr int32_t UnitItem = 4;
 constexpr int ItemOwnerInventory = 0xa0;  // the inventory holding the item, in its UnitData (0x389820 reads it)
 
@@ -338,7 +354,9 @@ constexpr int ItemOwnerInventory = 0xa0;  // the inventory holding the item, in 
 // server has none for a remote buyer (getPeerPlayer needs a message from that client).
 auto Buy(Game* game, Unit* player, Unit* npc, uint32_t itemId, uint32_t x, uint32_t y, uint64_t slot, uint32_t price,
          uint8_t gamble, uint8_t a10, uint8_t a11) noexcept -> uint64_t {
+	t_mapGheedBuy = gamble == 0 && IsMapGheed(npc);
 	const uint64_t result = g_buy(game, player, npc, itemId, x, y, slot, price, gamble, a10, a11);
+	t_mapGheedBuy = false;
 	if (gamble != 0 || game == nullptr || player == nullptr || npc == nullptr || At<int32_t>(npc, d2r::rva::UnitClassId) != GheedClass) {
 		return result;
 	}
@@ -571,9 +589,11 @@ auto InstallGheedStore(const D2RL::PluginContext* context, char* report, size_t 
 	const bool identify = store && d2r::sig::FindUnit.state == sigscan::State::Ok && d2r::sig::UnitInventory.state == sigscan::State::Ok &&
 	                      d2r::sig::IdentifyItem.state == sigscan::State::Ok &&
 	                      sigscan::HookBySignature(context, "StoreBuy", BuyPattern, 0, BuyEntry, sizeof(BuyEntry), &Buy, &g_buy);
-	std::snprintf(report, reportSize, "map Gheed: unique stock%s, bought identified%s, stands still%s", store ? "" : " FAILED",
-	              identify ? "" : " FAILED", still ? "" : " FAILED");
-	return store && identify && still ? 1 : 0;
+	// needs the buy hook (it sets the flag); a miss leaves a bought unique quiver duplicable
+	const bool once = identify && sigscan::HookBySignature(context, "StoreKeep", KeepPattern, 0, KeepEntry, sizeof(KeepEntry), &Keep, &g_keep);
+	std::snprintf(report, reportSize, "map Gheed: unique stock%s, bought identified%s, bought once%s, stands still%s",
+	              store ? "" : " FAILED", identify ? "" : " FAILED", once ? "" : " FAILED", still ? "" : " FAILED");
+	return store && identify && once && still ? 1 : 0;
 }
 
 auto GheedStoreCounters(char* out, size_t size) noexcept -> void {
