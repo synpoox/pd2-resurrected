@@ -3995,6 +3995,104 @@ auto SrvDoRevive(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	return result;
 }
 
+// --- Frozen Armor and Enchant on allies (PD2 srvdofunc 25, #1870) ----------------------------------------------------
+// Read from ProjectDiablo.dll: srvdo 25 at 0x103aec40 (installed 0x103aecb0), its per-unit callback 0x1036c920.
+// D2R's srvdo 25 (0x553650) puts aurastate on one unit (the skill's target, else the caster). PD2's builds
+// {skill, level, auralencalc, auratargetstate, aurastat1-6, their aurastatcalc values, divisor 2}, runs the callback
+// on the caster, then on every other unit within aurarangecalc that aurafilter takes (D2Game's area search 0xa0c70,
+// D2R's AreaUnits, which skips the caster; flag 1). The callback halves each value (a tenth for enchant/coldenchant on
+// a revive) for another player, a hireling or a unit whose flags +0xc4 (D2R +0x124) have the top bit; the caster and
+// its other pets get the full value. The row's own tooltip says allies get half.
+std::atomic<uint32_t> g_allyBuffs {0};
+SrvDoFn g_srvDo25 = nullptr;  // the slot's own function (D2R's srvdo 25), for rows with no aurafilter
+
+struct AllyBuff {
+	int32_t skillId, level, frames, state;
+	StatValue stats[AuraStats] {};
+	size_t count = 0;
+	int32_t units = 0, divided = 0;  // for the log
+};
+
+// PD2's divisor rule in 0x1036c920: `divide` is another player, a hireling or a top-bit flagged unit.
+constexpr auto AllyBuffValue(int32_t value, bool divide, bool enchantOnRevive) noexcept -> int32_t {
+	return divide ? value / (enchantOnRevive ? 10 : 2) : value;
+}
+static_assert(AllyBuffValue(41, true, false) == 20);
+static_assert(AllyBuffValue(41, true, true) == 4);
+static_assert(AllyBuffValue(41, false, true) == 41);
+
+// One unit (PD2's 0x1036c920 with srvdo 25's block; its slowmissiles branch never runs for these states).
+auto AllyBuffOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
+	using namespace d2r::rva;
+	auto* buff = static_cast<AllyBuff*>(area->arg);
+	auto* game = static_cast<Game*>(area->game);
+	if (victim == nullptr || game == nullptr || buff->frames < 1) {
+		return 0;
+	}
+	const int32_t type = At<int32_t>(victim, UnitType);
+	const bool hireling = type == UnitMonster && std::find(std::begin(Hirelings), std::end(Hirelings),
+	                                                       At<int32_t>(victim, UnitClassId)) != std::end(Hirelings);
+	const bool divide = (type == 0 && victim != area->unit) || At<int32_t>(victim, UnitMainFlags) < 0 || hireling;
+	const bool enchantOnRevive =
+		(buff->state == Enchant || buff->state == ColdEnchant) &&
+		d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(victim, StateRevive) != 0;
+	const auto unitStat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat);
+	StatValue stats[AuraStats] {};
+	for (size_t i = 0; i < buff->count; i++) {
+		const StatValue& s = buff->stats[i];
+		const int32_t value = ImmuneHalved(s.value, s.stat, type != 0 && !hireling, unitStat(victim, s.stat, 0));
+		stats[i] = {s.stat, AllyBuffValue(value, divide, enchantOnRevive)};
+	}
+	TimedStatList(d2r::DataFlag(game), area->unit, victim, buff->skillId, buff->level, buff->frames, buff->state, stats,
+	              stats + buff->count);
+	++buff->units;
+	buff->divided += divide ? 1 : 0;
+	return 1;
+}
+
+// PD2 srvdofunc 25 for a row with an aurafilter (Frozen Armor, Enchant); D2R's own for the others (D2R's Cold and
+// Lightning Enchant rows, which PD2 does not have). 0 when aurastat1 is not a stat, as PD2.
+auto SrvDoAllyBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || unit == nullptr) {
+		return 0;
+	}
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	const auto mask = At<uint32_t>(skill, SkAuraFilter);
+	if (mask == 0) {
+		return g_srvDo25(game, unit, skillId, level);
+	}
+	const auto calc = [&](int field) { return d2r::EvalCalc(game, unit, skill, field, skillId, level); };
+	AllyBuff buff {skillId, level, calc(SkAuraLenCalc), At<int16_t>(skill, SkAuraTargetState)};
+	for (int i = 0; i < static_cast<int>(AuraStats); i++) {
+		const int32_t stat = At<int16_t>(skill, SkAuraStat1 + i * 2);
+		// shortcut: PD2 also drops a stat past itemstatcost's end; the merged rows name none. Upgrade if a row ever does.
+		if (stat < 0) {
+			if (i == 0) {
+				return 0;
+			}
+			continue;
+		}
+		buff.stats[buff.count++] = {stat, calc(SkAuraStatCalc1 + i * 4)};
+	}
+	d2r::AreaContext self {game, unit, 1, &buff};
+	AllyBuffOne(&self, unit);
+	const int32_t radius = calc(SkAuraRangeCalc);
+	if (radius > 0) {  // AreaUnits asserts on a radius under 1
+		d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit), 0, 0};  // 0, 0: at the caster
+		d2r::Engine<AreaFn>(AreaUnits)(game, unit, &center, radius, mask, AllyBuffOne, &buff, 1);
+	}
+	if (pd2::HotSample(g_allyBuffs)) {
+		plog::Info("ally buff: skill %d level %d: state %d for %d frames, radius %d, mask 0x%x, stat %d %d; units %d, "
+		           "halved %d, cast %u", skillId, level, buff.state, buff.frames, radius, mask, buff.stats[0].stat,
+		           buff.stats[0].value, buff.units, buff.divided, g_allyBuffs.load());
+	}
+	return 1;
+}
+
 // --- Holy Sword and Smite starts (PD2 srvstfunc 73, 75), Smite's crushing blow (srvdo 150) -------------------------
 // Read from ProjectDiablo.dll: srvst 73 at 0x103b6990, srvst 75 at 0x103b6a20, event 16 at 0x103469a0
 // (docs/research/skills/w19-holy-sword-smite.md).
@@ -5106,6 +5204,24 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		                            d2r::rva::SrvDoRevive, reviveDo ? "" : " FAILED (slot is not D2R's Revive)");
 		used += n > 0 ? static_cast<size_t>(n) : 0;
 	}
+	// srvdo 25: the table by signature, the slot's current function kept (expected value) for rows with no aurafilter
+	constexpr int AllyBuffSlot = 25;
+	bool allyBuff = false;
+	if (d2r::sig::SrvDoTable.state == sigscan::State::Ok) {
+		const uint64_t slotRva = d2r::sig::SrvDoTable.rva + static_cast<uint64_t>(AllyBuffSlot) * 8;
+		uint64_t own = 0;
+		std::memcpy(&own, reinterpret_cast<const void*>(context->exeBase + slotRva), sizeof(own));
+		g_srvDo25 = reinterpret_cast<SrvDoFn>(own);
+		allyBuff = own != 0 && context->PatchWriteU64(slotRva, &own, sizeof(own),
+		                                              reinterpret_cast<uint64_t>(static_cast<SrvDoFn>(SrvDoAllyBuff)));
+	}
+	installed += allyBuff ? 1 : 0;
+	used = std::strlen(report);
+	if (used < reportSize) {
+		const int n = std::snprintf(report + used, reportSize - used, "; srvdofunc %d ally buff%s", AllyBuffSlot,
+		                            allyBuff ? "" : " FAILED (table signature or slot)");
+		used += n > 0 ? static_cast<size_t>(n) : 0;
+	}
 	const bool valkyrieThink = PatchThinkDelay(context, ValkyrieThinkDelay, 21, 0x14, "valkyrie");
 	const bool reviveThink = PatchThinkDelay(context, ReviveThinkDelay, 16, 0x0f, "revive");
 	if (sigscan::ScanUnique(context->exeBase, CollisionRefreshEntry, 0, &g_collisionRefresh) != 1) {
@@ -5182,8 +5298,9 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 
 auto SkillFunctionCount() noexcept -> int {
 	// + the srvdo router, the cltdo 22 patch, aura event 32, Smite's do and hit queue, Revive's do, the two first-think patches and the
-	// revive size cap, Frenzy's stacks, the busy mode gate, the spin skill on hit, the holy sword parry and the hit window
-	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 13;
+	// revive size cap, Frenzy's stacks, the busy mode gate, the spin skill on hit, the holy sword parry, the hit window and
+	// srvdo 25's ally buff
+	return static_cast<int>(sizeof(Functions) / sizeof(Functions[0])) + 14;
 }
 
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
@@ -5198,7 +5315,7 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "novas %u, client %u, item novas %u, static fields %u, vengeances %u, links %u, jousts %u, fire claws %u, hits %u, "
 	              "client %u, wolf starts %u, refused %u, dragon flights %u, hits %u, holy sword starts %u, "
 	              "smite starts %u, smite events %u, gate logs %u, poison egg spawns %u, client %u, nest spawns %u, "
-	              "nests full %u, cycler starts %u, frenzy hits %u, %s",
+	              "nests full %u, cycler starts %u, frenzy hits %u, ally buffs %u, %s",
 	              g_splitThrowCasts.load(), g_splitThrowClientCasts.load(), g_tempBuffs.load(), g_finds.load(),
 	              g_findsRefused.load(), g_bashHits.load(), g_bashKnockbacks.load(), g_splashStarts.load(), g_leaps.load(),
 	              g_leapClients.load(), g_doubleThrowCasts.load(), g_doubleThrowClientCasts.load(),
@@ -5212,5 +5329,5 @@ auto SkillFunctionCounters(char* out, size_t size) noexcept -> void {
 	              g_fireClawClients.load(), g_wolfStarts.load(), g_wolfRefusals.load(), g_dragonFlights.load(),
 	              g_dragonFlightHits.load(), g_holySwordStarts.load(), g_smiteStarts.load(), g_smiteEvents.load(),
 	              g_gateLogs.load(), g_eggSpawns.load(), g_eggSpawnClients.load(), g_nestSpawns.load(), g_nestFull.load(),
-	              g_cyclerStarts.load(), g_frenzyHits.load(), missiles);
+	              g_cyclerStarts.load(), g_frenzyHits.load(), g_allyBuffs.load(), missiles);
 }
