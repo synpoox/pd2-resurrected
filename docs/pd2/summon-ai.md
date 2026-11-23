@@ -16,7 +16,7 @@ patch table (20-byte records at file offset `0x49b028`-`0x4a0744`, [plrmodes](pl
 | 105 ShadowWarrior | init and think replaced (`0x10360a10`, `0x10360240`, PD2.gpr's build) | yes (core-rules `summons`, [#1800](https://github.com/synpoox/pd2-resurrected/issues/1800): init wrapped, think replaced; [core-rules](../features/core-rules.md)) |
 | 110 Vines (Poison Creeper) | 30 bytes NOPed at `+0xab494`: its "target already poisoned / poison immune" skip | yes (core-rules `summons`, below) |
 | 111 CycleOfLife (Carrion Vine, Solar Creeper) | one byte at `+0xab26e` (a flag stored 0 becomes 1) | yes (core-rules `summons`, below) |
-| 61 Hireable (mercenaries) | think `0x1035a270` runs PD2's rules, then 1.13c's think (`+0x1dd40`), which 8 patch-table records patch | partly: Battle Orders, Whirlwind, A4 AmpDmg and the target-search roll (core-rules `mercai`, [#1803](https://github.com/synpoox/pd2-resurrected/issues/1803)); the follow rework, aura restart and party/pet Battle Orders are open on the issue |
+| 61 Hireable (mercenaries) | think `0x1035a270` runs PD2's rules, then 1.13c's think (`+0x1dd40`), which 8 patch-table records patch | partly: Battle Orders, the aura restart, party/pet Battle Orders, Whirlwind, A4 AmpDmg and the target-search roll (core-rules `mercai`, [#1803](https://github.com/synpoox/pd2-resurrected/issues/1803), [#1925](https://github.com/synpoox/pd2-resurrected/issues/1925)); the follow rework ([#1926](https://github.com/synpoox/pd2-resurrected/issues/1926)) is open |
 | 67 NecroPet, 107 Raven, 108 DruidWolf, 109 Totem, 112 DruidBear, 86 Hydra, 103 InvisoPet | none | nothing to port |
 
 First think, outside the AI table (#1835, ported in core-rules): a new Valkyrie's AI event is queued at frame + 8
