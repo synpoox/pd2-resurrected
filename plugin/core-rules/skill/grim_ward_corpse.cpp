@@ -33,12 +33,6 @@ using d2r::Unit;
 constexpr const char* GrimWardCallPattern =
     "48 8b c8 e8 ?? ?? ?? ?? 85 c0 0f 84 ?? ?? ?? ?? 8b 03 33 ff 83 e8 02 74 1e";
 constexpr uint32_t GrimWardCallAt = 3;
-// 0x33a5c0, the corpse test without bit 12 (#10678); 0x33a510 differs only in its tail (call 0x34fa60, not mov eax,1)
-constexpr const char* CorpseSelPattern =
-    "40 57 48 83 ec 20 48 8b f9 48 85 c9 74 6e e8 ?? ?? ?? ?? 83 f8 01 75 64 48 8b cf e8 ?? ?? ?? ?? 83 f8 0c 75 57 "
-    "48 8b cf e8 ?? ?? ?? ?? 85 c0 75 4b 41 b8 cb 0e 00 00 48 89 5c 24 38 48 8d 15 ?? ?? ?? ?? 48 8b cf e8 ?? ?? ?? ?? "
-    "48 8b cf 8b d8 e8 ?? ?? ?? ?? 8b d3 0f b6 c8 e8 ?? ?? ?? ?? 48 8b 5c 24 38 48 85 c0 75 1b 48 8d 4c 24 30 88 44 "
-    "24 30 e8 ?? ?? ?? ?? 84 c0 74 01 cc 33 c0 48 83 c4 20 5f c3 0f b6 40 04 23 05 ?? ?? ?? ?? 74 ec b8 01 00 00 00";
 // cltdo 41: mov rcx,rax / call 0x34fa60 / test eax,eax / je / mov edx,1 / mov rcx,r13 / call
 constexpr const char* WardDrawCallPattern = "48 8b c8 e8 ?? ?? ?? ?? 85 c0 0f 84 ?? ?? ?? ?? ba 01 00 00 00 49 8b cd e8";
 constexpr uint32_t WardDrawCallAt = 3;
