@@ -87,7 +87,7 @@ class PlacementsTests(unittest.TestCase):
                    ("map_stats.cpp", "FirstMapLevel = 138"), ("map_stats.cpp", "fixed[] ="), ("unique_map_drops.cpp", "FirstMapLevel = 138"),
                    ("prime_minions.cpp", "AiRows"), ("prime_minions.cpp", "AI rows"), ("uber_entry.cpp", "StatUberTier"),
                    ("uber_entry.cpp", "133, 134, 135, 136, 137, 176"),
-                   ("lucion_ai.cpp", "StateInvis = 146"), ("map_events.cpp", "GheedMonster = 147"),
+                   ("lucion_ai.cpp", "StateInvis = 146"), ("map_events.cpp", "GheedMonster = 147"), ("gheed_store.cpp", "GheedClass = 147"),
                    ("uber_entry.cpp", "14,  151, 158"), ("uber_scaling.cpp", "AllSkills = 127")}
         bad = []
         for f in (PLUGIN / "core-events").rglob("*.cpp"):

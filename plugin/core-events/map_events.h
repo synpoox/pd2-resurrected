@@ -13,6 +13,10 @@ auto MapEvent(d2r::Game* game) noexcept -> int32_t;
 auto MapTier(d2r::Game* game) noexcept -> int32_t;
 // The event's spawns so far this game (PD2's game +0x2628).
 auto MapEventSpawns(d2r::Game* game) noexcept -> int32_t;
+// Sets it (the map Gheed's stock build marks 2, as PD2 does).
+auto SetMapEventSpawns(d2r::Game* game, int32_t spawns) noexcept -> void;
+// A Cartographer native map level (PD2's map-level test 0x1037c510).
+auto IsMapLevel(int32_t level) noexcept -> bool;
 // Sends the localization string `key` (e.g. "d2r:MapEventNotifyInvadersAmazon") to every player as the event's red chat
 // line; `event` is only for the log.
 auto MapEventNotify(d2r::Game* game, int32_t event, const char* key) noexcept -> void;

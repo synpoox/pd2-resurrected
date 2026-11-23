@@ -3,6 +3,7 @@
 #include "part_registry.h"
 
 #include "anya_maps.h"
+#include "gheed_store.h"
 #include "guardian_ai.h"
 #include "horazon.h"
 #include "invader_art.h"
@@ -82,6 +83,13 @@ void InstallAnyamapsPart(const D2RL::PluginContext* context, char* report, size_
 	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
 }
 
+// The map event's Gheed (#1842): PD2's unique stock in his store, and he stands still
+void InstallGheedStorePart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallGheedStore(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
+}
+
 // Map boss loot by map tier (#1423): the TC drop it wraps and the TC lookups it makes
 void InstallMapBossTcPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	char rules[200] = "";
@@ -101,6 +109,7 @@ PartReg r180(180, "treasurefallen", InstallTreasureFallenPart);
 PartReg r190(190, "invaders", InstallInvadersPart);
 PartReg r195(195, "invaderart", InstallInvaderartPart);
 PartReg r250(250, "mapbosstc", InstallMapBossTcPart, MapBossTcUses);
+PartReg r260(260, "gheedstore", InstallGheedStorePart);
 CountersReg c40(40, MapEventsCounters);
 CountersReg c120(120, EventPortalsCounters);
 CountersReg c200(200, GuardianAiCounters);
@@ -109,5 +118,6 @@ CountersReg c220(220, TreasureFallenCounters);
 CountersReg c230(230, InvadersCounters);
 CountersReg c235(235, InvaderArtCounters);
 CountersReg c250(250, MapBossTcCounters);
+CountersReg c260(260, GheedStoreCounters);
 
 }  // namespace

@@ -1,0 +1,258 @@
+// The map event's Gheed (#1842; PD2 ProjectDiablo.dll, PD2.gpr addresses; docs/features/map-system.md).
+//
+// Stock: PD2 0x103846d0 replaces 1.13c's gamble fill (D2Game +0xbe2a0) for NPC 147 in a map level whose event is Gheed.
+// Once per game (game +0x2628, the event's state, set to 2) it makes a store of its own (act index -1, so not the act's
+// store) holding: 1 in 200 Kadala's Heirloom (0x10388cd0, not ported: docs/deviations.md), then up to 5 random unique
+// items (below), item level 99, unidentified, and none of the plain stock. Here the stock goes in his trade store: D2R's
+// trade fill (0x53c9f0 in build 93847) is wrapped, and for the map's Gheed its plain stock is not made; each unique is
+// made through D2R's own store item maker (0x540ea0: makes, checks and places an item in the NPC's store), whose item
+// creation (0x43d530) is wrapped so that, during this call only, the drop request also names the unique row.
+//
+// Standing still: PD2's Npc think (0x10357340, monai row 32) idles Gheed for 25 frames (0x103a1910) in a map level; D2R's
+// Npc think lets him walk. His think is registered on row 32 (ai_registry), every other NPC keeps D2R's.
+//
+// No PluginSDK service fills an NPC's store (createItem only reaches the player's containers) or runs a monster's AI,
+// so these are native hooks; every address is found by signature at load, and nothing changes when one is not found.
+#include "gheed_store.h"
+
+#include "ai_registry.h"
+#include "log.h"
+#include "map_events.h"
+#include "pd2_engine.h"
+#include "sig_hook.h"
+
+#include <D2RLPlugin/data_tables.h>
+
+#include <atomic>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <intrin.h>
+
+namespace {
+
+using d2r::At;
+using d2r::Game;
+using d2r::Unit;
+
+constexpr int32_t GheedClass = 147;
+constexpr int32_t GheedEvent = 18;   // map_events.cpp Gheed (PD2 game +0x1df4 == 0x12)
+constexpr int32_t StockBuilt = 2;    // PD2 sets the event's state (game +0x2628) to 2 once the stock is built
+constexpr int32_t NpcAiRow = 32;     // monai Npc
+constexpr int32_t IdleFrames = 25;   // PD2 0x103a1910(game, unit, 0x19)
+constexpr int32_t ItemLevel = 99;
+constexpr int32_t QualityUnique = 7;
+constexpr int32_t MaxUniques = 5;    // PD2 stops once 5 are made
+constexpr int32_t MakeTries = 20;    // PD2's 0x14 item attempts
+constexpr int32_t PickTries = 10;    // rows drawn for one pick
+constexpr uint32_t ItemFlagIdentified = 0x10;
+
+// D2R's compiled uniqueitems record (build 93847: the loader's column table at 0x31f1d0)
+constexpr int UqCode = 0x28, UqFlags = 0x2c, UqRarity = 0x34, UqLvl = 0x38, UqLvlReq = 0x3a;
+constexpr uint32_t UqSpawnable = 1u << 0, UqDisabled = 1u << 2;
+constexpr uint32_t JewelCode = 0x2077656a;  // 'jew '
+
+// PD2's row test (0x103846d0), one draw: `percent` is the rand() % 100 PD2 draws for a row with lvl req 60+. The 1.13c
+// record's flags word (+0x2c) must be non-zero; its enabled column became D2R's spawnable (disabled clear).
+struct UniqueRow {
+	uint32_t code, flags;
+	uint16_t rarity, lvl, lvlReq;
+};
+constexpr auto HighLevelPasses(uint16_t lvlReq, int32_t percent) noexcept -> bool {
+	return lvlReq < 60 || lvlReq - 49 <= percent;
+}
+constexpr auto Sellable(const UniqueRow& r) noexcept -> bool {
+	return r.code != JewelCode && (r.flags & (UqSpawnable | UqDisabled)) == UqSpawnable && r.rarity != 0 && r.lvl != 0 &&
+	       r.lvl < 100;
+}
+static_assert(HighLevelPasses(59, 0) && !HighLevelPasses(60, 10) && HighLevelPasses(60, 11) && !HighLevelPasses(99, 49) &&
+              HighLevelPasses(99, 50));
+static_assert(Sellable({0x206e6972, 1, 1, 50, 40}) && !Sellable({JewelCode, 1, 1, 50, 40}) &&
+              !Sellable({0x206e6972, 5, 1, 50, 40}) && !Sellable({0x206e6972, 0, 1, 50, 40}) &&
+              !Sellable({0x206e6972, 1, 0, 50, 40}) && !Sellable({0x206e6972, 1, 1, 100, 40}) &&
+              !Sellable({0x206e6972, 1, 1, 0, 40}));
+
+// D2R's trade fill (game, player, npc): runs on an NPC's first trade (and on a restock)
+constexpr char FillPattern[] = "48 89 5c 24 10 4c 89 44 24 18 48 89 4c 24 08 55 56 57 41 54 41 55 41 56 41 57 48 8d 6c 24 f0 48";
+constexpr uint8_t FillEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x4c, 0x89, 0x44, 0x24, 0x18, 0x48, 0x89, 0x4c, 0x24, 0x08};
+// D2R's store item maker (npc, item code, game, send, quality, item level, player level) -> the item placed in the
+// store, or null; a player level above 25 may swap the base for its exceptional or elite, so 0 is passed
+constexpr char MakerPattern[] = "48 8b c4 44 89 48 20 53 55 56 57 41 54 41 55 41";
+// its item creation (unit, items row, game, mode, quality, f6, f7, item level, a9, a10, a11) -> item: fills a drop
+// request and calls ItemSpawn, then marks the item identified
+constexpr char CreatePattern[] = "40 55 53 56 57 48 8d 6c 24 f8 48 81 ec 08 01 00 00 48";
+constexpr uint8_t CreateEntry[] = {0x40, 0x55, 0x53, 0x56, 0x57, 0x48, 0x8d, 0x6c, 0x24, 0xf8, 0x48, 0x81, 0xec, 0x08, 0x01, 0x00, 0x00};
+// D2R's Npc think, monai row 32's slot in the AI table
+constexpr char NpcThinkPattern[] = "48 89 5c 24 10 48 89 74 24 18 57 48 83 ec 40 49 8b f0";
+
+// The drop request 0x43d530 fills for ItemSpawn (d2r::rva Drop* offsets: +0x00 unit, +0x18 item level, +0xc0 flags)
+constexpr int ReqGame = 0x10, ReqItemLevel = 0x18, ReqRow = 0x20, ReqMode = 0x24, ReqOne = 0x38, ReqGameWord = 0x3a,
+              ReqQuality = 0x40, ReqUnique = 0x50, ReqA10 = 0x58, ReqA11 = 0x5c, ReqFlags = 0xc0, ReqSize = 0xc8;
+constexpr int GameWord = 0x128;  // the game's u16 0x43d530 copies into the request
+
+using FillFn = void (*)(Game* game, Unit* player, Unit* npc) noexcept;
+using MakerFn = Unit* (*)(Unit* npc, uint32_t code, Game* game, int32_t send, int32_t quality, int32_t ilvl, int32_t plvl) noexcept;
+using CreateFn = Unit* (*)(Unit* unit, int32_t row, Game* game, int32_t mode, int32_t quality, int32_t f6, int32_t f7, int32_t ilvl,
+                           int32_t a9, int32_t a10, int32_t a11) noexcept;
+
+const D2RL::PluginContext* g_context = nullptr;
+FillFn g_fill = nullptr;
+MakerFn g_maker = nullptr;
+CreateFn g_create = nullptr;
+thread_local int32_t g_forceUnique = -1;  // the unique row 0x43d530 makes, only during MakeUnique
+std::atomic<uint32_t> g_stocks {0}, g_uniques {0}, g_idles {0};
+
+// PD2 rolls with the CRT's rand() (map_events.cpp seeds each thread the same way)
+auto Rand() noexcept -> int32_t {
+	static thread_local const bool seeded = (std::srand(static_cast<unsigned>(__rdtsc())), true);
+	(void)seeded;
+	return std::rand();
+}
+
+auto LevelOf(Unit* unit) noexcept -> int32_t {
+	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::UnitRoom)(unit);
+	return room != nullptr ? d2r::Engine<int32_t (*)(void*) noexcept>(d2r::sig::RoomLevelId)(room) : -1;
+}
+
+// PD2's test: NPC 147 in a map level (and, for the store, the game's event is Gheed)
+auto IsMapGheed(Unit* npc) noexcept -> bool {
+	return npc != nullptr && At<int32_t>(npc, d2r::rva::UnitClassId) == GheedClass && IsMapLevel(LevelOf(npc));
+}
+
+auto CreateItem(Unit* unit, int32_t row, Game* game, int32_t mode, int32_t quality, int32_t f6, int32_t f7, int32_t ilvl,
+                int32_t a9, int32_t a10, int32_t a11) noexcept -> Unit* {
+	if (g_forceUnique < 0) {
+		return g_create(unit, row, game, mode, quality, f6, f7, ilvl, a9, a10, a11);
+	}
+	// 0x43d530's own request, with the unique row (+1) the TC drop 0x444680 also sets
+	alignas(8) uint8_t req[ReqSize] {};
+	*reinterpret_cast<Unit**>(req) = unit;
+	*reinterpret_cast<Game**>(req + ReqGame) = game;
+	*reinterpret_cast<int32_t*>(req + ReqItemLevel) = ilvl > 0 ? ilvl : 1;
+	*reinterpret_cast<int32_t*>(req + ReqRow) = row;
+	*reinterpret_cast<int32_t*>(req + ReqMode) = mode;
+	*reinterpret_cast<uint16_t*>(req + ReqOne) = 1;
+	*reinterpret_cast<uint16_t*>(req + ReqGameWord) = At<uint16_t>(game, GameWord);
+	*reinterpret_cast<int32_t*>(req + ReqQuality) = quality;
+	*reinterpret_cast<int32_t*>(req + ReqUnique) = g_forceUnique + 1;
+	*reinterpret_cast<int32_t*>(req + ReqA10) = a10;
+	*reinterpret_cast<int32_t*>(req + ReqA11) = a11;
+	*reinterpret_cast<uint64_t*>(req + ReqFlags) = (f6 != 0 ? 8u : 0u) | (f7 != 0 ? 2u : 0u);
+	Unit* item = d2r::Engine<Unit* (*)(Game*, void*, int32_t) noexcept>(d2r::sig::ItemSpawn)(game, req, a9);
+	if (item != nullptr) {
+		d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag)(item, ItemFlagIdentified, 1);
+	}
+	return item;
+}
+
+// PD2 0x103841d0 (item level 99, mode 4, unique row forced) and 0x10314290 (into the store), unidentified (1.13c #10977
+// clears flag 0x10) as PD2 leaves it
+auto MakeUnique(Game* game, Unit* npc, int32_t row, uint32_t code) noexcept -> Unit* {
+	g_forceUnique = row;
+	Unit* item = g_maker(npc, code, game, 0, QualityUnique, ItemLevel, 0);
+	g_forceUnique = -1;
+	if (item != nullptr) {
+		d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag)(item, ItemFlagIdentified, 0);
+	}
+	return item;
+}
+
+// PD2's pick: up to 10 draws of rand() % rows, the first that passes wins; -1 when none does
+auto Pick(const D2RL::DataTables::TableView& view, const D2RL::DataTableService* tables, D2RL::DataTables::Bank bank) noexcept
+	-> int32_t {
+	for (int32_t i = 0; i < PickTries && view.rowCount != 0; ++i) {
+		const int32_t row = Rand() % static_cast<int32_t>(view.rowCount);
+		const auto* rec = static_cast<const uint8_t*>(view.rows) + static_cast<size_t>(row) * view.rowSize;
+		const UniqueRow r {At<uint32_t>(rec, UqCode), At<uint32_t>(rec, UqFlags), At<uint16_t>(rec, UqRarity),
+		                   At<uint16_t>(rec, UqLvl), At<uint16_t>(rec, UqLvlReq)};
+		if (!HighLevelPasses(r.lvlReq, r.lvlReq < 60 ? 0 : Rand() % 100) || !Sellable(r)) {
+			continue;
+		}
+		// PD2 also needs the base item (0x1030dad0)
+		D2RL::DataTables::RowView base {.structSize = D2RL::DataTables::RowViewSize};
+		if (tables->findRowByCode(g_context, bank, D2RL::DataTables::TableId::Items, r.code, &base) == D2RL::DataTables::Result::Success) {
+			return row;
+		}
+	}
+	return -1;
+}
+
+auto BuildStock(Game* game, Unit* npc) noexcept -> void {
+	SetMapEventSpawns(game, StockBuilt);
+	const D2RL::DataTableService* tables = nullptr;
+	D2RL::DataTables::TableView view {.structSize = D2RL::DataTables::TableViewSize};
+	const auto bank = static_cast<D2RL::DataTables::Bank>(d2r::DataFlag(game));
+	if (g_context->QueryService(&tables) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasDataTableServiceField(tables, D2RL::DataTableServiceRequiredSize) ||
+	    tables->getTable(g_context, bank, D2RL::DataTables::TableId::UniqueItems, &view) != D2RL::DataTables::Result::Success ||
+	    view.rowSize <= UqLvlReq) {
+		plog::Warn("gheed store: no uniqueitems table (bank %u), his store stays empty", static_cast<uint32_t>(bank));
+		return;
+	}
+	char rows[MaxUniques * 12] = "";
+	int32_t made = 0;
+	int32_t row = Pick(view, tables, bank);
+	for (int32_t tries = MakeTries; row >= 0 && tries > 0 && made < MaxUniques; --tries) {
+		const auto* rec = static_cast<const uint8_t*>(view.rows) + static_cast<size_t>(row) * view.rowSize;
+		Unit* item = MakeUnique(game, npc, row, At<uint32_t>(rec, UqCode));
+		if (item == nullptr) {
+			continue;  // PD2 tries the same row again
+		}
+		++made;
+		const size_t used = std::strlen(rows);
+		std::snprintf(rows + used, sizeof(rows) - used, "%s%d(q%d)", made > 1 ? "," : "", row,
+		              d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::ItemQuality)(item));
+		row = Pick(view, tables, bank);
+	}
+	g_stocks.fetch_add(1, std::memory_order_relaxed);
+	g_uniques.fetch_add(static_cast<uint32_t>(made), std::memory_order_relaxed);
+	plog::Info("gheed store: stock for Gheed in level %d (bank %u): %d unique(s), rows %s", LevelOf(npc),
+	           static_cast<uint32_t>(bank), made, made != 0 ? rows : "none");
+}
+
+auto Fill(Game* game, Unit* player, Unit* npc) noexcept -> void {
+	// shortcut: a later restock of the map's Gheed (D2R's refresh) gets D2R's plain stock; PD2 keeps its one store all game
+	if (game == nullptr || MapEvent(game) != GheedEvent || MapEventSpawns(game) >= StockBuilt || !IsMapGheed(npc)) {
+		g_fill(game, player, npc);
+		return;
+	}
+	BuildStock(game, npc);
+}
+
+auto ThinkNpc(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
+	if (IsMapGheed(unit)) {
+		g_idles.fetch_add(1, std::memory_order_relaxed);
+		d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(d2r::sig::AiIdle)(game, unit, IdleFrames);
+		return;
+	}
+	ai_registry::Vanilla(NpcAiRow)(game, unit, tick);
+}
+
+}  // namespace
+
+auto InstallGheedStore(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
+	g_context = context;
+	uint64_t maker = 0, think = 0;
+	const bool found = d2r::sig::UnitRoom.state == sigscan::State::Ok && d2r::sig::RoomLevelId.state == sigscan::State::Ok &&
+	                   d2r::sig::ItemSpawn.state == sigscan::State::Ok && d2r::sig::SetItemFlag.state == sigscan::State::Ok &&
+	                   d2r::sig::ItemQuality.state == sigscan::State::Ok && d2r::sig::AiIdle.state == sigscan::State::Ok &&
+	                   sigscan::ScanUnique(context->exeBase, MakerPattern, 0, &maker) == 1 &&
+	                   sigscan::ScanUnique(context->exeBase, NpcThinkPattern, 0, &think) == 1;
+	if (!found) {
+		plog::Warn("gheed store: a signature was not found (store item maker, Npc think or a shared entry), off");
+		std::snprintf(report, reportSize, "map Gheed FAILED (signature)");
+		return 0;
+	}
+	g_maker = reinterpret_cast<MakerFn>(context->exeBase + maker);
+	// the item creation hook first: the fill hook is what calls into it
+	const bool store = sigscan::HookBySignature(context, "StoreItemCreate", CreatePattern, 0, CreateEntry, sizeof(CreateEntry),
+	                                            &CreateItem, &g_create) &&
+	                   sigscan::HookBySignature(context, "TradeFill", FillPattern, 0, FillEntry, sizeof(FillEntry), &Fill, &g_fill);
+	const bool still = ai_registry::RegisterAt(context, NpcAiRow, context->exeBase + think, GheedClass, &ThinkNpc);
+	std::snprintf(report, reportSize, "map Gheed: unique stock%s, stands still%s", store ? "" : " FAILED", still ? "" : " FAILED");
+	return store && still ? 1 : 0;
+}
+
+auto GheedStoreCounters(char* out, size_t size) noexcept -> void {
+	std::snprintf(out, size, "gheed store: %u stocks, %u uniques, %u idles", g_stocks.load(), g_uniques.load(), g_idles.load());
+}
