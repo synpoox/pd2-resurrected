@@ -32,6 +32,8 @@ auto InstallBaalWaveDelay(const D2RL::PluginContext* context, char* report, size
 auto InstallGoldCap(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 // The cap function's RVA (D2R's max inventory gold of a unit, `int32_t (*)(Unit*)`), 0 when its signature is not found.
 auto GoldCapRva(const D2RL::PluginContext* context) noexcept -> uint64_t;
+// Just-portaled state lasts 15 frames (#2022), portal_state_time.cpp: true when installed; appends its part to `report`.
+auto InstallPortalStateTime(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
 // Whirlwind hit rate (#2015), whirlwind.cpp: a player's Whirlwind hits every Param3 frames; appends its part to `report`.
 auto InstallWhirlwind(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
