@@ -4,6 +4,7 @@ Every controller control the mod ships: D2R's own binds, Controller QoL's (PyreF
 Status is from the [controller audit](research/controller/controller-audit.md) and the merged controller PRs.
 "Untested" means no in-game check yet. Parent issue: [#340](https://github.com/synpoox/pd2-resurrected/issues/340).
 Controller QoL ships with `[aim] cast_observer_enabled = false` (`companions/config/controller-qol-updates.toml`) so Cast Triggers can hook the cast input (#1517); aim, snapping and reticles are unaffected.
+Decoy (#2068): QoL's reticle aim is on for Decoy in a new skill profile (`[aim.amazon]` in the same file; an existing profile keeps its own setting, R3 in the skill tree). Without the reticle, core-rules sends a Decoy cast beside the character to the nearest enemy within 20 subtiles.
 To drive the pad in a game slot, see [Driving the pad](agents/game-check.md#driving-the-pad).
 
 
