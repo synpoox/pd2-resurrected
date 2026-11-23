@@ -140,6 +140,41 @@ inline auto Leash(const Engine& engine, d2r::Game* game, d2r::Unit* pet, d2r::Un
 
 }  // namespace leash
 
+// --- PD2's to-hit chance (to_hit.cpp's server roll #2010, sheet_to_hit.cpp's character sheet #2048) ---
+// ProjectDiablo.dll 0x10304e70 (defense, AR, defender level, attacker level) -> 5-100, step by step (32-bit integer
+// math, each division truncated as idiv does)
+inline constexpr auto Pd2Chance(int32_t def, int32_t ar, int32_t dlvl, int32_t alvl) noexcept -> int32_t {
+	// a negative side moves onto the other one (D2R's inputs are already moved, so this is a no-op here)
+	if (def < 0) {
+		ar -= def;
+		def = 0;
+	}
+	if (ar < 0) {
+		def -= ar;
+		ar = 0;
+	}
+	const int32_t sum = ar + def;
+	const int32_t ratio = sum != 0 ? 111 * ar / sum : 100;
+	const int32_t levels = dlvl + alvl;
+	if (levels == 0) {
+		return 5;
+	}
+	const int32_t chance = ratio * alvl * 2 / levels;
+	if (chance < 5) {
+		return 5;
+	}
+	if (chance <= 95 || alvl == 0) {
+		return chance < 100 ? chance : 100;
+	}
+	// the ratio's part above the one that gives 95 is scaled by 90/111 (through sum, as PD2 does), then the level factor
+	int32_t over = ratio - 95 * levels / (2 * alvl);
+	if (sum != 0) {
+		over = sum * over / 111 * 90 / sum;
+	}
+	const int32_t soft = over * alvl * 2 / levels + 95;
+	return soft < 100 ? soft : 100;
+}
+
 // --- PD2's leech reductions (#2009, leech.cpp) ---
 // Missile and area hits halve life and mana leech; a Leap Attack hit divides life leech by 3.
 // Names the victim of the one Leap Attack hit about to run (skill_functions.cpp LeapHitOne); nullptrs after it.
