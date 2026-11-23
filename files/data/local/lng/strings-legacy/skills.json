@@ -31472,5 +31472,22 @@
     "ptBR": "Your Open Wounds Damage: %d per second",
     "ruRU": "Your Open Wounds Damage: %d per second",
     "zhCN": "Your Open Wounds Damage: %d per second"
+  },
+  {
+    "id": 51595,
+    "Key": "StrSkillMaxLifeFlat",
+    "enUS": "Max Life: %+d",
+    "zhTW": "Max Life: %+d",
+    "deDE": "Max Life: %+d",
+    "esES": "Max Life: %+d",
+    "frFR": "Max Life: %+d",
+    "itIT": "Max Life: %+d",
+    "koKR": "Max Life: %+d",
+    "plPL": "Max Life: %+d",
+    "esMX": "Max Life: %+d",
+    "jaJP": "Max Life: %+d",
+    "ptBR": "Max Life: %+d",
+    "ruRU": "Max Life: %+d",
+    "zhCN": "Max Life: %+d"
   }
 ]
