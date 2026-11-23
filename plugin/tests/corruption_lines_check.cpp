@@ -52,6 +52,9 @@ int main() {
 		const size_t from = 2;
 		CHECK("MarkTail: the appended line is red, its newline stays",
 		      MarkTail(buf, sizeof(buf), from) && std::string(buf) == "a\n" + r("Socketed (2)") + "\n");
+		char eth[96] = "a\nEthereal (Cannot be Repaired), Socketed (2)\n";
+		CHECK("MarkTail from mid-line: only the Socketed part of the ethereal line is red",
+		      MarkTail(eth, sizeof(eth), 33) && std::string(eth) == "a\nEthereal (Cannot be Repaired), " + r("Socketed (2)") + "\n");
 		CHECK("MarkTail: nothing appended, untouched", !MarkTail(buf, sizeof(buf), strlen(buf)));
 		char small[12] = "a\nSocketed\n";  // 11 bytes and its terminator: no room for the colour codes
 		CHECK("MarkTail: no room, untouched", !MarkTail(small, sizeof(small), 2) && std::string(small) == "a\nSocketed\n");

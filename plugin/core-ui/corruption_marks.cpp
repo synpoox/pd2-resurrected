@@ -132,13 +132,15 @@ struct Lowered {
 
 // The corruption's stats on `item`, each with its row's minimum (shifted by the stat's ValShift). Empty when the
 // item is not corrupted, or its outcome has no property that is on the item. *sockets: the outcome added sockets.
-auto Collect(Unit* item, std::vector<Lowered>* out, bool* sockets) noexcept -> void {
+auto Collect(Unit* item, std::vector<Lowered>* out, bool* sockets, bool count = true) noexcept -> void {
 	using namespace d2r::rva;
 	const int32_t outcome = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(item, StatCorrupted, 0);
 	if (outcome == 0) {
 		return;
 	}
-	g_corrupted.fetch_add(1, std::memory_order_relaxed);
+	if (count) {
+		g_corrupted.fetch_add(1, std::memory_order_relaxed);
+	}
 	const uint32_t dataFlag = d2r::Engine<uint8_t (*)(Unit*) noexcept>(UnitDataFlag)(item);
 	const auto record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(CubeRecipe);
 	const int32_t rows = d2r::Engine<int32_t (*)(uint32_t) noexcept>(CubeRecipeCount)(dataFlag);
@@ -158,7 +160,9 @@ auto Collect(Unit* item, std::vector<Lowered>* out, bool* sockets) noexcept -> v
 		if (!ours || !pd2::CorruptionShardOk(dataFlag, r) || !pd2::CubeInputMatches(r + CubeInputs, item, false)) {
 			continue;
 		}
-		g_rows.fetch_add(1, std::memory_order_relaxed);
+		if (count) {
+			g_rows.fetch_add(1, std::memory_order_relaxed);
+		}
 		for (int m = 0; m < 5; ++m) {
 			const uint8_t* mod = r + CubeOutMods + m * CubeModSize;
 			const int32_t prop = At<int32_t>(mod, 0);
@@ -256,13 +260,20 @@ void Lines(Unit* item, char* out, int32_t size, int32_t a4, uint32_t a5, int32_t
 void SocketLine(Unit* item, char* out, void* a3, uint64_t* a4) noexcept {
 	const size_t before = out != nullptr ? strnlen(out, SocketLineSize) : 0;
 	g_socketLine(item, out, a3, a4);
-	if (item == nullptr || out == nullptr || At<int32_t>(item, d2r::rva::UnitType) != 4) {
+	if (item == nullptr || out == nullptr || before >= SocketLineSize || At<int32_t>(item, d2r::rva::UnitType) != 4) {
 		return;
 	}
 	std::vector<Lowered> unused;
 	bool sockets = false;
-	Collect(item, &unused, &sockets);
-	if (sockets && lines::MarkTail(out, SocketLineSize, before)) {
+	Collect(item, &unused, &sockets, false);  // the property builds count it
+	// strItemModEtherealSocketed is one line, "Ethereal (Cannot be Repaired), Socketed (%i)": only its Socketed part is
+	// the corruption's. shortcut: finds it by the last ", ", so a language without one reddens the whole line
+	size_t from = before;
+	const std::string_view added(out + before, strnlen(out + before, SocketLineSize - before));
+	if (const size_t comma = added.rfind(", "); comma != std::string_view::npos) {
+		from = before + comma + 2;
+	}
+	if (sockets && lines::MarkTail(out, SocketLineSize, from)) {
 		g_sockets.fetch_add(1, std::memory_order_relaxed);
 	}
 }
