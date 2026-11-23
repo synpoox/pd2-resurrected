@@ -51,6 +51,7 @@ modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/skill_functions.cpp
 	core-rules/missile_functions.cpp
 	core-rules/item_rules.cpp
+	core-rules/gold_pickup.cpp
 	core-rules/merc_rules.cpp
 	core-rules/socket_rules.cpp
 	core-rules/cube_rules.cpp

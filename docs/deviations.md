@@ -205,6 +205,7 @@ rows have no table hook: D2R does what it does.
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
+| Ranged pickup of potions and of clicked gold (PD2's 0x16 handler `0x10394370`: healing, mana and rejuvenation potions (PD2 raw item types 76-78) and gold taken at D2Common #10522 <= 5 without the wall test) | cut | PD2's client sends that message from range only for gold (its auto pickup, ported at distance 3); a clicked potion or gold makes D2R's client walk to it first (<= 4 with a wall test), so the handler's range is not ported. Live PD2 picks up only gold from range (owner, [#1863](https://github.com/synpoox/pd2-resurrected/issues/1863)) | |
 | `.noexp` toggle | cut | cut by decision ([#210](https://github.com/synpoox/pd2-resurrected/issues/210)): a server convenience command, not part of play |  |
 | Character stat commands (`.kills`, `.deaths`, `.played`, `.age`, `.allstats`, `.accountstats`) | cut | cut by decision ([#210](https://github.com/synpoox/pd2-resurrected/issues/210)), as the map and uber `.kills` counters were: they need saved state and only show a number |  |
 | Corrupted zones | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): D2R's Terror Zones stay in their place |  |
