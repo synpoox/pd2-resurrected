@@ -15,6 +15,13 @@ struct Unit;
 // Monster curse cast (#2003), monster_curse.cpp: true when installed; appends its part to `report`.
 auto InstallMonsterCurse(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
+// --- PD2's leech reductions (#2009, leech.cpp) ---
+// Missile and area hits halve life and mana leech; a Leap Attack hit divides life leech by 3. True when installed;
+// appends its part to `report`.
+auto InstallLeech(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
+// Names the victim of the one Leap Attack hit about to run (skill_functions.cpp LeapHitOne); nullptrs after it.
+auto LeapAttackLeech(d2r::Unit* unit, d2r::Unit* victim) noexcept -> void;
+
 // Baal's throne wave delay (#2014), baal_wave_delay.cpp: true when installed; appends its part to `report`.
 auto InstallBaalWaveDelay(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
