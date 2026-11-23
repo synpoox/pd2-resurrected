@@ -218,6 +218,7 @@ rows have no table hook: D2R does what it does.
 
 | Deviation | Status | Why | Work item |
 |---|---|---|---|
+| The character sheet's chance to hit | not yet | the server rolls PD2's to-hit chance (#2010), but the client text (`charavghit`, D2R `0x1514700`) still shows D2R's 100 x ratio clamped to 5-95 | [#2048](https://github.com/synpoox/pd2-resurrected/issues/2048) |
 | Force Move | not yet | stand-in: move-only skill: a third-party plugin will provide it; until then its functions are blank | third-party plugin |
 | PD2 object operate functions | not yet | stand-in: blank (`merge/standins.tsv`): boss blockers, the Uber Ancients' statues and the PvP tomes (75, 76, 78) do nothing when clicked. PD2's portal operate 77 (the `xactportal` objects) is built since [UB2](https://github.com/synpoox/pd2-resurrected/issues/227), as D2R's operate slot 60, its map event altars' operate 79 since [MS8](https://github.com/synpoox/pd2-resurrected/issues/222), as slot 35, and its seal operate 80 (Zhar's portals and tome) since [#531](https://github.com/synpoox/pd2-resurrected/issues/531), as slot 64 | [MS2](https://github.com/synpoox/pd2-resurrected/issues/217), [MS8](https://github.com/synpoox/pd2-resurrected/issues/222) |
 | Sharptooth's Armageddon | not yet | stand-in: D2R's Armageddon (`merge/standins.tsv`); the throwing potions' shit 68 / chit 72 are built but not game-checked on it | [IR5](https://github.com/synpoox/pd2-resurrected/issues/240) |

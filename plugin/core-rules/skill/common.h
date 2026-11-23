@@ -15,6 +15,9 @@ struct Unit;
 // Monster curse cast (#2003), monster_curse.cpp: true when installed; appends its part to `report`.
 auto InstallMonsterCurse(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
+// PD2's to-hit chance (#2010), to_hit.cpp: true when installed; appends its part to `report`.
+auto InstallToHit(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
+
 // --- PD2's leech reductions (#2009, leech.cpp) ---
 // Missile and area hits halve life and mana leech; a Leap Attack hit divides life leech by 3. True when installed;
 // appends its part to `report`.
