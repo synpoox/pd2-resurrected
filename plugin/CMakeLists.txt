@@ -140,6 +140,7 @@ modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/stash_affinity.cpp
 	core-ui/stash_tabs.cpp
 	core-ui/monsters_remaining.cpp
+	core-ui/corruption_marks.cpp
 	core-ui/plugin.rc
 )
 target_link_libraries(plugin_core_ui PRIVATE core_common xinput)
@@ -210,6 +211,12 @@ add_executable(stash_stack_check EXCLUDE_FROM_ALL tests/stash_stack_check.cpp)
 target_include_directories(stash_stack_check PRIVATE common)
 target_compile_features(stash_stack_check PRIVATE cxx_std_20)
 core_options(stash_stack_check)
+
+# Corruption markers (#2070): plugin/common/corruption_lines.h has no engine types.
+add_executable(corruption_lines_check EXCLUDE_FROM_ALL tests/corruption_lines_check.cpp)
+target_include_directories(corruption_lines_check PRIVATE common)
+target_compile_features(corruption_lines_check PRIVATE cxx_std_20)
+core_options(corruption_lines_check)
 
 # Monsters remaining (#1534): plugin/common/monster_count.h has no engine types.
 add_executable(monster_count_check EXCLUDE_FROM_ALL tests/monster_count_check.cpp)

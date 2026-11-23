@@ -66,14 +66,12 @@ inline auto Parse(std::string_view text) -> std::map<std::string, int, std::less
 
 inline std::map<std::string, int, std::less<>> g_ids;
 
-// Call once from D2RLoaderLoadPlugin, after plog::Init. Both mod-folder layouts are probed, as Cartographer does.
-inline void Init(const D2RL::PluginContext* context) {
-	g_ids.clear();
+// The mod's data/global/excel/<name> as text, both mod-folder layouts probed as Cartographer does; false when not found.
+inline auto ReadExcel(const D2RL::PluginContext* context, const wchar_t* name, std::string* text) -> bool {
 	if (context->modDirectory == nullptr || context->modDirectory[0] == L'\0' || context->activeMod == nullptr) {
-		plog::Info("property ids: no mod folder, properties.txt not read");
-		return;
+		return false;
 	}
-	const std::wstring tail = L"\\data\\global\\excel\\properties.txt";
+	const std::wstring tail = std::wstring(L"\\data\\global\\excel\\") + name;
 	const std::wstring dir = context->modDirectory;
 	std::wstring mod;
 	for (const char* c = context->activeMod; *c != '\0'; ++c) {
@@ -84,17 +82,28 @@ inline void Init(const D2RL::PluginContext* context) {
 		if (f == nullptr) {
 			continue;
 		}
-		std::string text;
+		text->clear();
 		char buf[8192];
 		for (size_t n; (n = fread(buf, 1, sizeof(buf), f)) > 0;) {
-			text.append(buf, n);
+			text->append(buf, n);
 		}
 		fclose(f);
-		g_ids = Parse(text);
-		plog::Info("property ids: %zu codes read from properties.txt", g_ids.size());
+		return true;
+	}
+	return false;
+}
+
+// Call once from D2RLoaderLoadPlugin, after plog::Init.
+inline void Init(const D2RL::PluginContext* context) {
+	g_ids.clear();
+	std::string text;
+	if (!ReadExcel(context, L"properties.txt", &text)) {
+		plog::Info("property ids: properties.txt not found under the mod folder %ls (mod %s)",
+		           context->modDirectory != nullptr ? context->modDirectory : L"?", context->activeMod != nullptr ? context->activeMod : "?");
 		return;
 	}
-	plog::Info("property ids: properties.txt not found under the mod folder %ls (mod %s)", context->modDirectory, context->activeMod);
+	g_ids = Parse(text);
+	plog::Info("property ids: %zu codes read from properties.txt", g_ids.size());
 }
 
 // The property number of `code`, or -1 (logged as an error) when properties.txt has no such row.
