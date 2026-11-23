@@ -18,6 +18,9 @@ auto InstallMonsterCurse(const D2RL::PluginContext* context, char* report, size_
 // PD2's to-hit chance (#2010), to_hit.cpp: true when installed; appends its part to `report`.
 auto InstallToHit(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
+// Baal's throne wave delay (#2014), baal_wave_delay.cpp: true when installed; appends its part to `report`.
+auto InstallBaalWaveDelay(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
+
 // --- Slow skips the prime evils (#2004, slow_prime_evil.cpp) ---
 // Hides the attacker's item_slow event nodes for one event 5/6 dispatch (item_rules.cpp's HitEvent relay) when the
 // target is a prime evil, and shows them again for a splash hit on another unit inside an outer call that hid them.
