@@ -192,31 +192,21 @@ auto CreateItem(Unit* unit, int32_t row, Game* game, int32_t mode, int32_t quali
 	return item;
 }
 
-// The unit ids of the store items made this way, for the buy price below. The id, not the unit: the client's copy of
-// an item is another unit with the same id.
-// shortcut: ids of the last 16 items in this process, so only a local game's client (single player, or the host) sees
-// the same price; a remote client prices them as a plain item and its buy is refused. Upgrade with a client-side table
-// fed by the server if remote play needs it.
-std::atomic<uint32_t> g_stock[16] {};
-std::atomic<uint32_t> g_stockNext {0};
-constexpr int UnitGuid = 0x08;  // the unit's id (Unit +0x08)
-
 constexpr int ItemDataFlags = 0x18;  // u32 in the item's UnitData (SetItemFlag's word)
+constexpr int32_t ModeBuy = 0;       // the price function's modes: 0 buy, 1 sell, 2 gamble, 3 repair
 
-// one of his stock: still unidentified and an id made here (only uniques are). Not ItemQuality: the client's copy of an
-// unidentified unique read quality 1 in game, so the client would price it as a plain item and the buy is refused.
-auto IsStock(Unit* item) noexcept -> bool {
-	const auto* data = At<const uint8_t*>(item, d2r::rva::UnitData);
-	if (data == nullptr || (At<uint32_t>(data, ItemDataFlags) & ItemFlagIdentified) != 0) {
+// A buy of his stock, from what both sides see (#1924): a buy (not gamble) from NPC class 147 (the price call's vendor
+// argument) by a player in a map level, of an unidentified item. Every store item D2R makes is identified, the Act I
+// Gheed is not in a map level, and the test reads no server-only state, so the server, a local client and a remote
+// client all price the same items (a listen host runs both sides, each call once). Not ItemQuality: the client's copy
+// of an unidentified unique read quality 1 in game. An unidentified item a player sells him and buys back is priced
+// as his stock too, on both sides alike.
+auto IsStock(Unit* player, Unit* item, int32_t npc, int32_t mode) noexcept -> bool {
+	if (mode != ModeBuy || npc != GheedClass || player == nullptr || item == nullptr) {
 		return false;
 	}
-	const uint32_t id = At<uint32_t>(item, UnitGuid);
-	for (const auto& s : g_stock) {
-		if (id != 0 && s.load(std::memory_order_relaxed) == id) {
-			return true;
-		}
-	}
-	return false;
+	const auto* data = At<const uint8_t*>(item, d2r::rva::UnitData);
+	return data != nullptr && (At<uint32_t>(data, ItemDataFlags) & ItemFlagIdentified) == 0 && IsMapLevel(LevelOf(player));
 }
 
 // PD2 0x103841d0 (item level 99, mode 4, unique row forced) and 0x10314290 (into the store), unidentified (1.13c #10977
@@ -227,8 +217,6 @@ auto MakeUnique(Game* game, Unit* npc, int32_t row, uint32_t code) noexcept -> U
 	g_forceUnique = -1;
 	if (item != nullptr) {
 		d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag)(item, ItemFlagIdentified, 0);
-		g_stock[g_stockNext.fetch_add(1, std::memory_order_relaxed) % std::size(g_stock)].store(At<uint32_t>(item, UnitGuid),
-		                                                                                         std::memory_order_relaxed);
 	}
 	return item;
 }
@@ -246,8 +234,7 @@ constexpr auto StockPriceFor(int32_t reduced) noexcept -> uint64_t {
 static_assert(StockPriceFor(0) == 1000000 && StockPriceFor(10) == 900000 && StockPriceFor(200) == 10000);
 
 auto Price(Unit* player, Unit* item, int32_t difficulty, void* table, int32_t npc, int32_t mode) noexcept -> uint64_t {
-	constexpr int32_t ModeBuy = 0;
-	if (mode != ModeBuy || player == nullptr || item == nullptr || !IsStock(item)) {
+	if (!IsStock(player, item, npc, mode)) {
 		return g_price(player, item, difficulty, table, npc, mode);
 	}
 	return StockPriceFor(d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(player, StatReducedPrices, 0));
@@ -395,9 +382,6 @@ auto Fill(Game* game, Unit* player, Unit* npc) noexcept -> void {
 	if (game == nullptr || MapEvent(game) != GheedEvent || MapEventSpawns(game) >= StockBuilt || !IsMapGheed(npc)) {
 		g_fill(game, player, npc);
 		return;
-	}
-	for (auto& s : g_stock) {  // a new game's stock: the last game's ids may come back
-		s.store(0, std::memory_order_relaxed);
 	}
 	if (!BuildStock(game, npc)) {
 		g_fill(game, player, npc);

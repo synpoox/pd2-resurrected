@@ -1,0 +1,280 @@
+{
+  "author": "RuffnecKk",
+  "upstreamBase": "e8b391a200984710f8133e2b2cb7b9c86393f512",
+  "status": "Optional asset contribution; not activated in PD2 Resurrected",
+  "files": [
+    {
+      "path": "art/ascendants/model-lod-metadata.json",
+      "bytes": 174,
+      "sha256": "0760f53398c53ff97b6428e475b7a1dfbafee786b0daec6c6b89b4dd094c60b7",
+      "source": "Two private entries extracted from Dark appearance authoring catalog",
+      "sourceSha256": "0760f53398c53ff97b6428e475b7a1dfbafee786b0daec6c6b89b4dd094c60b7"
+    },
+    {
+      "path": "art/ascendants/model-registrations.json",
+      "bytes": 2164,
+      "sha256": "339d09816813cd5508708a955054629861d34eb76193048fd83c0c15d0a1d095",
+      "source": "Two private entries extracted from Dark appearance catalog",
+      "sourceSha256": "339d09816813cd5508708a955054629861d34eb76193048fd83c0c15d0a1d095"
+    },
+    {
+      "path": "art/ascendants/texture-registration.json",
+      "bytes": 328,
+      "sha256": "d5d3535090fa018036090585b8c450e3b745e5c10c3d8bf53d38657570d14168",
+      "source": "Matching 256x16 RGBA gradient descriptor; inherited stock thumbnail from data/hd/vfx/textures/gradient/T_FX_flame_gradient_02.texture",
+      "sourceSha256": "d5d3535090fa018036090585b8c450e3b745e5c10c3d8bf53d38657570d14168"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark.json",
+      "bytes": 7093,
+      "sha256": "5e2fa94ed731690d54c9ce5a3e504a50f290ea91e705b27d4d36438b8d73a6a8",
+      "source": "Dark appearance archive: data/hd/character/enemy/ruff_a4_dark.json",
+      "sourceSha256": "d1451af87027658645164fd7dde1971d8b80a91f88d8ff325fbc9a1c03c6405a",
+      "transformation": "Normalize JSON line endings to LF; parsed content unchanged"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/animation/combined.animations",
+      "bytes": 1075796,
+      "sha256": "704e84d2741062f976c048d530ff72f3c66b1d4e6263b2f4ca816976de1cda9b",
+      "source": "My Reimagined final Dark revision: animation/combined.animations",
+      "sourceSha256": "704e84d2741062f976c048d530ff72f3c66b1d4e6263b2f4ca816976de1cda9b",
+      "sourceRepository": "BRODIABLO/My-Reimagined",
+      "sourceCommit": "537a302c4ca1102927aa77f5cbc08f03bcaa903f",
+      "sourcePath": "Reimagined/Reimagined.mpq/data/hd/character/enemy/ruff_a4_dark/animation/combined.animations",
+      "gitLfsOid": "sha256:704e84d2741062f976c048d530ff72f3c66b1d4e6263b2f4ca816976de1cda9b"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/animation/combined.timelines",
+      "bytes": 15813,
+      "sha256": "a3e10680b71db5082c9e7b616210e01c027ed8cf449b96ee268fa954ffc58cfa",
+      "source": "Dark appearance archive: data/hd/character/enemy/ruff_a4_dark/animation/combined.timelines",
+      "sourceSha256": "a3e10680b71db5082c9e7b616210e01c027ed8cf449b96ee268fa954ffc58cfa"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/equipment/body_lod0.model",
+      "bytes": 1301744,
+      "sha256": "fb6637e2783ba89496f3394f6b24db8026c9cc8f73cf97ef188ef3386fb65efb",
+      "source": "My Reimagined final Dark revision: equipment/body_lod0.model",
+      "sourceSha256": "fb6637e2783ba89496f3394f6b24db8026c9cc8f73cf97ef188ef3386fb65efb",
+      "sourceRepository": "BRODIABLO/My-Reimagined",
+      "sourceCommit": "537a302c4ca1102927aa77f5cbc08f03bcaa903f",
+      "sourcePath": "Reimagined/Reimagined.mpq/data/hd/character/enemy/ruff_a4_dark/equipment/body_lod0.model",
+      "gitLfsOid": "sha256:fb6637e2783ba89496f3394f6b24db8026c9cc8f73cf97ef188ef3386fb65efb"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/equipment/body_lod1.model",
+      "bytes": 857168,
+      "sha256": "7f4679b066903e7cdb5ce3b20560fe69061abd4feda366b85e8279283ba4aae6",
+      "source": "My Reimagined final Dark revision: equipment/body_lod1.model",
+      "sourceSha256": "7f4679b066903e7cdb5ce3b20560fe69061abd4feda366b85e8279283ba4aae6",
+      "sourceRepository": "BRODIABLO/My-Reimagined",
+      "sourceCommit": "537a302c4ca1102927aa77f5cbc08f03bcaa903f",
+      "sourcePath": "Reimagined/Reimagined.mpq/data/hd/character/enemy/ruff_a4_dark/equipment/body_lod1.model",
+      "gitLfsOid": "sha256:7f4679b066903e7cdb5ce3b20560fe69061abd4feda366b85e8279283ba4aae6"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/equipment/body_lod2.model",
+      "bytes": 565040,
+      "sha256": "2edcd930516eb1cf7a809de5b937167cea8f4e49e65caa20e2ee957cc4e3f3df",
+      "source": "My Reimagined final Dark revision: equipment/body_lod2.model",
+      "sourceSha256": "2edcd930516eb1cf7a809de5b937167cea8f4e49e65caa20e2ee957cc4e3f3df",
+      "sourceRepository": "BRODIABLO/My-Reimagined",
+      "sourceCommit": "537a302c4ca1102927aa77f5cbc08f03bcaa903f",
+      "sourcePath": "Reimagined/Reimagined.mpq/data/hd/character/enemy/ruff_a4_dark/equipment/body_lod2.model",
+      "gitLfsOid": "sha256:2edcd930516eb1cf7a809de5b937167cea8f4e49e65caa20e2ee957cc4e3f3df"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/equipment/body_lod3.model",
+      "bytes": 259704,
+      "sha256": "0f9f9cb99eeaf98bc2a2e1c268cfeb09843c4b2c676f0f8550381c61f80de543",
+      "source": "My Reimagined final Dark revision: equipment/body_lod3.model",
+      "sourceSha256": "0f9f9cb99eeaf98bc2a2e1c268cfeb09843c4b2c676f0f8550381c61f80de543",
+      "sourceRepository": "BRODIABLO/My-Reimagined",
+      "sourceCommit": "537a302c4ca1102927aa77f5cbc08f03bcaa903f",
+      "sourcePath": "Reimagined/Reimagined.mpq/data/hd/character/enemy/ruff_a4_dark/equipment/body_lod3.model",
+      "gitLfsOid": "sha256:0f9f9cb99eeaf98bc2a2e1c268cfeb09843c4b2c676f0f8550381c61f80de543"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/equipment/staff.json",
+      "bytes": 1893,
+      "sha256": "c25ec54928536061ebc7d33149adf51af9769f628ed933d3dec61db95da57c68",
+      "source": "Dark appearance archive: data/hd/character/enemy/ruff_a4_dark/equipment/staff.json",
+      "sourceSha256": "02f4f2559eb840925e329bfcf931d900b8f8dde2cfeb68e7328580d15a47395c",
+      "transformation": "Normalize JSON line endings to LF; parsed content unchanged"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/equipment/staff_lod0.model",
+      "bytes": 83760,
+      "sha256": "91ae24dca68f43fabfc0188cb5dc12ad8b8294d30b88e15c3da022fc147ffb51",
+      "source": "Dark appearance archive: data/hd/character/enemy/ruff_a4_dark/equipment/staff_lod0.model",
+      "sourceSha256": "91ae24dca68f43fabfc0188cb5dc12ad8b8294d30b88e15c3da022fc147ffb51"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/equipment/staff_lod1.model",
+      "bytes": 55120,
+      "sha256": "87c229ef304860c9a042fc3990dab7d8fd2c5fd8d69b4a1ad16ae6314079e19d",
+      "source": "Dark appearance archive: data/hd/character/enemy/ruff_a4_dark/equipment/staff_lod1.model",
+      "sourceSha256": "87c229ef304860c9a042fc3990dab7d8fd2c5fd8d69b4a1ad16ae6314079e19d"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/equipment/staff_lod2.model",
+      "bytes": 55120,
+      "sha256": "ae828fb883292025381baebaac003d733ffdee32867a79b2dd78d3a465f2ee08",
+      "source": "Dark appearance archive: data/hd/character/enemy/ruff_a4_dark/equipment/staff_lod2.model",
+      "sourceSha256": "ae828fb883292025381baebaac003d733ffdee32867a79b2dd78d3a465f2ee08"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/equipment/staff_lod3.model",
+      "bytes": 55120,
+      "sha256": "38637e9a062d3822d697345b6de918cd35e363cf1f829c1a06610191ce220bcf",
+      "source": "Dark appearance archive: data/hd/character/enemy/ruff_a4_dark/equipment/staff_lod3.model",
+      "sourceSha256": "38637e9a062d3822d697345b6de918cd35e363cf1f829c1a06610191ce220bcf"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/equipment/staff_lod4.model",
+      "bytes": 55120,
+      "sha256": "7658fa92a707d834f5313a51f0ae27fc30127846a24db880b74d0d37cc55da14",
+      "source": "Dark appearance archive: data/hd/character/enemy/ruff_a4_dark/equipment/staff_lod4.model",
+      "sourceSha256": "7658fa92a707d834f5313a51f0ae27fc30127846a24db880b74d0d37cc55da14"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/skeleton/ruff_a4_dark.skeleton",
+      "bytes": 52036,
+      "sha256": "febb2de348842ecf56f91968b726246c47f4b8e0cd9910cdaa81a6ab92095e33",
+      "source": "Ascendant visuals: hd/character/enemy/ruff_a4_dark/skeleton/ruff_a4_dark.skeleton",
+      "sourceSha256": "febb2de348842ecf56f91968b726246c47f4b8e0cd9910cdaa81a6ab92095e33"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_dark/state_machine.json",
+      "bytes": 61255,
+      "sha256": "805cf21ee13af5af36f9f5e3de88384e5c39ede944f2a469295961430701592c",
+      "source": "Dark appearance archive: data/hd/character/enemy/ruff_a4_dark/state_machine.json",
+      "sourceSha256": "805cf21ee13af5af36f9f5e3de88384e5c39ede944f2a469295961430701592c"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_light.json",
+      "bytes": 10325,
+      "sha256": "6920071fada1fd3e30a682e57879c0592ffd396fb6b05548a15c30cade026639",
+      "source": "Ascendant visuals: hd/character/enemy/ruff_a4_light.json",
+      "sourceSha256": "6920071fada1fd3e30a682e57879c0592ffd396fb6b05548a15c30cade026639"
+    },
+    {
+      "path": "files/data/hd/character/enemy/ruff_a4_light/state_machine.json",
+      "bytes": 83316,
+      "sha256": "95641b3ba6936382e34f4317ba19b99826376205f9f02f8224df4b7601111a18",
+      "source": "Ascendant visuals: hd/character/enemy/ruff_a4_light/state_machine.json",
+      "sourceSha256": "95641b3ba6936382e34f4317ba19b99826376205f9f02f8224df4b7601111a18"
+    },
+    {
+      "path": "files/data/hd/global/ui/hireables/ruff_a4_light.lowend.sprite",
+      "bytes": 14440,
+      "sha256": "bade4014df86a251b7f13b2450cc20952d5d32b06215760f5a98ed3a8bb0cac8",
+      "source": "My Reimagined brighter gold-frame portraits: ruff_a4_light.lowend.sprite",
+      "sourceSha256": "bade4014df86a251b7f13b2450cc20952d5d32b06215760f5a98ed3a8bb0cac8",
+      "sourceRepository": "BRODIABLO/My-Reimagined",
+      "sourceCommit": "a186ea0299c6f44c8a74ae4a97dec4b1b6118324",
+      "sourcePath": "Reimagined/Reimagined.mpq/data/hd/global/ui/hireables/ruff_a4_light.lowend.sprite",
+      "gitLfsOid": "sha256:bade4014df86a251b7f13b2450cc20952d5d32b06215760f5a98ed3a8bb0cac8",
+      "dimensions": [
+        60,
+        60
+      ]
+    },
+    {
+      "path": "files/data/hd/global/ui/hireables/ruff_a4_light.sprite",
+      "bytes": 57640,
+      "sha256": "6567bda8b9990e7d8cd16ddbcdff6d490738a0a150ffde3b849491a5a25bff67",
+      "source": "My Reimagined brighter gold-frame portraits: ruff_a4_light.sprite",
+      "sourceSha256": "6567bda8b9990e7d8cd16ddbcdff6d490738a0a150ffde3b849491a5a25bff67",
+      "sourceRepository": "BRODIABLO/My-Reimagined",
+      "sourceCommit": "a186ea0299c6f44c8a74ae4a97dec4b1b6118324",
+      "sourcePath": "Reimagined/Reimagined.mpq/data/hd/global/ui/hireables/ruff_a4_light.sprite",
+      "gitLfsOid": "sha256:6567bda8b9990e7d8cd16ddbcdff6d490738a0a150ffde3b849491a5a25bff67",
+      "dimensions": [
+        120,
+        120
+      ]
+    },
+    {
+      "path": "files/data/hd/global/ui/hireables/ruff_a4_portrait.lowend.sprite",
+      "bytes": 14440,
+      "sha256": "9a9c18084a6d078bdb252e82ba96f1f9c3b84a012e3a23291be7417fa9bb3240",
+      "source": "My Reimagined brighter gold-frame portraits: ruff_a4_portrait.lowend.sprite",
+      "sourceSha256": "9a9c18084a6d078bdb252e82ba96f1f9c3b84a012e3a23291be7417fa9bb3240",
+      "sourceRepository": "BRODIABLO/My-Reimagined",
+      "sourceCommit": "a186ea0299c6f44c8a74ae4a97dec4b1b6118324",
+      "sourcePath": "Reimagined/Reimagined.mpq/data/hd/global/ui/hireables/ruff_a4_portrait.lowend.sprite",
+      "gitLfsOid": "sha256:9a9c18084a6d078bdb252e82ba96f1f9c3b84a012e3a23291be7417fa9bb3240",
+      "dimensions": [
+        60,
+        60
+      ]
+    },
+    {
+      "path": "files/data/hd/global/ui/hireables/ruff_a4_portrait.sprite",
+      "bytes": 57640,
+      "sha256": "8f0eaef3cf832df0e03f8ac05a1ab75ee28b704acd84155c8e31ab5d99663cc7",
+      "source": "My Reimagined brighter gold-frame portraits: ruff_a4_portrait.sprite",
+      "sourceSha256": "8f0eaef3cf832df0e03f8ac05a1ab75ee28b704acd84155c8e31ab5d99663cc7",
+      "sourceRepository": "BRODIABLO/My-Reimagined",
+      "sourceCommit": "a186ea0299c6f44c8a74ae4a97dec4b1b6118324",
+      "sourcePath": "Reimagined/Reimagined.mpq/data/hd/global/ui/hireables/ruff_a4_portrait.sprite",
+      "gitLfsOid": "sha256:8f0eaef3cf832df0e03f8ac05a1ab75ee28b704acd84155c8e31ab5d99663cc7",
+      "dimensions": [
+        120,
+        120
+      ]
+    },
+    {
+      "path": "files/data/hd/vfx/particles/character/enemy/ruff_a4_dark/FX_Dark_Ascendant_Cast.particles",
+      "bytes": 303500,
+      "sha256": "27ad76634b725c9564bcb3188ef57667303e7bab9b0fd5db0f50285dfd0e61e3",
+      "source": "Dark appearance archive: data/hd/vfx/particles/character/enemy/ruff_a4_dark/FX_Dark_Ascendant_Cast.particles",
+      "sourceSha256": "27ad76634b725c9564bcb3188ef57667303e7bab9b0fd5db0f50285dfd0e61e3"
+    },
+    {
+      "path": "files/data/hd/vfx/textures/gradient/T_FX_DarkFlame_Gradient_02.texture",
+      "bytes": 16428,
+      "sha256": "4fecc2dd1ee13d63fe1dc2a7f5e29190509b0ca2f0db3d4afbb54894a4bc4548",
+      "source": "Dark appearance archive: data/hd/vfx/textures/gradient/T_FX_DarkFlame_Gradient_02.texture",
+      "sourceSha256": "4fecc2dd1ee13d63fe1dc2a7f5e29190509b0ca2f0db3d4afbb54894a4bc4548"
+    }
+  ],
+  "sourceArchiveSha256": "d5d0ab8944bdd9746397a78f78e18bece7735c9094e32f666e3c7391a675d715",
+  "darkFinalRevision": {
+    "repository": "BRODIABLO/My-Reimagined",
+    "commit": "537a302c4ca1102927aa77f5cbc08f03bcaa903f",
+    "url": "https://github.com/BRODIABLO/My-Reimagined/commit/537a302c4ca1102927aa77f5cbc08f03bcaa903f",
+    "files": [
+      "files/data/hd/character/enemy/ruff_a4_dark/animation/combined.animations",
+      "files/data/hd/character/enemy/ruff_a4_dark/equipment/body_lod0.model",
+      "files/data/hd/character/enemy/ruff_a4_dark/equipment/body_lod1.model",
+      "files/data/hd/character/enemy/ruff_a4_dark/equipment/body_lod2.model",
+      "files/data/hd/character/enemy/ruff_a4_dark/equipment/body_lod3.model"
+    ],
+    "behavior": "Original idle robe restored; stock Summoner cast retargeted; both foot IK controls disabled only during Dark cast",
+    "approval": "Vincent approved the final Dark appearance in game in My Reimagined; reported through the originating character task on 2026-11-22",
+    "pd2ResurrectedValidation": "Not run; recipient appearance and portrait selection remain unactivated"
+  },
+  "portraitRevision": {
+    "repository": "BRODIABLO/My-Reimagined",
+    "commit": "a186ea0299c6f44c8a74ae4a97dec4b1b6118324",
+    "url": "https://github.com/BRODIABLO/My-Reimagined/commit/a186ea0299c6f44c8a74ae4a97dec4b1b6118324",
+    "files": [
+      "files/data/hd/global/ui/hireables/ruff_a4_portrait.sprite",
+      "files/data/hd/global/ui/hireables/ruff_a4_portrait.lowend.sprite",
+      "files/data/hd/global/ui/hireables/ruff_a4_light.sprite",
+      "files/data/hd/global/ui/hireables/ruff_a4_light.lowend.sprite"
+    ],
+    "appearance": "Brighter Dark and Light portraits using the same stock Rogue gold frame",
+    "standardDimensions": [
+      120,
+      120
+    ],
+    "lowendDimensions": [
+      60,
+      60
+    ],
+    "pd2ResurrectedValidation": "Not run; recipient portrait selection remains unactivated"
+  }
+}

@@ -13,10 +13,10 @@ auto SkillFunctionCount() noexcept -> int;
 // Live counters for the status command.
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void;
 
-// Mercenary monster classes (monstats ids; rows roguehire, act2hire, act3hire, act5hire1, act5hire2, act4hire): stands in
-// for PD2's hireling test (1.13c's D2Common #11104). act4hire is D2R's act 4 hireling: not in PD2; treated as a hireling
-// like the others.
-inline constexpr int32_t HirelingClasses[] = {271, 338, 359, 560, 561, 1073};
+// Mercenary monster classes (monstats ids; rows roguehire, act2hire, act3hire, act5hire1, act5hire2, act4hire,
+// act4hireLight): stands in for PD2's hireling test (1.13c's D2Common #11104). act4hire (the Dark Ascendant) and
+// act4hireLight (the Light Ascendant, #1953) are not in that list; treated as hirelings like the others.
+inline constexpr int32_t HirelingClasses[] = {271, 338, 359, 560, 561, 1073, 1322};
 
 namespace d2r {
 struct Game;

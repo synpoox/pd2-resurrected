@@ -1,4 +1,4 @@
-// PD2's hireling rules: Tyrael hires the Ascendant (UR3, #201), merc_rules.cpp.
+// PD2's hireling rules: Tyrael hires the Ascendant (UR3, #201), the Light Ascendant's portrait (#1953), merc_rules.cpp.
 #pragma once
 
 #include <D2RLPlugin/api.h>

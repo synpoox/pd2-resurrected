@@ -1044,7 +1044,7 @@
  "maggotegg4bastion": "maggotegg1",
  "imp5bastion": "imp1",
  "minion5throne": "minion1",
- "act4hire": "ascendant",
+ "act4hire": "ruff_a4_dark",
  "demonpillar": "trappedsoul1",
  "ZharTheMad": "summoner",
  "unused": "gheed",
@@ -1292,5 +1292,6 @@
  "slingermap2": "slinger1",
  "thornhulkmap2": "thornhulk1",
  "zealotmap2": "zealot1",
- "doomknightmap2": "doomknight1"
+ "doomknightmap2": "doomknight1",
+ "act4hireLight": "ruff_a4_light"
 }

@@ -1,0 +1,70 @@
+{
+  "data/hd/character/enemy/ruff_a4_dark/equipment/body.model": {
+    "record": "6db82d4b08f81ac000211bbca8fe95bf35f51a40b3c8e940800c393f1e33cc38040000000000000000010000",
+    "lods": [
+      {
+        "record": "0002000002000000",
+        "meshes": [
+          "a83817c02446f6bba8fe95bf2c2d1740ceace940d28f373f0100000059000400",
+          "08f81ac01ca86240771ad5be35f51a404709e840599f323f010000004f000400"
+        ]
+      },
+      {
+        "record": "00e8a3fc02000000",
+        "meshes": [
+          "c27117c0001f0ebca8fe95bf63091740b3c8e940d38f373f0100000059000400",
+          "08f81ac09aa86240761ad5be34f51a404709e8404777323f010000004f000400"
+        ]
+      },
+      {
+        "record": "0002000002000000",
+        "meshes": [
+          "c27117c000211bbc948e95bf63091740dbc1e940800c393f0100000059000400",
+          "4ed11ac094136340b469d3bececd1a404709e8404c6c313f010000004f000400"
+        ]
+      },
+      {
+        "record": "00e8a3fc02000000",
+        "meshes": [
+          "133717c000211bbc7c0094bf9c1f1740109ee940800c393f0100000059000400",
+          "4ed11ac094136340b469d3be9e9d1a40002ce84082912e3f010000004f000400"
+        ]
+      }
+    ]
+  },
+  "data/hd/character/enemy/ruff_a4_dark/equipment/staff.model": {
+    "record": "57aa442e3a3c99be17ce92c07fcf74bf3a3c993ef0abb840e6bd143f3e85f700050000000000000040000000",
+    "lods": [
+      {
+        "record": "0003240701000000",
+        "meshes": [
+          "3a3c99be4ec992c036e272bf3a3c993ef0abb840e6bd143f0100000001002000"
+        ]
+      },
+      {
+        "record": "00061a0401000000",
+        "meshes": [
+          "4ba498be17ce92c07fcf74bf4ba4983ef0abb8409df5113f0100000001002000"
+        ]
+      },
+      {
+        "record": "00069b0101000000",
+        "meshes": [
+          "4ba498be17ce92c07fcf74bf4ba4983ef0abb8409df5113f0100000001002000"
+        ]
+      },
+      {
+        "record": "0000390301000000",
+        "meshes": [
+          "4ba498be17ce92c07fcf74bf4ba4983ef0abb8409df5113f0100000001002000"
+        ]
+      },
+      {
+        "record": "0007bd0601000000",
+        "meshes": [
+          "4ba498be17ce92c07fcf74bf4ba4983ef0abb8409df5113f0100000001002000"
+        ]
+      }
+    ]
+  }
+}

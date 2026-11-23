@@ -1,2 +1,5 @@
 # The committed mod data (ADR 0007) keeps its bytes: tables are CRLF, JSON and sprites must not be converted.
 /files/data/** -text
+
+# Keep the hashed Ascendant registration payloads stable on every checkout.
+/art/ascendants/*.json -text
