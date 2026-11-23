@@ -30,6 +30,10 @@ auto InstallBaalWaveDelay(const D2RL::PluginContext* context, char* report, size
 
 // Monster life per extra player, PD2's 70% steps (#2025), monster_life_per_player.cpp; appends its part to `report`.
 auto InstallMonsterLifePerPlayer(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
+// Sacrifice's self-hit flag (#2018), sacrifice_hit_flag.cpp: true when installed; appends its part to `report`.
+auto InstallSacrificeHitFlag(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
+// Just-portaled state lasts 15 frames (#2022), portal_state_time.cpp: true when installed; appends its part to `report`.
+auto InstallPortalStateTime(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
 // Whirlwind hit rate (#2015), whirlwind.cpp: a player's Whirlwind hits every Param3 frames; appends its part to `report`.
 auto InstallWhirlwind(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
