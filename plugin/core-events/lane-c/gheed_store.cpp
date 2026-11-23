@@ -589,7 +589,7 @@ auto InstallGheedStore(const D2RL::PluginContext* context, char* report, size_t 
 	const bool identify = store && d2r::sig::FindUnit.state == sigscan::State::Ok && d2r::sig::UnitInventory.state == sigscan::State::Ok &&
 	                      d2r::sig::IdentifyItem.state == sigscan::State::Ok &&
 	                      sigscan::HookBySignature(context, "StoreBuy", BuyPattern, 0, BuyEntry, sizeof(BuyEntry), &Buy, &g_buy);
-	// a miss would leave a bought unique quiver in stock (duplicable): its buy is not hooked either
+	// needs the buy hook (it sets the flag); a miss leaves a bought unique quiver duplicable
 	const bool once = identify && sigscan::HookBySignature(context, "StoreKeep", KeepPattern, 0, KeepEntry, sizeof(KeepEntry), &Keep, &g_keep);
 	std::snprintf(report, reportSize, "map Gheed: unique stock%s, bought identified%s, bought once%s, stands still%s",
 	              store ? "" : " FAILED", identify ? "" : " FAILED", once ? "" : " FAILED", still ? "" : " FAILED");
