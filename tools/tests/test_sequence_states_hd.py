@@ -41,6 +41,18 @@ class SequenceStates(unittest.TestCase):
                             f"{d['skill']} ({row[1]}) has no sequence state in the {cls} state machine")
         self.assertEqual(checked, {"sorceress", "barbarian", "assassin"})
 
+    def test_ancients_states_follow_their_skill_rows(self):
+        # #1858: the HD clip is picked by skill id, so the copied states must carry the merged row of PD2's skill
+        rows = list(csv.reader((FILES / "global/excel/skills.txt").open(encoding="utf-8-sig"), delimiter="\t"))
+        ids = {row[0]: int(row[1]) for row in rows[1:]}
+        for unit, skill, steps in (("ancientbarb1", "MonWhirlwind", 1), ("ancientbarb3", "Leap Attack Korlic", 4)):
+            sm = json.loads((FILES / f"hd/character/enemy/{unit}/{unit}_state_machine.json").read_text("utf-8"))
+            states = [s for s in sm["states"] if s["modeId"] == 14 and s["skillIndex"] == ids[skill]]
+            self.assertEqual(len(states), steps, f"{unit}: {skill} ({ids[skill]})")
+            froms = [g["from"] for g in sm["transitions"]]
+            for s in states:
+                self.assertIn(s["stateId"], froms)
+
 
 if __name__ == "__main__":
     unittest.main()
