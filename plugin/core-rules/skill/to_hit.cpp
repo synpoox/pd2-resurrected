@@ -11,6 +11,8 @@
 #include "log.h"
 #include "sig.h"
 
+#include <intrin.h>
+
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
@@ -73,11 +75,19 @@ constexpr uint8_t ChanceStock[52] = {0x8d, 0x0c, 0x18, 0x85, 0xc9, 0x74, 0x08, 0
                                      0x00, 0x00, 0x00, 0x3b, 0xc1, 0x0f, 0x4f, 0xc8, 0x3b, 0xcf, 0x0f, 0x4c, 0xf9};
 
 std::atomic<uint32_t> g_rolls {0};
+uint64_t g_exeBase = 0;
+// The roll's own return address, from our call inside it: D2R's frame is 5 pushes + 0x490 (0x44ba63-0x44ba6a), so it
+// sits 0x4b8 above the rsp the block calls from. 0x44b845 is MeleeRoll (melee, splash, Blade Sentinel), 0x463c64
+// collision (missiles); for the hot log only.
+constexpr int RollFrame = 0x4b8;
 
 auto Chance(int32_t def, int32_t ar, int32_t dlvl, int32_t alvl) noexcept -> int32_t {
 	const int32_t chance = Pd2Chance(def, ar, dlvl, alvl);
 	if (const uint32_t n = ++g_rolls; pd2::HotSample(n)) {
-		plog::Info("to-hit: ar %d def %d alvl %d dlvl %d -> %d%% (%u so far)", ar, def, alvl, dlvl, chance, n);
+		const auto* slot = static_cast<const uint8_t*>(_AddressOfReturnAddress());
+		const uint64_t from = *reinterpret_cast<const uint64_t*>(slot + 8 + RollFrame) - g_exeBase;
+		plog::Info("to-hit: ar %d def %d alvl %d dlvl %d -> %d%%, from 0x%llx (%u so far)", ar, def, alvl, dlvl, chance,
+		           static_cast<unsigned long long>(from), n);
 	}
 	return chance;
 }
@@ -86,6 +96,7 @@ auto Chance(int32_t def, int32_t ar, int32_t dlvl, int32_t alvl) noexcept -> int
 
 auto InstallToHit(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
 	uint64_t rva = 0;
+	g_exeBase = context->exeBase;
 	bool on = sigscan::ScanUnique(context->exeBase, ChanceBlock, 0, &rva) == 1;
 	if (on) {
 		// mov ecx,ebx / mov edx,eax / mov r8d,[rsp+0x38] / mov r9d,r13d / mov rax,Chance / call rax / mov edi,eax /
