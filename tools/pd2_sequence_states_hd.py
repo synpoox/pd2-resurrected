@@ -9,6 +9,7 @@ the skill runs while the body plays no clip. Each new state copies a D2R state w
   Talic's MonWhirlwind (495) <- Whirlwind (151): D2R's Talic spins with Whirlwind (#1858).
   Korlic's Leap Attack Korlic (602) <- MonLeapAttack (367): D2R's Korlic leaps with MonLeapAttack, four steps (#1858).
   Decoy's DoppleZonStrafe (557) <- the rogue's Attack1 (mode 4), looped: D2R's rogue has no sequence state (#1964).
+  Duriel's MonCharge (486), MonJab (484), MonSmite (485) <- Charge (107), Jab (10), Smite (97): D2R's Duriel (#2083).
 The skill ids are merged skills.txt rows (tools/tests/test_sequence_states_hd.py checks them by name).
 
     py -3 tools/pd2_sequence_states_hd.py [--d2r D2R_DATA_ROOT]   (default: the toolkit cache, as pd2_merge.py)
@@ -32,7 +33,8 @@ def hd(kind: str, unit: str) -> Path:
 D2R_DATA = Path(os.environ.get("MODKIT_CACHE") or pd2_table.toolkit(ROOT) / "d2r-data") / "93847" / "data"
 PLAYER_SEQUENCE_MODE = 18
 MONSTER_SEQUENCE_MODE = 14
-# (folder, unit) -> (sequence mode, new skill id, source skill id, state name, transition-name suffix[, source mode])
+# (folder, unit) -> (sequence mode, new skill id, source skill id, state name, transition-name suffix[, source mode]),
+# or a list of them for a unit that needs several
 STATES = {
     ("player", "sorceress"): (PLAYER_SEQUENCE_MODE, 64, 53, "FrozenOrb_Cast", "_frozenorb"),
     ("player", "barbarian"): (PLAYER_SEQUENCE_MODE, 152, 147, "Berserk_Sequence", "_berserk"),
@@ -41,6 +43,11 @@ STATES = {
     ("enemy", "ancientbarb3"): (MONSTER_SEQUENCE_MODE, 602, 367, "Skill_LeapAttackKorlic", "_leapattackkorlic"),
     # Decoy (dopplezonnew) draws the rogue merc's model; its Strafe sequence repeats A1 frames
     ("enemy", "roguehire"): (MONSTER_SEQUENCE_MODE, 557, -1, "Seq_DoppleZonStrafe", "_dopplestrafe", 4),
+    ("enemy", "duriel"): [
+        (MONSTER_SEQUENCE_MODE, 486, 107, "Ability_MONCHARGE_Sequence", "_moncharge"),
+        (MONSTER_SEQUENCE_MODE, 484, 10, "Ability_MONJAB_Sequence", "_monjab"),
+        (MONSTER_SEQUENCE_MODE, 485, 97, "Ability_MONSMITE_Sequence", "_monsmite"),
+    ],
 }
 
 
@@ -95,7 +102,9 @@ def main() -> None:
         sm = json.loads((a.d2r / hd(kind, unit)).read_text("utf-8-sig"))
         out = a.out / hd(kind, unit)
         out.parent.mkdir(parents=True, exist_ok=True)
-        out.write_text(json.dumps(build(sm, *spec), separators=(",", ":")), "utf-8")
+        for one in spec if isinstance(spec, list) else [spec]:
+            sm = build(sm, *one)
+        out.write_text(json.dumps(sm, separators=(",", ":")), "utf-8")
         print(f"wrote {out}")
 
 
