@@ -212,6 +212,7 @@ rows have no table hook: D2R does what it does.
 | Character stat commands (`.kills`, `.deaths`, `.played`, `.age`, `.allstats`, `.accountstats`) | cut | cut by decision ([#210](https://github.com/synpoox/pd2-resurrected/issues/210)), as the map and uber `.kills` counters were: they need saved state and only show a number |  |
 | Corrupted zones | cut | cut by decision (map [#143](https://github.com/synpoox/pd2-resurrected/issues/143)): D2R's Terror Zones stay in their place |  |
 | Level life regen cap (30, `bloodwarp` lifts it) | cut | PD2 caps it only in the PvP arenas (levels 157, 159, 166), and PvP is cut ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)) ([ms3-map-stats](research/maps/ms3-map-stats.md)) |  |
+| Leech on PD2's PvP levels: PD2's leech step (`0x103039f0`) zeroes life and mana leech there | cut | PD2's PvP levels are cut ([#151](https://github.com/synpoox/pd2-resurrected/issues/151)); the rest of the step, missile hits halving both, is ported ([#2009](https://github.com/synpoox/pd2-resurrected/issues/2009), core-rules `leech`) |  |
 
 ### Not yet
 
