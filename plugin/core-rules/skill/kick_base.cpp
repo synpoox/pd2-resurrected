@@ -203,4 +203,4 @@ auto InstallKickBase(const D2RL::PluginContext* context, char* report, size_t re
 	return on;
 }
 
-PD2R_RULE(InstallKickBase, 240)
+PD2R_RULE(InstallKickBase, 260)
