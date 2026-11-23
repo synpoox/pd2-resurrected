@@ -332,6 +332,7 @@ rows have no table hook: D2R does what it does.
 | Ethereal items made before the durability rule: halved maximum durability | approximated | core-rules' ethereal durability ([#1478](https://github.com/synpoox/pd2-resurrected/issues/1478)) changes item generation only; an ethereal item already saved keeps the maximum D2R gave it (max / 2 + 1) | [#1478](https://github.com/synpoox/pd2-resurrected/issues/1478) |
 | Ethereal bonus: PD2's early return on an item already ethereal | approximated | core-rules' ApplyEthereal gives PD2's +25% (`ProjectDiablo.dll` `0x2fb710`) but always applies it, as D2R's `0x3d3510` does: D2R's cube output (`0x5269c0`) sets the flag before it calls, so PD2's check would leave cube-made ethereal items with no bonus. Ethereal items made before this build keep D2R's +50% in their saved stats | [IR8](https://github.com/synpoox/pd2-resurrected/issues/243) |
 | Aura-enchanted bosses with D2R's monster flag `0x200`: a second aura | approximated | core-rules swaps D2RLoader's umod 30 thunk slot to run D2R's own handler (93847 `0x495cd0`) with PD2's pick ([#1830](https://github.com/synpoox/pd2-resurrected/issues/1830)); after the pick that handler gives a monster with flag `0x200` a second aura as `item_aura` (stat 151, a weighted pick from skills 113, 115, 428 at `0x141d1df20`). PD2's 1.13c handler has no such step. Kept as D2R does it (the loader's own ApplyAuraEnchanted has the same step, picking one of the three on the name seed) | [#1830](https://github.com/synpoox/pd2-resurrected/issues/1830) |
+| Cursed boss mod (umod 7) proc chance | approximated | PD2 leaves monumod `constants` 34 and 35 blank but hard-codes a 3 in 4 roll in code (1.13c D2Game `0x24250`); D2RCore reads the chance from those cells, so we set them to 75 | #1918 |
 
 ## Data rows
 
@@ -482,3 +483,4 @@ is thousands of cells), so the cell count shows breadth, not work left.
 | Cyclone Armor (monster) aura stat formulas: one stray closing bracket removed | `skills.Cyclone ArmorMon.aurastatcalc1` `skills.Cyclone ArmorMon.aurastatcalc2` |
 | Dark Pact's damage synergy sum sits in calc2 | `skills.Dark Pact.calc2` `skills.Dark Pact.EDmgSymPerCalc` |
 | Megademon Armageddon boss synergy names Eruption, not Fissure | `skills.MegademonArmaBoss.DmgSymPerCalc` `skills.MegademonArmaBoss.EDmgSymPerCalc` |
+| Cursed boss mod (umod 7) proc chance | `monumod.ai_after_death.constants` `monumod.shatter_on_death.constants` |
