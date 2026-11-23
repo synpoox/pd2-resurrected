@@ -68,6 +68,8 @@ modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/merc_ai.cpp
 	core-rules/boss_aura.cpp
 	core-rules/skill/slow_prime_evil.cpp
+	core-rules/skill/whirlwind.cpp
+	core-rules/skill/to_hit.cpp
 	core-rules/skill/leech.cpp
 	core-rules/skill/sacrifice_hit_flag.cpp
 	"${D2R_TOOLKIT_DIR}/plugin-template/src/skill_router.cpp"  # the toolkit's router: slot 190 dispatches this mod's skill routes
