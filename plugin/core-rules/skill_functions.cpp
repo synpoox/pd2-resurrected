@@ -3455,14 +3455,23 @@ auto FrenzyHelper(Game* game, Unit* unit, int32_t skillId, int32_t level, void* 
 	return result;
 }
 
-// The return only gates the helper. Monsters keep D2R's hit gate; a missing skill row keeps 0 (the helper reads it).
+// The return only gates the helper. Monster frenzies with calc4 blank keep D2R's hit gate (FrenzyHelper keeps D2R's
+// ramp for them too); the merc's and InvaderBarbarian's Frenzy (calc4 set) charge per swing as in PD2. A missing
+// skill row keeps 0 (the helper reads it).
 auto FrenzySwing(Game* game, Unit* unit, Unit* target, int32_t skillId, int32_t level) noexcept -> int32_t {
 	const int32_t hit = g_frenzySwing(game, unit, target, skillId, level);
 	using namespace d2r::rva;
-	if (hit != 0 || game == nullptr || unit == nullptr || At<int32_t>(unit, UnitType) == UnitMonster) {
+	if (hit != 0 || game == nullptr || unit == nullptr) {
 		return hit;
 	}
-	return d2r::api.getSkillRecord(d2r::DataFlag(game), skillId) != nullptr ? 1 : 0;
+	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), skillId);
+	if (skill == nullptr) {
+		return 0;
+	}
+	if (At<int32_t>(unit, UnitType) == UnitMonster && d2r::EvalCalc(game, unit, skill, SkCalc4, skillId, level) <= 0) {
+		return hit;
+	}
+	return 1;
 }
 
 // --- Mind Blast's stacks and damage only (#1946) ---------------------------------------------------------------------
