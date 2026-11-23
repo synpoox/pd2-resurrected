@@ -1,3 +1,3 @@
 #### Bug Fixes
 
-- Bosses' Amplify Damage curse now obeys curse resistance and max curses (#1902).
+- Cursed bosses now lower your Lightning Resistance as in PD2, instead of casting Amplify Damage (#1902).
