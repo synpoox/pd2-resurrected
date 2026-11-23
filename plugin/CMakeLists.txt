@@ -51,6 +51,7 @@ modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/skill_functions.cpp
 	core-rules/skill/monster_curse.cpp
 	core-rules/skill/baal_wave_delay.cpp
+	core-rules/skill/monster_life_per_player.cpp
 	core-rules/skill/portal_state_time.cpp
 	core-rules/missile_functions.cpp
 	core-rules/item_rules.cpp
