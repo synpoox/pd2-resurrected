@@ -1,0 +1,1 @@
+- Werewolf and Werebear no longer block your other skills for a moment after you shift.

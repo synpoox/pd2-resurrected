@@ -35,6 +35,10 @@ auto RedirectCall(const D2RL::PluginContext* context, const char* pattern, uint3
 // The row of state `name` in the mod's states.txt (D2R numbers states by row under the header), or -1.
 auto StateRow(const D2RL::PluginContext* context, std::string_view name) noexcept -> int32_t;
 
+// PD2's 0x103749f0(unit, 1): a player is itself; a monster gives its AI owner (and that owner's, when a monster), a
+// missile with flag 0x400 its owner; no owner: the unit itself (item_rules.cpp, the stun refresh rule).
+auto StunOwner(d2r::Unit* unit, d2r::Unit* (*aiOwner)(d2r::Unit*) noexcept) noexcept -> d2r::Unit*;
+
 // Gold within 3 of a player picks itself up, as in PD2 (#1863, gold_pickup.cpp); the count for the status line.
 auto InstallGoldPickup(const D2RL::PluginContext* context) noexcept -> bool;
 auto GoldPickupCount() noexcept -> uint32_t;
