@@ -161,6 +161,10 @@ struct SlowNodes {
 auto SlowPrimeEvilBegin(d2r::Game* game, int32_t event, d2r::Unit* unit, d2r::Unit* target, SlowNodes& nodes) noexcept -> void;
 auto SlowPrimeEvilEnd(const SlowNodes& nodes) noexcept -> void;
 
+// --- Sacrifice's missile kills (#2043, sacrifice_missile.cpp) ---
+// The missile of the missile damage or AreaApply call running on this thread (D2R passes the deal its owner), or null.
+auto SacrificeKillMissile() noexcept -> d2r::Unit*;
+
 // --- D2R's corpse test without monstats2 `soft` (grim_ward_corpse.cpp #2019, hunger_corpse.cpp #2067) ---
 // 0x33a5c0, the corpse test without bit 12 (#10678); 0x33a510 differs only in its tail (call 0x34fa60, not mov eax,1)
 inline constexpr const char* CorpseSelPattern =
