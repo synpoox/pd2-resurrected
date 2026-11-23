@@ -15,6 +15,7 @@
 // - op bases, life steal cap and crushing blow (IR3): equipped_eth / missing_hp kept as base stats from the stat
 //   callback, lifedrain_percentcap on D2R's add-life, PD2's blow in CrushingBlowApply's jump slot, and its roll on
 //   HitEvents' event 5/6 calls, where PD2's open wounds and deep wounds (event 15) run too.
+// - dual wield attack rate (#1867): a player's two weapons attack at the faster one's rate, in D2R's unit rate setter.
 #include <intrin.h>
 #include "item_rules.h"
 #include "skill_functions.h"
@@ -2058,6 +2059,129 @@ static auto PatchCurseLength(const D2RL::PluginContext* context) noexcept -> boo
 	return full && blinds;
 }
 
+// --- Dual wield attack rate: the faster weapon's (#1867) -----------------------------------------------------------
+// PD2 NOPs 1.13c D2Common's dual wield average (+0x334ac..+0x334cc in the unit rate setter +0x33110, Barbarian and
+// Assassin) and calls ProjectDiablo.dll 0x102fc0e0: for a player it compares attackrate (68) + item_fasterattackrate
+// (93) of the right and the left weapon, makes the higher one (the left on a tie) the only active weapon and takes
+// the unit's 68 + effective IAS (120 * IAS / (120 + IAS)) with it; a monster keeps the average. D2R's copy (93847:
+// 0x350b40) already takes that rate with each hand active, [rbp-0x2c] with the inventory's main weapon (rdi),
+// [rbp-0x30] with the other (rbx), but averages them (0x3513ff) and only for a skill whose weapsel is above 1.
+// Two byte patches, both or neither: the weapsel gate (0x35129c) also lets a player in, as PD2 has no skill gate, and
+// the average calls DualWieldRate. No SDK service covers a unit's animation rate, hence the patches. 0x350b40 runs on
+// the server and on every client (each unit's animation), and the plugin patches each process the same way.
+constexpr const char* DualWieldGate =
+    "e8 ?? ?? ?? ?? 84 c0 0f 84 ?? ?? ?? ?? 48 85 db 74 0e 80 bb 08 02 00 00 01 77 1f e9";
+constexpr int DualWieldGateAt = 18;  // the `cmp byte [rbx+0x208],1` (weapsel)
+constexpr const char* DualWieldAverage =
+    "45 84 ed 75 09 48 85 ff 75 21 84 c0 74 1d 44 38 75 18 75 09 48 85 db 75 12 84 c0 74 0e "
+    "8b 45 d0 03 45 d4 99 2b c2 d1 f8 44 8b f8 48 8b ce e8";
+constexpr int DualWieldAverageAt = 29;  // `mov eax,[rbp-0x30]; add eax,[rbp-0x2c]; cdq; sub; sar; mov r15d,eax`
+constexpr int32_t StatFasterAttack = 93;  // item_fasterattackrate; StatAttackRate (68) is above (same rows in PD2)
+constexpr int32_t BodyLocRightArm = 4;
+
+// PD2's pick (0x102fc0e0): the right weapon's rate when its 68 + 93 is the higher, else the left's
+constexpr auto FasterHandRate(int32_t rightSpeed, int32_t leftSpeed, int32_t rightRate, int32_t leftRate) noexcept
+	-> int32_t {
+	return rightSpeed > leftSpeed ? rightRate : leftRate;
+}
+static_assert(FasterHandRate(20, 10, 130, 110) == 130);
+static_assert(FasterHandRate(10, 10, 130, 110) == 110);  // a tie takes the left
+static_assert(FasterHandRate(20, 25, 140, 120) == 120);  // by the weapons' raw 68 + 93, not by the rates
+static_assert((-3 + 0) / 2 == -1);                      // C++ division truncates as D2R's cdq / sub / sar does
+
+// rates[0] = [rbp-0x30] (the other weapon active), rates[1] = [rbp-0x2c] (the main one); null when not a weapon
+auto DualWieldRate(Unit* unit, Unit* main, Unit* other, const int32_t* rates) noexcept -> int32_t {
+	if (unit == nullptr || At<int32_t>(unit, d2r::rva::UnitType) != 0 || main == nullptr || other == nullptr) {
+		return (rates[0] + rates[1]) / 2;  // D2R's own average (a monster)
+	}
+	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat);
+	const auto speed = [&](Unit* weapon) noexcept { return stat(weapon, StatAttackRate, 0) + stat(weapon, StatFasterAttack, 0); };
+	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(d2r::sig::UnitInventory)(unit, __FILE__, __LINE__);
+	const bool otherRight = inventory != nullptr &&
+	                        d2r::Engine<Unit* (*)(void*, int32_t) noexcept>(d2r::sig::InventoryBodyItem)(inventory, BodyLocRightArm) == other;
+	return otherRight ? FasterHandRate(speed(other), speed(main), rates[0], rates[1])
+	                  : FasterHandRate(speed(main), speed(other), rates[1], rates[0]);
+}
+
+// Gate stub: `cmp byte [rbx+0x208],1; ja ret; cmp dword [rsi],0; sete al; cmp al,0; ret`, so the site's `ja` is taken
+// for weapsel > 1 or a player (eax is dead there). Average stub: DualWieldRate(rsi, rdi, rbx, rbp-0x30) into r15d.
+auto DualWieldStubs(uint8_t* relay) noexcept -> void {
+	static constexpr uint8_t Gate[] = {0x80, 0xbb, 0x08, 0x02, 0x00, 0x00, 0x01, 0x77, 0x08, 0x83, 0x3e, 0x00,
+	                                   0x0f, 0x94, 0xc0, 0x3c, 0x00, 0xc3};
+	std::memcpy(relay, Gate, sizeof(Gate));
+	// mov rcx,rsi / mov rdx,rdi / mov r8,rbx / lea r9,[rbp-0x30] / sub rsp,0x28 / mov rax,DualWieldRate / call rax /
+	// add rsp,0x28 / mov r15d,eax / ret (the site's rsp is 16-aligned, so the call's is too)
+	static constexpr uint8_t Head[] = {0x48, 0x8b, 0xce, 0x48, 0x8b, 0xd7, 0x4c, 0x8b, 0xc3, 0x4c, 0x8d,
+	                                   0x4d, 0xd0, 0x48, 0x83, 0xec, 0x28, 0x48, 0xb8};
+	static constexpr uint8_t Tail[] = {0xff, 0xd0, 0x48, 0x83, 0xc4, 0x28, 0x44, 0x8b, 0xf8, 0xc3};
+	uint8_t* average = relay + 0x20;
+	const uint64_t target = reinterpret_cast<uint64_t>(&DualWieldRate);
+	std::memcpy(average, Head, sizeof(Head));
+	std::memcpy(average + sizeof(Head), &target, 8);
+	std::memcpy(average + sizeof(Head) + 8, Tail, sizeof(Tail));
+}
+
+// One transaction checks and writes both sites, and restores both on a failure.
+static auto PatchDualWieldRate(const D2RL::PluginContext* context) noexcept -> bool {
+	for (const sigscan::Entry* e : {&d2r::sig::UnitStat, &d2r::sig::UnitInventory, &d2r::sig::InventoryBodyItem}) {
+		if (e->state != sigscan::State::Ok) {
+			return false;
+		}
+	}
+	uint64_t gate = 0, average = 0;
+	const D2RL::MutationService* mutations = nullptr;
+	if (sigscan::ScanUnique(context->exeBase, DualWieldGate, DualWieldGateAt, &gate) != 1 ||
+	    sigscan::ScanUnique(context->exeBase, DualWieldAverage, DualWieldAverageAt, &average) != 1 ||
+	    context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize)) {
+		return false;
+	}
+	uint8_t* relay = AllocateRelay(context->exeBase);
+	if (relay == nullptr) {
+		return false;
+	}
+	DualWieldStubs(relay);
+	static constexpr uint8_t GateStock[] = {0x80, 0xbb, 0x08, 0x02, 0x00, 0x00, 0x01, 0x77, 0x1f};
+	static constexpr uint8_t AverageStock[] = {0x8b, 0x45, 0xd0, 0x03, 0x45, 0xd4, 0x99, 0x2b, 0xc2, 0xd1, 0xf8, 0x44, 0x8b, 0xf8};
+	// call gate stub / ja +0x21 (the stock ja's target) / nop nop; call average stub / 9 nops
+	uint8_t gateBytes[] = {0xe8, 0, 0, 0, 0, 0x77, 0x21, 0x90, 0x90};
+	uint8_t averageBytes[] = {0xe8, 0, 0, 0, 0, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
+	const int64_t gateReach = reinterpret_cast<int64_t>(relay) - static_cast<int64_t>(context->exeBase + gate + 5);
+	const int64_t averageReach = reinterpret_cast<int64_t>(relay + 0x20) - static_cast<int64_t>(context->exeBase + average + 5);
+	const int32_t gateRel = static_cast<int32_t>(gateReach), averageRel = static_cast<int32_t>(averageReach);
+	std::memcpy(gateBytes + 1, &gateRel, 4);
+	std::memcpy(averageBytes + 1, &averageRel, 4);
+	DWORD old;
+	D2RL::Mutations::TransactionHandle transaction = 0;
+	if (gateReach != gateRel || averageReach != averageRel || VirtualProtect(relay, 0x1000, PAGE_EXECUTE_READ, &old) == 0 ||
+	    mutations->beginTransaction(context, &transaction) != D2RL::Mutations::Result::Success) {
+		VirtualFree(relay, 0, MEM_RELEASE);
+		return false;
+	}
+	const D2RL::Mutations::BytePatchRequest patches[] = {
+	    {.structSize = D2RL::Mutations::BytePatchRequestSize, .rva = gate, .expected = GateStock,
+	     .expectedSize = sizeof(GateStock), .bytes = gateBytes, .size = sizeof(gateBytes)},
+	    {.structSize = D2RL::Mutations::BytePatchRequestSize, .rva = average, .expected = AverageStock,
+	     .expectedSize = sizeof(AverageStock), .bytes = averageBytes, .size = sizeof(averageBytes)}};
+	bool staged = true;
+	for (const auto& patch : patches) {
+		D2RL::Mutations::OperationHandle operation = 0;
+		staged = staged && mutations->stageBytePatch(context, transaction, &patch, &operation) == D2RL::Mutations::Result::Success;
+	}
+	D2RL::Mutations::CommitResult result{.structSize = D2RL::Mutations::CommitResultSize};
+	if (!staged || mutations->commit(context, transaction, &result) != D2RL::Mutations::Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		// a failed commit that did not restore the stock bytes may still call into the relay: keep the page then
+		if (!staged || D2RL::Mutations::HasFlag(result.flags, D2RL::Mutations::CommitFlags::OriginalStateRestored)) {
+			VirtualFree(relay, 0, MEM_RELEASE);
+		}
+		return false;
+	}
+	plog::Info("dual wield rate: a player's two weapons attack at the faster one's rate (gate 0x%llx, average 0x%llx)",
+	           static_cast<unsigned long long>(gate), static_cast<unsigned long long>(average));
+	return true;
+}
+
 // --- Missile pierce cap (#1839) -----------------------------------------------------------------------------------
 // PD2 replaces both halves of the pierce roll made when a piercing missile is created:
 // - server: 0x10374f20 (installed 0x10374f90), called at 1.13c D2Game +0x6fe59 in place of +0x6f660. chance =
@@ -2734,6 +2858,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	if (pierceCap) {
 		plog::Info("pierce cap: server and client missile pierce rolls hooked, PD2's cap 10 (6 for Lightning Fury)");
 	}
+	const bool dualWield = PatchDualWieldRate(context);
 	const char* const dye = InstallDyeTint(context);
 	const bool mapStack = sigscan::HookBySignature(
 	    context, "ItemsCanMerge", "48 89 5C 24 08 48 89 74 24 10 55 57 41 56 48 8B EC 48 83 EC 20", 0,
@@ -2753,7 +2878,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s; boss curse%s; half freeze%s; chill rates%s; stun length%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s; boss curse%s; half freeze%s; chill rates%s; stun length%s; dual wield rate%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
@@ -2769,16 +2894,17 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              bossCurse ? "" : " FAILED (curse hook, signature or bytes differ)",
 	              halfFreeze ? "" : " FAILED (signature or bytes differ)",
 	              chillRates ? "" : " FAILED (signature, call or relay)",
-	              stunLength ? "" : " FAILED (signature, call or relay)");
+	              stunLength ? "" : " FAILED (signature, call or relay)",
+	              dualWield ? "" : " FAILED (signature, bytes or relay)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
 	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0) +
 	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (shrinePotions ? 1 : 0) + (pierceCap ? 1 : 0) + (bossCurse ? 1 : 0) +
-	       (halfFreeze ? 1 : 0) + (chillRates ? 1 : 0) + (stunLength ? 1 : 0);
+	       (halfFreeze ? 1 : 0) + (chillRates ? 1 : 0) + (stunLength ? 1 : 0) + (dualWield ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 23;
+	return 24;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
