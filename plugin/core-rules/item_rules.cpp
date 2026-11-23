@@ -1846,6 +1846,30 @@ static auto PatchShrinePotions(const D2RL::PluginContext* context) noexcept -> b
 	return true;
 }
 
+// --- Half freeze duration: 2 or more points cannot be frozen (#1864) -----------------------------------------------
+// PD2's freeze length check (ProjectDiablo.dll 0x10304db0, called at 1.13c D2Game +0xdc477 in place of +0xda7b0):
+// without item_cannotbefrozen (153), item_halffreezeduration (118) == 1 halves the freeze and cold lengths, >= 2 sets
+// both to 0, <= 0 leaves them. D2R's damage effects (93847: 0x44df10, the hit path of every unit, monsters' and
+// players') halve for any nonzero 118: `test eax,eax; jz skip; mov eax,[r15+0x118]` at 0x44eb83 becomes `cmp eax,1;
+// jl skip; jg <the 153 path's zeroing, 0x44eb68>; mov eax,[rbx-4]; nop` (rbx = r15+0x11c). No SDK service covers a
+// hit's freeze length, hence the byte patch. The match starts at the `lea rbx`, so the patched jumps' targets are in it.
+constexpr const char* HalfFreezeTest =
+    "49 8d 9f 1c 01 00 00 45 39 b7 18 01 00 00 7f 05 44 39 33 7e 4f 45 33 c0 ba 99 00 00 00 48 8b ce e8 ?? ?? ?? ?? "
+    "85 c0 74 0c 45 89 b7 18 01 00 00 44 89 33 eb 2f 45 33 c0 48 8b ce 41 8d 50 76 e8 ?? ?? ?? ?? 85 c0 74 1c";
+constexpr int HalfFreezeTestAt = 68;  // the stat 118 `test eax,eax` inside the match
+
+static auto PatchHalfFreeze(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t rva = 0;
+	static constexpr uint8_t Stock[] = {0x85, 0xc0, 0x74, 0x1c, 0x41, 0x8b, 0x87, 0x18, 0x01, 0x00, 0x00};
+	static constexpr uint8_t Pd2[] = {0x83, 0xf8, 0x01, 0x7c, 0x1b, 0x7f, 0xde, 0x8b, 0x43, 0xfc, 0x90};
+	if (sigscan::ScanUnique(context->exeBase, HalfFreezeTest, HalfFreezeTestAt, &rva) != 1 ||
+	    !PatchBytes(context, rva, Stock, Pd2, sizeof(Pd2))) {
+		return false;
+	}
+	plog::Info("half freeze: 2 or more points cannot be frozen, test patched at 0x%llx", static_cast<unsigned long long>(rva));
+	return true;
+}
+
 // --- Dim Vision and Terror full length; hit blind takes blinddimvision (#1837) ------------------------------------
 // PD2 NOPs 1.13c srvdo 30's AiCurseDivisor call (D2Game +0x506a8), so Dim Vision and Terror (and item procs of them)
 // keep their full length in Nightmare and Hell. D2R's srvdo 30 (93847: 0x55c840) divides at 0x55ca27 only for
@@ -2569,6 +2593,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	const bool telekinesis = PatchTelekinesisArrows(context);
 	const bool shrinePotions = PatchShrinePotions(context);
 	const bool curseLength = PatchCurseLength(context);
+	const bool halfFreeze = PatchHalfFreeze(context);
 	// One rule, ok only with both halves: a client roll capped apart from the server's draws the missile stopping early.
 	// Both sites are scanned before either hook goes in, so a build that moved one leaves both rolls stock.
 	// shortcut: if the loader refuses the second hook after the first went in, the first stays; undo it if that ever happens.
@@ -2603,7 +2628,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	    ItemMakerEntry, sizeof(ItemMakerEntry), MapItemMaker, &g_itemMakerOriginal);
 	std::snprintf(report, reportSize, "property func %d ormus%s; weapon strike%s; missile strike%s; "
 	              "crushing blow roll%s; life steal cap%s; crushing blow%s; curses%s; skill on equip and op bases%s; "
-	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s; boss curse%s",
+	              "replenish charges%s; unlimited books%s; charm rows%s; dye tint%s; map stacking%s; no magic maps%s; map maker log%s; telekinesis no arrows%s; curse length%s; shrine potions%s; pierce cap%s; boss curse%s; half freeze%s",
 	              PropertySlot, property ? "" : " FAILED (slot not empty)",
 	              weaponStrike ? "" : " FAILED (bytes differ)", missileStrike ? "" : " FAILED (bytes differ)",
 	              blowRoll ? "" : " FAILED (call sites)", lifeCap ? "" : " FAILED (bytes differ)",
@@ -2616,15 +2641,17 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	              curseLength ? "" : " FAILED (signature, bytes or states.txt)",
 	              shrinePotions ? "" : " FAILED (signature or bytes differ)",
 	              pierceCap ? "" : " FAILED (signature or bytes differ)",
-	              bossCurse ? "" : " FAILED (curse hook, signature or bytes differ)");
+	              bossCurse ? "" : " FAILED (curse hook, signature or bytes differ)",
+	              halfFreeze ? "" : " FAILED (signature or bytes differ)");
 	return (property ? 1 : 0) + (weaponStrike ? 1 : 0) + (missileStrike ? 1 : 0) + (blowRoll ? 1 : 0) +
 	       (lifeCap ? 1 : 0) + (blow ? 1 : 0) + (curses ? 1 : 0) + (equip ? 1 : 0) + (replenish ? 1 : 0) +
 	       (unlimited ? 1 : 0) + (charms ? 1 : 0) + (dye[0] == 0 ? 1 : 0) + (mapStack ? 1 : 0) + (noMagicMaps ? 1 : 0) + (mapMakerLog ? 1 : 0) +
-	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (shrinePotions ? 1 : 0) + (pierceCap ? 1 : 0) + (bossCurse ? 1 : 0);
+	       (telekinesis ? 1 : 0) + (curseLength ? 1 : 0) + (shrinePotions ? 1 : 0) + (pierceCap ? 1 : 0) + (bossCurse ? 1 : 0) +
+	       (halfFreeze ? 1 : 0);
 }
 
 auto ItemRuleCount() noexcept -> int {
-	return 20;
+	return 21;
 }
 
 auto ItemRuleCounters(char* out, size_t size) noexcept -> void {
