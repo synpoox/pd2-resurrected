@@ -28,6 +28,11 @@ auto LeapAttackLeech(d2r::Unit* unit, d2r::Unit* victim) noexcept -> void;
 // Baal's throne wave delay (#2014), baal_wave_delay.cpp: true when installed; appends its part to `report`.
 auto InstallBaalWaveDelay(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
+// Inventory gold cap 5,000,000 (#2027), gold_cap.cpp: true when installed; appends its part to `report`.
+auto InstallGoldCap(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
+// The cap function's RVA (D2R's max inventory gold of a unit, `int32_t (*)(Unit*)`), 0 when its signature is not found.
+auto GoldCapRva(const D2RL::PluginContext* context) noexcept -> uint64_t;
+
 // Whirlwind hit rate (#2015), whirlwind.cpp: a player's Whirlwind hits every Param3 frames; appends its part to `report`.
 auto InstallWhirlwind(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool;
 
