@@ -1,0 +1,8 @@
+{
+  "data/hd/character/enemy/ruff_a4_dark/equipment/body.model": {
+    "lods": 30
+  },
+  "data/hd/character/enemy/ruff_a4_dark/equipment/staff.model": {
+    "lods": 62
+  }
+}

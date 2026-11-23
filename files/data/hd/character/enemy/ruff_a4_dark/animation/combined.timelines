@@ -1,0 +1,476 @@
+{
+  "dependencies": {
+    "particles": [
+      {
+        "path": "data/hd/vfx/particles/character/enemy/darkwanderer/fx_darkWanderer_death.particles"
+      },
+      {
+        "path": "data/hd/vfx/particles/character/enemy/ruff_a4_dark/FX_Dark_Ascendant_Cast.particles"
+      }
+    ],
+    "models": [],
+    "skeletons": [],
+    "animations": [],
+    "textures": [
+      {
+        "path": "data/hd/vfx/textures/mask/T_FX_ray_ring_mask_02.texture"
+      }
+    ],
+    "physics": [],
+    "json": [],
+    "variantdata": [],
+    "objecteffects": [
+      {
+        "path": "data/hd/vfx/particles/character/enemy/darkwanderer/fx_darkWanderer_death_obj.particles",
+        "dependency": ""
+      }
+    ],
+    "other": []
+  },
+  "type": "AnimationTimelines",
+  "name": "AnimationTimelines",
+  "timelines": {
+    "dead": {
+      "type": "AnimationTimeline",
+      "name": "dead",
+      "duration": 0.03333334,
+      "timeStep": 0.03333334,
+      "animationEvents": []
+    },
+    "death": {
+      "type": "AnimationTimeline",
+      "name": "death",
+      "duration": 1.533333,
+      "timeStep": 0.03333334,
+      "animationEvents": [
+        {
+          "type": "SpawnVFX",
+          "name": "SpawnVFX_Item",
+          "eventTimestamp": 0.0,
+          "duration": 0.0,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "VFXSourceAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_name004",
+              "value": "data/hd/vfx/particles/character/enemy/darkwanderer/fx_darkWanderer_death.particles",
+              "parameterName": "filename"
+            },
+            {
+              "type": "AttachToEntityAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_name005",
+              "value": true,
+              "parameterName": "attachToEntity"
+            },
+            {
+              "type": "BoneNameAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_name006",
+              "value": "root",
+              "parameterName": "boneName"
+            },
+            {
+              "type": "OrientationBoneNameAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_orientationBoneName001",
+              "value": "",
+              "parameterName": "orientationBoneName"
+            },
+            {
+              "type": "TranslationOffsetAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_translationOffset001",
+              "value": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              },
+              "parameterName": "translationOffset"
+            },
+            {
+              "type": "RotationOffsetAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_rotationOffset001",
+              "value": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              },
+              "parameterName": "rotationOffset"
+            },
+            {
+              "type": "HardKillVFXAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_name007",
+              "value": false,
+              "parameterName": "hardKillOnTimeout"
+            }
+          ]
+        },
+        {
+          "type": "SpawnObjectEffect",
+          "name": "SpawnObjectEffect_Item",
+          "eventTimestamp": 0.0,
+          "duration": 1.00000012,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "ObjectEffectSourceAnimationEventParameter",
+              "name": "SpawnObjectEffect_Track_eventParams_name003",
+              "value": "data/hd/vfx/particles/character/enemy/darkwanderer/fx_darkWanderer_death_obj.particles",
+              "parameterName": "filename"
+            },
+            {
+              "type": "UnitPartAnimationEventParameter",
+              "name": "SpawnObjectEffect_Track_eventParams_name004",
+              "value": "torso",
+              "parameterName": "unitPart"
+            },
+            {
+              "type": "HardKillVFXAnimationEventParameter",
+              "name": "SpawnObjectEffect_Track_eventParams_name005",
+              "value": false,
+              "parameterName": "hardKillOnTimeout"
+            }
+          ]
+        }
+      ]
+    },
+    "neutral": {
+      "type": "AnimationTimeline",
+      "name": "neutral",
+      "duration": 1.666667,
+      "timeStep": 0.03333334,
+      "animationEvents": [
+        {
+          "type": "PlaySoundById",
+          "name": "PlaySoundById_Item",
+          "eventTimestamp": 0.0,
+          "duration": 0.0,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "SoundIdAnimationEventParameter",
+              "name": "PlaySoundById_Track_eventParams_id001",
+              "value": "darkwanderer_loop_hd",
+              "parameterName": "id"
+            },
+            {
+              "type": "UseEntityHUnitAnimationEventParameter",
+              "name": "PlaySoundById_Track_eventParams_useEntityHUnit001",
+              "value": true,
+              "parameterName": "useEntityHUnit"
+            },
+            {
+              "type": "VolumeAnimationEventParameter",
+              "name": "PlaySoundById_Track_eventParams_volume001",
+              "value": -1,
+              "parameterName": "volume"
+            }
+          ]
+        },
+        {
+          "type": "PlaySoundById",
+          "name": "PlaySoundById_Item002",
+          "eventTimestamp": 0.0,
+          "duration": 0.0,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "SoundIdAnimationEventParameter",
+              "name": "PlaySoundById_Track002_eventParams_id001",
+              "value": "darkwanderer_moan_hd1",
+              "parameterName": "id"
+            },
+            {
+              "type": "UseEntityHUnitAnimationEventParameter",
+              "name": "PlaySoundById_Track002_eventParams_useEntityHUnit001",
+              "value": true,
+              "parameterName": "useEntityHUnit"
+            },
+            {
+              "type": "VolumeAnimationEventParameter",
+              "name": "PlaySoundById_Track002_eventParams_volume001",
+              "value": -1,
+              "parameterName": "volume"
+            }
+          ]
+        },
+        {
+          "type": "PlaySoundById",
+          "name": "PlaySoundById_Item001",
+          "eventTimestamp": 0.0,
+          "duration": 0.0,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "SoundIdAnimationEventParameter",
+              "name": "PlaySoundById_Track001_eventParams_id001",
+              "value": "darkwanderer_laugh_hd",
+              "parameterName": "id"
+            },
+            {
+              "type": "UseEntityHUnitAnimationEventParameter",
+              "name": "PlaySoundById_Track001_eventParams_useEntityHUnit001",
+              "value": true,
+              "parameterName": "useEntityHUnit"
+            },
+            {
+              "type": "VolumeAnimationEventParameter",
+              "name": "PlaySoundById_Track001_eventParams_volume001",
+              "value": -1,
+              "parameterName": "volume"
+            }
+          ]
+        },
+        {
+          "type": "PlaySoundById",
+          "name": "PlaySoundById_Item003",
+          "eventTimestamp": 0.8333335,
+          "duration": 0.0,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "SoundIdAnimationEventParameter",
+              "name": "PlaySoundById_Track_eventParams_id002",
+              "value": "darkwanderer_loop_hd",
+              "parameterName": "id"
+            },
+            {
+              "type": "UseEntityHUnitAnimationEventParameter",
+              "name": "PlaySoundById_Track_eventParams_useEntityHUnit002",
+              "value": true,
+              "parameterName": "useEntityHUnit"
+            },
+            {
+              "type": "VolumeAnimationEventParameter",
+              "name": "PlaySoundById_Track_eventParams_volume002",
+              "value": -1,
+              "parameterName": "volume"
+            }
+          ]
+        }
+      ]
+    },
+    "walk": {
+      "type": "AnimationTimeline",
+      "name": "walk",
+      "duration": 1.0,
+      "timeStep": 0.03333334,
+      "animationEvents": [
+        {
+          "type": "PlaySoundByCategory",
+          "name": "PlaySoundByCategory_Item",
+          "eventTimestamp": 0.0,
+          "duration": 0.0,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "SoundCategoryAnimationEventParameter",
+              "name": "PlaySoundByCategory_Track_eventParams_category001",
+              "value": 1,
+              "parameterName": "category"
+            },
+            {
+              "type": "VolumeAnimationEventParameter",
+              "name": "PlaySoundByCategory_Track_eventParams_volume001",
+              "value": -1,
+              "parameterName": "volume"
+            }
+          ]
+        },
+        {
+          "type": "PlaySoundByCategory",
+          "name": "PlaySoundByCategory_Item001",
+          "eventTimestamp": 0.50000006,
+          "duration": 0.0,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "SoundCategoryAnimationEventParameter",
+              "name": "PlaySoundByCategory_Track_eventParams_category002",
+              "value": 1,
+              "parameterName": "category"
+            },
+            {
+              "type": "VolumeAnimationEventParameter",
+              "name": "PlaySoundByCategory_Track_eventParams_volume002",
+              "value": -1,
+              "parameterName": "volume"
+            }
+          ]
+        },
+        {
+          "type": "PlaySoundById",
+          "name": "PlaySoundById_Item004",
+          "eventTimestamp": 0.0,
+          "duration": 0.0,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "SoundIdAnimationEventParameter",
+              "name": "PlaySoundById_Track_eventParams_id004",
+              "value": "npc_leather_footstep_foley1",
+              "parameterName": "id"
+            },
+            {
+              "type": "UseEntityHUnitAnimationEventParameter",
+              "name": "PlaySoundById_Track_eventParams_useEntityHUnit004",
+              "value": true,
+              "parameterName": "useEntityHUnit"
+            },
+            {
+              "type": "VolumeAnimationEventParameter",
+              "name": "PlaySoundById_Track_eventParams_volume004",
+              "value": -1,
+              "parameterName": "volume"
+            }
+          ]
+        },
+        {
+          "type": "PlaySoundById",
+          "name": "PlaySoundById_Item005",
+          "eventTimestamp": 0.466666758,
+          "duration": 0.0,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "SoundIdAnimationEventParameter",
+              "name": "PlaySoundById_Track_eventParams_id005",
+              "value": "npc_leather_footstep_foley1",
+              "parameterName": "id"
+            },
+            {
+              "type": "UseEntityHUnitAnimationEventParameter",
+              "name": "PlaySoundById_Track_eventParams_useEntityHUnit005",
+              "value": true,
+              "parameterName": "useEntityHUnit"
+            },
+            {
+              "type": "VolumeAnimationEventParameter",
+              "name": "PlaySoundById_Track_eventParams_volume005",
+              "value": -1,
+              "parameterName": "volume"
+            }
+          ]
+        },
+        {
+          "type": "PlaySoundById",
+          "name": "PlaySoundById_Item006",
+          "eventTimestamp": 0.0,
+          "duration": 0.0,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "SoundIdAnimationEventParameter",
+              "name": "PlaySoundById_Track001_eventParams_id003",
+              "value": "darkwanderer_loop_hd",
+              "parameterName": "id"
+            },
+            {
+              "type": "UseEntityHUnitAnimationEventParameter",
+              "name": "PlaySoundById_Track001_eventParams_useEntityHUnit003",
+              "value": true,
+              "parameterName": "useEntityHUnit"
+            },
+            {
+              "type": "VolumeAnimationEventParameter",
+              "name": "PlaySoundById_Track001_eventParams_volume003",
+              "value": -1,
+              "parameterName": "volume"
+            }
+          ]
+        },
+        {
+          "type": "PlaySoundById",
+          "name": "PlaySoundById_Item007",
+          "eventTimestamp": 0.0,
+          "duration": 0.0,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "SoundIdAnimationEventParameter",
+              "name": "PlaySoundById_Track002_eventParams_id003",
+              "value": "npc_ghost_wings_hd2",
+              "parameterName": "id"
+            },
+            {
+              "type": "UseEntityHUnitAnimationEventParameter",
+              "name": "PlaySoundById_Track002_eventParams_useEntityHUnit003",
+              "value": true,
+              "parameterName": "useEntityHUnit"
+            },
+            {
+              "type": "VolumeAnimationEventParameter",
+              "name": "PlaySoundById_Track002_eventParams_volume003",
+              "value": -1,
+              "parameterName": "volume"
+            }
+          ]
+        }
+      ]
+    },
+    "cast": {
+      "type": "AnimationTimeline",
+      "name": "cast",
+      "duration": 0.7666666666666667,
+      "timeStep": 0.03333333333333333,
+      "animationEvents": [
+        {
+          "type": "SpawnVFX",
+          "name": "SpawnVFX_Item",
+          "eventTimestamp": 0.0,
+          "duration": 0.0,
+          "isCritical": false,
+          "eventParams": [
+            {
+              "type": "VFXSourceAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_name004",
+              "value": "data/hd/vfx/particles/character/enemy/ruff_a4_dark/FX_Dark_Ascendant_Cast.particles",
+              "parameterName": "filename"
+            },
+            {
+              "type": "AttachToEntityAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_name005",
+              "value": true,
+              "parameterName": "attachToEntity"
+            },
+            {
+              "type": "BoneNameAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_name006",
+              "value": "R_weapon_attach",
+              "parameterName": "boneName"
+            },
+            {
+              "type": "OrientationBoneNameAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_orientationBoneName001",
+              "value": "",
+              "parameterName": "orientationBoneName"
+            },
+            {
+              "type": "TranslationOffsetAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_translationOffset001",
+              "value": {
+                "x": 3.0002535056922056e-06,
+                "y": 1.2875302559472233,
+                "z": -0.0060219935193166485
+              },
+              "parameterName": "translationOffset"
+            },
+            {
+              "type": "RotationOffsetAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_rotationOffset001",
+              "value": {
+                "x": 0.0,
+                "y": 0.0,
+                "z": 0.0
+              },
+              "parameterName": "rotationOffset"
+            },
+            {
+              "type": "HardKillVFXAnimationEventParameter",
+              "name": "SpawnVFX_Track_eventParams_name007",
+              "value": false,
+              "parameterName": "hardKillOnTimeout"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
