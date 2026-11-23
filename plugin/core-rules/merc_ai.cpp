@@ -90,6 +90,10 @@ AuraStartFn g_auraStart = nullptr;  // null: no aura restart
 SamePartyFn g_sameParty = nullptr;  // null: no party and pet Battle Orders
 
 std::atomic<uint32_t> g_thinks {0}, g_auras {0}, g_battleOrders {0}, g_partyBattleOrders {0}, g_whirlwinds {0}, g_amps {0}, g_attacks {0};
+// Party Battle Orders diagnostics for the status line: thinks that reached PD2's second half, those in the frame window,
+// the (frame % 100) / 5 buckets the reached thinks saw (bit 0: the window), units tested and why each pet failed.
+std::atomic<uint32_t> g_boReached {0}, g_boWindow {0}, g_boPhases {0}, g_boPlayers {0}, g_boPets {0}, g_boPetGone {0},
+	g_boPetNoList {0}, g_boPetBuffed {0}, g_boPetFar {0}, g_boCastFailed {0};
 
 auto UseSkill(Game* game, Unit* merc, uint8_t mode, int32_t skill, Unit* target) noexcept -> bool {
 	return d2r::Engine<UseSkillFn>(d2r::sig::AiUseSkill)(game, merc, mode, skill, target, 0, 0, 0) != 0;
@@ -107,9 +111,16 @@ auto HasSkill(Unit* unit, int32_t skill) noexcept -> bool {
 // PD2's 0x10356bc0 second half (0x10356c8b-0x10356def), in its order: the party players first, then the pets; the
 // first one that qualifies is enough.
 auto PartyNeedsBuff(Game* game, Unit* merc, Unit* owner, int32_t state, int32_t level) noexcept -> bool {
-	if (g_sameParty == nullptr || static_cast<uint32_t>(At<int32_t>(game, d2r::rva::GameFrame)) % PartyPeriod >= PartyWindow) {
+	if (g_sameParty == nullptr) {
 		return false;
 	}
+	++g_boReached;
+	const uint32_t phase = static_cast<uint32_t>(At<int32_t>(game, d2r::rva::GameFrame)) % PartyPeriod;
+	g_boPhases.fetch_or(1u << (phase / PartyWindow));
+	if (phase >= PartyWindow) {
+		return false;
+	}
+	++g_boWindow;
 	const uint8_t* data = d2r::Engine<const uint8_t* (*)(Unit*) noexcept>(d2r::sig::UnitPlayerData)(owner);
 	if (data == nullptr) {
 		return false;
@@ -120,6 +131,7 @@ auto PartyNeedsBuff(Game* game, Unit* merc, Unit* owner, int32_t state, int32_t 
 	for (auto* node = At<const uint8_t*>(data, PlayerList); node != nullptr && n < MaxPlayerList;
 	     node = At<const uint8_t*>(node, PlayerListNext), ++n) {
 		Unit* player = find(game, 0, At<uint32_t>(node, 0));
+		++g_boPlayers;
 		if (player == nullptr || g_sameParty(game, player, owner) == 0 || HasState(player, state)) {
 			continue;
 		}
@@ -141,8 +153,16 @@ auto PartyNeedsBuff(Game* game, Unit* merc, Unit* owner, int32_t state, int32_t 
 		for (auto* node = entry != nullptr ? At<const uint8_t*>(entry, d2r::rva::PetHead) : nullptr; node != nullptr;
 		     node = At<const uint8_t*>(node, PetNodeNext)) {
 			Unit* pet = find(game, d2r::rva::UnitMonster, At<uint32_t>(node, PetNodeId));
-			if (pet != nullptr && pet != merc && At<int32_t>(pet, UnitTargetList) != NoTargetList && !HasState(pet, state) &&
-			    Distance(merc, pet) < BuffRange) {
+			++g_boPets;
+			if (pet == nullptr || pet == merc) {
+				++g_boPetGone;
+			} else if (At<int32_t>(pet, UnitTargetList) == NoTargetList) {
+				++g_boPetNoList;
+			} else if (HasState(pet, state)) {
+				++g_boPetBuffed;
+			} else if (Distance(merc, pet) >= BuffRange) {
+				++g_boPetFar;
+			} else {
 				return true;
 			}
 		}
@@ -172,7 +192,11 @@ auto BattleOrders(Game* game, Unit* merc, Unit* owner) noexcept -> const char* {
 	if (!(HasState(merc, state) && HasState(owner, state)) && Distance(merc, owner) < BuffRange) {
 		return UseSkill(game, merc, ModeBattleOrders, SkillBattleOrders, nullptr) ? "PD2 Battle Orders cast" : nullptr;
 	}
-	if (!PartyNeedsBuff(game, merc, owner, state, level) || !UseSkill(game, merc, ModeBattleOrders, SkillBattleOrders, nullptr)) {
+	if (!PartyNeedsBuff(game, merc, owner, state, level)) {
+		return nullptr;
+	}
+	if (!UseSkill(game, merc, ModeBattleOrders, SkillBattleOrders, nullptr)) {
+		++g_boCastFailed;
 		return nullptr;
 	}
 	++g_partyBattleOrders;
@@ -372,4 +396,12 @@ auto MercAiCount() noexcept -> int {
 auto MercAiCounters(char* out, size_t size) noexcept -> void {
 	std::snprintf(out, size, "merc thinks %u: aura restarts %u, battle orders %u (party %u); attacks %u: whirlwind %u, amp %u",
 	              g_thinks.load(), g_auras.load(), g_battleOrders.load(), g_partyBattleOrders.load(), g_attacks.load(), g_whirlwinds.load(), g_amps.load());
+	const size_t used = std::strlen(out);
+	if (used < size) {
+		std::snprintf(out + used, size - used,
+		              "; party bo: reached %u, window %u, phases 0x%05x, players %u, pets %u (gone or merc %u, no list %u, buffed %u, "
+		              "far %u), cast failed %u",
+		              g_boReached.load(), g_boWindow.load(), g_boPhases.load(), g_boPlayers.load(), g_boPets.load(),
+		              g_boPetGone.load(), g_boPetNoList.load(), g_boPetBuffed.load(), g_boPetFar.load(), g_boCastFailed.load());
+	}
 }
