@@ -4,7 +4,8 @@
 // first gold item (code `gld `) with no player owner (1.13c unit +0x94 type != 0 or +0x98 id == 0) in the player's own
 // room (its near-room loop exits after that first pass), not a town room (D2Common #10057), within distance 3 (D2Common #10522, the edge distance) while the
 // player is alive (mode not 0 or 17), not uninterruptable (state 54, the same row in PD2's raw table and ours) and
-// below the gold cap (stat 14 < D2Common #10049, level x 10000). PD2's handler for 0x16 (0x10394370) then takes that
+// below the gold cap (stat 14 < D2Common #10049, 5,000,000 as PD2 patches it; here D2R's cap function 0x34b320, which gold_cap.cpp
+// rewrites to return it, #2027). PD2's handler for 0x16 (0x10394370) then takes that
 // gold at once up to distance 5 without the wall test. Its potion branch (item types 76-78) is not ported: the client
 // never sends it from range, and live PD2 picks up only gold from range (owner, #1863).
 //
@@ -14,6 +15,7 @@
 // per-frame player tick, hence the hook; the distance (0x324fc0, #10522) and the room's unit walk (0x471950's own
 // calls) are found by signature.
 #include "item_rules.h"
+#include "skill/common.h"
 
 #include "pd2_engine.h"
 #include "hot_log.h"
@@ -33,7 +35,7 @@ using d2r::Game;
 using d2r::Unit;
 
 constexpr int32_t AutoRange = 3;                 // PD2's client scan: #10522 distance <= 3
-constexpr int32_t StatGold = 14, StatLevel = 12;
+constexpr int32_t StatGold = 14;
 constexpr int32_t StateUninterruptable = 54;
 constexpr int32_t ModeDeath = 0, ModeDead = 17;
 const uint32_t GoldCode = D2RL::Items::MakeItemCode("gld");
@@ -57,10 +59,12 @@ using RegenFn = void (*)(Game*, Unit*, int32_t, int32_t) noexcept;
 using PickupFn = bool (*)(Unit*, uint32_t, bool, int32_t, bool, bool) noexcept;
 using UnitStepFn = Unit* (*)(void*) noexcept;
 using DistanceFn = int32_t (*)(Unit*, Unit*) noexcept;
+using GoldCapFn = int32_t (*)(Unit*) noexcept;
 RegenFn g_regen = nullptr;
 PickupFn g_pickup = nullptr;
 UnitStepFn g_firstUnit = nullptr, g_nextUnit = nullptr;
 DistanceFn g_distance = nullptr;
+GoldCapFn g_goldCap = nullptr;  // D2R's max inventory gold (0x34b320), 5,000,000 once gold_cap.cpp's patch is on
 std::atomic<uint32_t> g_taken {0};
 
 auto CallTarget(uint64_t at) noexcept -> uint64_t {
@@ -93,7 +97,7 @@ void PickUpNearGold(Unit* player) noexcept {
 	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat);
 	if (mode == ModeDeath || mode == ModeDead ||
 	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::sig::UnitHasState)(player, StateUninterruptable) != 0 ||
-	    stat(player, StatGold, 0) >= stat(player, StatLevel, 0) * 10000) {
+	    stat(player, StatGold, 0) >= g_goldCap(player)) {
 		return;
 	}
 	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::UnitRoom)(player);
@@ -141,8 +145,10 @@ auto InstallGoldPickup(const D2RL::PluginContext* context) noexcept -> bool {
 	g_firstUnit = reinterpret_cast<UnitStepFn>(CallTarget(at + FirstUnitCall));
 	g_nextUnit = reinterpret_cast<UnitStepFn>(CallTarget(at + NextUnitCall));
 	g_pickup = reinterpret_cast<PickupFn>(at);
+	const uint64_t cap = GoldCapRva(context);
+	g_goldCap = cap != 0 ? reinterpret_cast<GoldCapFn>(context->exeBase + cap) : nullptr;
 	g_distance = reinterpret_cast<DistanceFn>(context->exeBase + tail - DistanceTail);
-	return g_firstUnit != nullptr && g_nextUnit != nullptr &&
+	return g_firstUnit != nullptr && g_nextUnit != nullptr && g_goldCap != nullptr &&
 	       context->InstallInlineHook(d2r::sig::PlayerRegenEvent.rva, d2r::rva::PlayerRegenEventEntry,
 	                                  sizeof(d2r::rva::PlayerRegenEventEntry), RegenTick, &g_regen);
 }

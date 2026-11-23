@@ -21,6 +21,12 @@ int main() {
 	check("tempered and magic keep it", !SkipsStatTerm(9) && !SkipsStatTerm(4));
 	check("repair 250001 caps to 250000", CapRepair(250001) == 250000);
 	check("repair 1234 stays", CapRepair(1234) == 1234);
+	check("a refused type never sells", SellRefused(true, false, true, false, false));
+	check("a stackable item is refused", SellRefused(false, true, false, false, false));
+	check("a stackable book, quiver, key or throwing type sells", !SellRefused(false, true, true, false, false));
+	check("a listed non-stackable code is refused", SellRefused(false, false, false, true, false));
+	check("a unique charm is refused", SellRefused(false, false, false, false, true));
+	check("any other non-stackable item sells", !SellRefused(false, false, false, false, false));
 	std::printf(fail == 0 ? "all passed\n" : "%d failed\n", fail);
 	return fail == 0 ? 0 : 1;
 }

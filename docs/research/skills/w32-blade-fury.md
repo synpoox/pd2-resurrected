@@ -95,7 +95,8 @@ and D2R's gate buffers (4) the held re-request, so the Assassin stays in the cha
 Blast finding again (PD2's event re-timing, `0x1037a7c0`, is not ported). The row keeps D2R's seqinput 12
 (`merge/standins.tsv`): the re-request then comes after the throw, D2R's gate allows it (0) and the next sequence
 throws the next blade, at D2R's rate. A Blade Fury of another row is still refused by PD2's rule.
-`blade-fury-refused` now expects the 0.
+`blade-fury-refused` now expects the 0. [#2028](https://github.com/synpoox/pd2-resurrected/issues/2028) gives Blade Fury PD2's 11-frame sequence, whose
+frame 3 is the throw frame, and PD2's seqinput 3.
 
 ## Checks
 

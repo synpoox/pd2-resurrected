@@ -6,7 +6,8 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parents[2] / "plugin" / "core-events"
 LANE_B = ["tc_roll.cpp", "tc_roll.h", "corruption_roll.cpp", "corruption_roll.h", "cube_ops.cpp", "cube_ops.h"]
 # lucion.h: cube_ops runs the Temple's Desecration search trigger (lane D's `Desecrate`), by design.
-ALLOWED = {"tc_roll.h", "corruption_roll.h", "cube_ops.h", "pd2_engine.h", "log.h", "part_registry.h", "lucion.h", "property_ids.h"}
+ALLOWED = {"tc_roll.h", "corruption_roll.h", "cube_ops.h", "pd2_engine.h", "log.h", "part_registry.h", "lucion.h", "property_ids.h",
+           "cube_input_match.h"}  # common/: PD2's cube input check, shared with core-ui (#2070)
 
 
 class LaneBSeparation(unittest.TestCase):

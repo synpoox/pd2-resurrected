@@ -17,6 +17,7 @@
 // Creeper; +0xab26e, 0 -> 1) keeps its "owner is hurt" flag at 1, so the vine eats corpses at full life or mana too.
 #include "summon_ai.h"
 
+#include "skill/common.h"
 #include "hot_log.h"
 #include "pd2_engine.h"
 #include "log.h"
@@ -37,78 +38,21 @@ namespace {
 using d2r::Game;
 using d2r::Unit;
 
-// D2R's mover kinds (0x5bc940's fourth argument, as D2R's leash picks them)
-constexpr int32_t MoveNone = 0, MoveBack = 1, MoveWarp = 3, MoveWander = 4, MoveAside = 5;
-
-// PD2's leash rule (0x10360d40): d2 = owner-to-pet squared distance; `fighting` = the pet has a target
-constexpr auto LeashMove(int64_t d2, bool fighting, bool wanderRoll) noexcept -> int32_t {
-	const double limit = (fighting ? 3.2 : 1.0) * 361.0;  // the DLL's doubles 1.0 / 3.2 times 361.0
-	if (static_cast<double>(d2) > limit) {
-		return d2 >= 0x900 ? MoveWarp : MoveBack;
-	}
-	if (fighting) {
-		return MoveNone;
-	}
-	if (d2 <= 5) {
-		return MoveAside;
-	}
-	return wanderRoll ? MoveWander : MoveNone;  // PD2: one think in 12
-}
-static_assert(LeashMove(361, false, false) == MoveNone && LeashMove(362, false, false) == MoveBack);
-static_assert(LeashMove(1155, true, false) == MoveNone && LeashMove(1156, true, false) == MoveBack);
-static_assert(LeashMove(0x900, true, false) == MoveWarp && LeashMove(5, false, false) == MoveAside);
-static_assert(LeashMove(100, false, true) == MoveWander && LeashMove(100, true, true) == MoveNone);
+using leash::MoveAside, leash::MoveBack, leash::MoveNone, leash::MoveWander, leash::MoveWarp;
 
 using LeashFn = uint64_t (*)(Game*, Unit* pet, Unit* target, Unit* owner, int32_t flag, void* tick, int32_t, int32_t radius) noexcept;
-using MoverFn = uint64_t (*)(Game*, Unit* owner, Unit* pet, int32_t kind, int32_t, int32_t, uint8_t radius) noexcept;
-using PathTargetFn = Unit* (*)(Game*, Unit*) noexcept;
-using IsDeadFn = int32_t (*)(Unit*) noexcept;
 
 LeashFn g_leashOriginal = nullptr;
-MoverFn g_mover = nullptr;
-PathTargetFn g_pathTarget = nullptr;
-IsDeadFn g_isDead = nullptr;
+leash::Engine g_leash;  // D2R's mover, path-target getter and dead test (skill/common.h)
 uint64_t g_leashReturn[2] = {};  // absolute return addresses of the think's two leash calls
 
 std::atomic<uint32_t> g_leashCalls {0};
 std::atomic<uint32_t> g_moves[6] {};
 
-auto Dist2(Unit* a, Unit* b) noexcept -> int64_t {
-	int32_t ax = 0, ay = 0, bx = 0, by = 0;
-	if (!d2r::UnitXY(a, &ax, &ay) || !d2r::UnitXY(b, &bx, &by)) {
-		return -1;
-	}
-	return int64_t {ax - bx} * (ax - bx) + int64_t {ay - by} * (ay - by);
-}
-
 // PD2's leash (0x10360d40), for the ShadowMaster think's two calls and the Shadow Warrior think's one: non-zero once moved
 auto Pd2Leash(Game* game, Unit* pet, Unit* target, Unit* owner, int32_t radius) noexcept -> uint64_t {
 	++g_leashCalls;
-	// PD2 leashes only a player's pet
-	if (game == nullptr || pet == nullptr || owner == nullptr || d2r::At<int32_t>(owner, d2r::rva::UnitType) != 0) {
-		return 0;
-	}
-	const int64_t d2 = Dist2(owner, pet);
-	if (d2 < 0) {
-		return 0;
-	}
-	bool fighting = target != nullptr;
-	if (!fighting) {
-		// PD2: the unit the pet's path is after, a live player or monster within 34 subtiles
-		Unit* chase = g_pathTarget(game, pet);
-		fighting = chase != nullptr && chase != owner && d2r::At<int32_t>(chase, d2r::rva::UnitType) <= 1 &&
-		           g_isDead(chase) == 0 && Dist2(pet, chase) >= 0 && Dist2(pet, chase) <= 1155;
-	}
-	uint32_t* seed = d2r::api.unitSeed != nullptr ? d2r::api.unitSeed(pet) : nullptr;
-	const bool wander = seed != nullptr && d2r::RandomBelow(seed, 12) == 0;
-	const int32_t move = LeashMove(d2, fighting, wander);
-	++g_moves[move];
-	if (move == MoveNone) {
-		return 0;
-	}
-	// shortcut: PD2 walks back with its own mover (0x10356a40) and measures to the owner's path end while the owner
-	// moves; D2R's mover kinds and the owner's position stand in. Upgrade if pets lag a running owner.
-	return g_mover(game, owner, pet, move, 0, 0, static_cast<uint8_t>(move == MoveWarp ? 0 : radius));
+	return leash::Leash(g_leash, game, pet, target, owner, radius, g_moves);
 }
 
 auto SummonLeash(Game* game, Unit* pet, Unit* target, Unit* owner, int32_t flag, void* tick, int32_t a7,
@@ -491,8 +435,6 @@ constexpr const char* SmCalcPattern = "8B 45 60 45 8B CF 45 8B 04 24 48 8B 55 48
 constexpr uint8_t LeashEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x10, 0x48, 0x89, 0x6c, 0x24, 0x18, 0x48, 0x89, 0x74, 0x24, 0x20};
 constexpr const char* LeashPattern = "48 89 5C 24 10 48 89 6C 24 18 48 89 74 24 20 48 89 4C 24 08 57 41 54 41 55 41 56 41 57 "
                                      "48 83 EC 60 4C 8B F9 49 8B F1 49 8B C9 49 8B D8 4C 8B F2 E8";
-// In the leash, its one mover call (rcx game, rdx owner, r8 pet, r9d kind, two zeros, the radius byte); E8 at +19
-constexpr const char* MoverCallPattern = "40 88 6C 24 30 4D 8B C6 89 7C 24 28 48 8B D6 89 7C 24 20 E8";
 // The think's two leash calls, to their return addresses: the aip2(H) gate (+0x41) and the near-owner call (+0x35)
 constexpr const char* LeashCall1Pattern =
 	"0F BF 8A 9A 00 00 00 0F AF C9 3B C1 7E 3B 48 8B 45 88 45 33 C0 4C 8B 4D 98 48 8B D7 C7 44 24 38 06 00 00 00 49 8B "
@@ -500,9 +442,6 @@ constexpr const char* LeashCall1Pattern =
 constexpr const char* LeashCall2Pattern =
 	"3D 90 00 00 00 7F 3C 8B 44 24 68 4D 8B CF C7 44 24 38 06 00 00 00 4D 8B C5 C7 44 24 30 00 00 00 00 48 8B D7 4C 89 "
 	"74 24 28 49 8B CC 89 44 24 20 E8 ?? ?? ?? ?? 85 C0";
-// The think's calls of the path-target getter (E8 at +6) and of the dead test (E8 at +3)
-constexpr const char* PathTargetCallPattern = "48 8B D7 49 8B CD E8 ?? ?? ?? ?? 48 8B D8 48 85 C0 75 12";
-constexpr const char* IsDeadCallPattern = "48 8B C8 E8 ?? ?? ?? ?? 85 C0 75 17 4C 8B C3 48 8B D7 49 8B CC E8";
 
 // A 2-byte patch: pattern, offset of the patched bytes, D2R's bytes, PD2's
 struct Branch {
@@ -668,26 +607,20 @@ auto FindShadowWarrior(const D2RL::PluginContext* context, uint64_t* think, uint
 }  // namespace
 
 auto InstallSummonAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
-	// Every address first: a patched branch would hide the dead-test call's signature
-	uint64_t leash = 0, mover = 0, call1 = 0, call2 = 0, pathTarget = 0, isDead = 0, branches[std::size(Branches)] = {};
-	bool found = Scan(context, "leash", LeashPattern, 0, &leash) && Scan(context, "mover call", MoverCallPattern, 19, &mover) &&
+	uint64_t leash = 0, call1 = 0, call2 = 0, branches[std::size(Branches)] = {};
+	bool found = Scan(context, "leash", LeashPattern, 0, &leash) && leash::Find(context->exeBase, &g_leash) &&
 	             Scan(context, "leash call 1", LeashCall1Pattern, 0x41, &call1) &&
-	             Scan(context, "leash call 2", LeashCall2Pattern, 0x35, &call2) &&
-	             Scan(context, "path target call", PathTargetCallPattern, 6, &pathTarget) &&
-	             Scan(context, "dead test call", IsDeadCallPattern, 3, &isDead);
+	             Scan(context, "leash call 2", LeashCall2Pattern, 0x35, &call2);
 	for (size_t i = 0; found && i < std::size(Branches); ++i) {
 		found = Scan(context, Branches[i].name, Branches[i].pattern, Branches[i].offset, &branches[i]);
 	}
 	bool hooked = false, patched = false;
 	if (found) {
 		const uint64_t base = context->exeBase;
-		g_mover = reinterpret_cast<MoverFn>(base + CallTarget(base, mover));
-		g_pathTarget = reinterpret_cast<PathTargetFn>(base + CallTarget(base, pathTarget));
-		g_isDead = reinterpret_cast<IsDeadFn>(base + CallTarget(base, isDead));
 		g_leashReturn[0] = base + call1;
 		g_leashReturn[1] = base + call2;
 		plog::Info("summon ai: leash 0x%llx, mover 0x%llx, think calls return at 0x%llx and 0x%llx",
-		           static_cast<unsigned long long>(leash), static_cast<unsigned long long>(CallTarget(base, mover)),
+		           static_cast<unsigned long long>(leash), static_cast<unsigned long long>(reinterpret_cast<uint64_t>(g_leash.mover) - base),
 		           static_cast<unsigned long long>(call1), static_cast<unsigned long long>(call2));
 		hooked = context->InstallInlineHook(leash, LeashEntry, sizeof(LeashEntry), &SummonLeash, &g_leashOriginal);
 		patched = PatchBranches(context, Branches, branches, std::size(Branches));

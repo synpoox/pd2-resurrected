@@ -16,7 +16,7 @@ patch table (20-byte records at file offset `0x49b028`-`0x4a0744`, [plrmodes](pl
 | 105 ShadowWarrior | init and think replaced (`0x10360a10`, `0x10360240`, PD2.gpr's build) | yes (core-rules `summons`, [#1800](https://github.com/synpoox/pd2-resurrected/issues/1800): init wrapped, think replaced; [core-rules](../features/core-rules.md)) |
 | 110 Vines (Poison Creeper) | 30 bytes NOPed at `+0xab494`: its "target already poisoned / poison immune" skip | yes (core-rules `summons`, below) |
 | 111 CycleOfLife (Carrion Vine, Solar Creeper) | one byte at `+0xab26e` (a flag stored 0 becomes 1) | yes (core-rules `summons`, below) |
-| 61 Hireable (mercenaries) | think `0x1035a270` runs PD2's rules, then 1.13c's think (`+0x1dd40`), which 8 patch-table records patch | partly: Battle Orders, the aura restart, party/pet Battle Orders, Whirlwind, A4 AmpDmg and the target-search roll (core-rules `mercai`, [#1803](https://github.com/synpoox/pd2-resurrected/issues/1803), [#1925](https://github.com/synpoox/pd2-resurrected/issues/1925)); the follow rework ([#1926](https://github.com/synpoox/pd2-resurrected/issues/1926)) is open |
+| 61 Hireable (mercenaries) | think `0x1035a270` runs PD2's rules, then 1.13c's think (`+0x1dd40`), which 8 patch-table records patch | yes: Battle Orders, the aura restart, party/pet Battle Orders, Whirlwind, A4 AmpDmg and the target-search roll (core-rules `mercai`, [#1803](https://github.com/synpoox/pd2-resurrected/issues/1803), [#1925](https://github.com/synpoox/pd2-resurrected/issues/1925)); the five follow patches with the pre-think leash (core-rules `pet-leash`, [#1926](https://github.com/synpoox/pd2-resurrected/issues/1926), below) |
 | 67 NecroPet, 107 Raven, 108 DruidWolf, 109 Totem, 112 DruidBear, 86 Hydra, 103 InvisoPet | none | nothing to port |
 
 First think, outside the AI table (#1835, ported in core-rules): a new Valkyrie's AI event is queued at frame + 8
@@ -48,6 +48,27 @@ beyond it, warp at `0x900` and over, else walk back; with a target, nothing; els
 think in 12. core-rules' `summons` part hooks D2R's leash and applies this rule to the two think calls only (by return
 address), with D2R's mover kinds (1 walk back, 3 warp, 4 wander, 5 step aside); PD2's own walker and its
 owner-path-end distance are not ported.
+
+## The pre-think leash (#1989, #1926)
+
+1.13c's AI dispatcher (`+0x9d3b0`) runs a pre-think (`+0x9cd90`) before each think; non-zero skips the think. PD2 swaps its
+last step, the minion-to-leader walk (`+0x9cb30`, called at `+0x9cdc5`), for `0x103606e0` (PD2.gpr `0x10360670`). For a
+monster whose AI owner (AI control `+0x2c` id, `+0x30` type) is a player, other than AI 106 (returns 0: its think
+leashes) and 102 (1.13c's step): nothing without a walk mode (monstats2 mWL, `0x103a2240(class, 2)`, the test 1.13c's
+step makes), at velocity 0 (monstats `+0x32`) or with a dead owner; else the ShadowMaster leash's rule above with
+its own target: the tick's (still empty), else the path target (`0x103096c0`), else the AI target search `0x103a54c0`
+(1.13c `+0xb1bc0`, the search the Hireable think calls at `+0x1e03a`), kept when it is not the owner, not in mode 0 or
+12, a player or monster, and the pet is within 1155.2 squared of its path's target point (no test at 0,0). Such a
+target puts the leash on 3.2 x 361 and turns off step-aside and wander. Mercenaries skip it on PD2's own game flag
+`+0x2702` (`0x1037f720`). This is the mover that replaces the Hireable think's follow: PD2 patches that think's warp
+past 100, run, walk, step aside and wander away (`+0x1deb3`, `+0x1ded6`, `+0x1defb`, `+0x1e0eb`, `+0x1e11c`).
+
+D2R's pre-think (`0x4a3a20`) inlines the leader walk (`0x4a3b50`; leader `+0x3c`/`+0x40` of the AI control) after a
+step of its own, so core-rules' `pet-leash` redirects the AI tick's one call of it (`0x4a2bbb`): D2R's pre-think first,
+then, when it lets the think run, the leash for a player's pet (owner `+0x68`/`+0x6c`, monstats AI `+0x52`, velocity
+`+0x68`, monstats2 modes `+0xf0`), with the target search `0x595f80` found at the Hireable think's call `0x5bee51`
+(1.13c `+0x1e03a`: the same call, then the same `distance < 25` test). The 1155 test measures the pet to the target. The Hireable think's sites are `0x5bec54`, `0x5bec7b`, `0x5becab`, `0x5befe9` and
+`0x5bf043`, patched only once the redirect is in.
 
 ## The ShadowMaster init (#1801; 1.13c `+0xa4320`, D2R `0x5cec80`)
 

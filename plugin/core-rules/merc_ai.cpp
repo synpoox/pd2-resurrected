@@ -20,7 +20,7 @@
 //   frame window, not a roll), the same cast goes out if one party player on the merc's level (the owner's player list,
 //   D2R player data +0x88; same party by D2R's 0x48e4d0, 1.13c +0xe0570) or one of the owner's other pets in a target
 //   list (pet table +0x98) lacks the state and is closer than 30. Native calls: no SDK service walks these lists.
-// Not ported: the follow rework (1.13c +0x1deb3, +0x1ded6, +0x1defb, +0x1e0eb, +0x1e11c; #1926), whose replacement is not in the think.
+// The follow rework (1.13c +0x1deb3, +0x1ded6, +0x1defb, +0x1e0eb, +0x1e11c; #1926) is skill/pet_leash.cpp's, with the pre-think leash that replaces it.
 // PD2 keys its rules on its own hireling ids and skill ids; ours are renumbered, so these key on the merc's skills and
 // monstats class. A merc without the skill (a Classic hireling row, another merc type) keeps D2R's think.
 #include "merc_ai.h"

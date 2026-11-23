@@ -24,6 +24,8 @@
 #include "line_spread.h"
 #include "sig_hook.h"
 #include "parry_roll.h"
+#include "skill/common.h"
+#include "skill/registry.h"
 #include <D2RLPlugin/mutations.h>
 #include "../core-events/arena_spots.h"  // Lucion's arena centre (#962): core-rules reads the same arena service
 
@@ -343,12 +345,15 @@ void DropStateList(uint32_t dataFlag, Unit* unit, int32_t state) noexcept {
 // --- Split Throw's start buff (PD2 srvstfunc 79)---------------------------------------------------------------------
 std::atomic<uint32_t> g_tempBuffs {0};
 
-// The skill's aurastate with its aurastat1-6 for a short time from the start frame, built the way Frozen Armor's
-// srvdo 18 (0x553e60) builds its state list. PD2 gives Split Throw temp_skill_buff + attackrate (par4).
-// shortcut: approximation from PD2's data, the length is a fixed TempBuffFrames because PD2's row has no auralencalc;
-// upgrade when PD2's srvst 79 is read from ProjectDiablo.dll.
-constexpr int32_t TempBuffFrames = 25;
+// D2R's pieces of the flag-4 list below, each by signature; the cast goes on without a buff when one is missing
+const sigscan::Entry* const TempBuffUses[] = {&d2r::sig::UnitStateList, &d2r::sig::NewStatList,   &d2r::sig::UnitId,
+                                              &d2r::sig::SetListState,  &d2r::sig::AttachStatList, &d2r::sig::SetStateBit,
+                                              &d2r::sig::AddAuraStats};
+constexpr uint32_t ListFlagTemp = 4;  // freed with its state by D2R's set anim mode (0x34e5f0 -> 0x2f7540)
 
+// PD2's helper (0x10381a70): the skill's aurastate with its aurastat1-6 on a flag-4 list with no timer, kept when
+// the unit still has one, the way D2R's 0x434290 puts Dragon Tail's attackrate on; the next mode change frees it, so
+// the buff lasts for the attack. PD2 gives Split Throw temp_skill_buff + attackrate (par4).
 auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	using namespace d2r::rva;
 	if (game == nullptr || unit == nullptr) {
@@ -360,35 +365,33 @@ auto SrvStTempBuff(Game* game, Unit* unit, int32_t skillId, int32_t level) noexc
 		return 0;
 	}
 	const int32_t state = At<int16_t>(skill, SkAuraState);
-	if (state <= 0) {
-		return 1;  // no aurastate: the cast goes on without a buff
+	if (state <= 0 || !std::all_of(std::begin(TempBuffUses), std::end(TempBuffUses),
+	                               [](const sigscan::Entry* e) { return e->state == sigscan::State::Ok; })) {
+		return 1;  // no aurastate (or no engine pieces): the cast goes on without a buff
 	}
-	DropStateList(dataFlag, unit, state);  // always a new list: NewStateList keeps a same-level one as it is
-	d2r::StateListRequest request {unit, unit, skillId, level, TempBuffFrames, -1, 0, state,
-	                               d2r::Engine<void (*)()>(SkillStateExpired)};
-	void* list = d2r::Engine<void* (*)(d2r::StateListRequest*) noexcept>(NewStateList)(&request);
-	if (list == nullptr) {
-		return 1;
+	void* list = d2r::Engine<void* (*)(Unit*, int32_t) noexcept>(d2r::sig::UnitStateList)(unit, state);
+	const bool kept = list != nullptr;
+	if (!kept) {
+		const int32_t id = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(d2r::sig::UnitId)(unit, __FILE__,
+		                                                                                                   __LINE__);
+		list = d2r::Engine<void* (*)(uint32_t, int32_t, int32_t, int32_t) noexcept>(d2r::sig::NewStatList)(
+			ListFlagTemp, 0, At<int32_t>(unit, UnitType), id);
+		if (list == nullptr) {
+			return 1;
+		}
+		d2r::Engine<void (*)(void*, int32_t) noexcept>(d2r::sig::SetListState)(list, state);
+		d2r::Engine<void (*)(Unit*, void*, int32_t) noexcept>(d2r::sig::AttachStatList)(unit, list, 1);
 	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::SetStateBit)(unit, state, 1);  // Attach does not
 	using AuraStatsFn = void (*)(Unit*, void*, const uint8_t*, int32_t, int32_t) noexcept;
-	d2r::Engine<AuraStatsFn>(AddAuraStats)(unit, list, skill, skillId, level);
-	d2r::Engine<AuraStatsFn>(AddAuraStatsB)(unit, list, skill, skillId, level);
-	const auto setStat = d2r::Engine<void (*)(uint32_t, void*, int32_t, int32_t, int32_t) noexcept>(SetListStat);
-	setStat(dataFlag, list, StatListSkill, skillId, 0);
-	setStat(dataFlag, list, StatListLevel, level, 0);
-	const int32_t key = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t) noexcept>(StateListKey)(
-		dataFlag, list, d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitStateKey)(unit));
-	setStat(dataFlag, list, StatListKey, key, 0);
-	using SendFn = void (*)(Game*, Unit*, int32_t, int32_t, int32_t, int32_t, int32_t, const void*, const void*,
-	                        int32_t) noexcept;
-	d2r::Engine<SendFn>(SendSkillState)(game, unit, skillId, level, key, 1, state, skill + SkSendStateA,
-	                                    skill + SkSendStateB, 4);
-	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(unit, state, 1);
+	d2r::Engine<AuraStatsFn>(d2r::sig::AddAuraStats)(unit, list, skill, skillId, level);
 	if (pd2::HotSample(g_tempBuffs)) {
-		// aurastat1 and its calc value as the skill computes them, so the check can compare them with PD2's par4
-		plog::Info("temp buff: skill %d level %d state %d for %d frames, stat %d +%d, cast %u", skillId, level, state,
-		           TempBuffFrames, At<int16_t>(skill, SkAuraStat1),
-		           d2r::EvalCalc(game, unit, skill, SkAuraStatCalc1, skillId, level), g_tempBuffs.load());
+		// aurastat1 and its calc value as the skill computes them, so the check can compare them with PD2's par4; "kept"
+		// means the last attack's list was still on (no mode change freed it)
+		plog::Info("temp buff: skill %d level %d state %d on a %s flag-4 list, stat %d +%d, frame %d, cast %u", skillId,
+		           level, state, kept ? "kept" : "new", At<int16_t>(skill, SkAuraStat1),
+		           d2r::EvalCalc(game, unit, skill, SkAuraStatCalc1, skillId, level), At<int32_t>(game, GameFrame),
+		           g_tempBuffs.load());
 	}
 	return 1;
 }
@@ -2780,6 +2783,118 @@ auto SrvStWolves(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	return accepted ? 1 : 0;
 }
 
+// --- Raven: calc3 ravens per cast (PD2 srvdofunc 114; #2002) -------------------------------------------------------
+// Read from ProjectDiablo.dll: srvdo 114 at 0x103b06c0 (PD2.gpr; installed +0x70). Once per cast: the base spot (the
+// caster's skill target, else the caster: 1.13c 0x9fa30, as the creator's own default) and calc3. Then calc3 times:
+// the shared creator at a jittered spot, flag 4 clear (the spot, else a spot search of 4); a failed raven ends the cast
+// (returns 0, the rest are not made). r4 = rand 0..3, r8 = rand 0..7: raven 0 at (x, y - 1 - r4), 1 at
+// (x + 1 + r4, y + 1 + r4), 2 at (x - 1 - r4, y + 1 + r4), the rest at (x - 4 + r8, y - 4 + r8). petmax is the
+// creator's: a raven over it replaces the type's oldest. Each raven is 1.13c's: level calc2 (min 1), the summon stats.
+// D2R's srvdo 114 (0x576f70) is 1.13c's plus the skill1 at the cast level and the caster's target for the ravens, one
+// raven at the target. It is wrapped: called calc3 times, its creator call redirected to set the spot. No SDK service
+// summons a pet, so the slot and the call are found by signature.
+// Hits: PD2's raven think (monai 107, stock 1.13c 0xaa1d0) gives Param5 + (level - 1) x Param6; D2R's (0x5cca50) reads
+// calc3 of the raven's skill instead (vanilla's calc3 is that formula), PD2's raven count here. The redirect writes
+// PD2's hits into the new raven's AI params (+0x44), which the think reads only while its init's -1 is there.
+constexpr int32_t SrvDoRavenSlot = 114;
+constexpr const char* SrvDoRavenEntry = "48 89 5c 24 10 48 89 74 24 18 48 89 7c 24 20 55 41 54 41 55 41 56 41 57 48 8b ec "
+                                        "48 81 ec 80 00 00 00 48 8b fa 48 8b f1 0f b6 89 06 01 00 00 41 8b d0 45 8b e1 "
+                                        "45 8b f8 e8";
+// petmax into the params, then the creator (0x4350e0) at 0x5770da
+constexpr const char* RavenSummonCall = "45 8b 86 14 01 00 00 44 89 64 24 20 e8 ?? ?? ?? ?? 48 8d 55 d0 89 45 f8 48 8b ce "
+                                        "e8 ?? ?? ?? ?? 48 89 45 c8 48 8b d8 48 85 c0 0f 84";
+constexpr uint32_t RavenSummonCallAt = 0x1b, RavenSummonFromEntry = 0x14f;
+SrvDoFn g_srvDoRaven = nullptr;
+d2r::SummonPetFn g_ravenSummon = nullptr;
+std::atomic<uint32_t> g_ravenCasts {0};
+
+struct RavenCast {
+	int32_t index, x, y, hits;
+	uint32_t* seed;
+};
+thread_local RavenCast* t_raven = nullptr;  // set while SrvDoRaven runs D2R's do
+
+struct RavenOffset {
+	int32_t x, y;
+};
+// a: r4 for ravens 0-2, r8 after; b: the second roll (unused by raven 0)
+constexpr auto RavenJitter(int32_t index, int32_t a, int32_t b) noexcept -> RavenOffset {
+	switch (index) {
+	case 0: return {0, -1 - a};
+	case 1: return {1 + a, 1 + b};
+	case 2: return {-1 - a, 1 + b};
+	default: return {a - 4, b - 4};
+	}
+}
+static_assert(RavenJitter(0, 3, 9).x == 0 && RavenJitter(0, 3, 9).y == -4);
+static_assert(RavenJitter(1, 0, 3).x == 1 && RavenJitter(1, 0, 3).y == 4);
+static_assert(RavenJitter(2, 3, 0).x == -4 && RavenJitter(2, 3, 0).y == 1);
+static_assert(RavenJitter(5, 0, 7).x == -4 && RavenJitter(5, 0, 7).y == 3);
+
+auto RavenSummon(Game* game, d2r::SummonParams* params) noexcept -> Unit* {
+	RavenCast* cast = t_raven;
+	if (cast != nullptr && params != nullptr) {
+		const uint32_t bound = cast->index < 3 ? 4 : 8;
+		const auto a = static_cast<int32_t>(d2r::RandomBelow(cast->seed, bound));
+		const auto b = static_cast<int32_t>(d2r::RandomBelow(cast->seed, bound));
+		const RavenOffset at = RavenJitter(cast->index, a, b);
+		params->flags |= 1;  // at x/y
+		params->x = cast->x + at.x;
+		params->y = cast->y + at.y;
+	}
+	Unit* pet = g_ravenSummon(game, params);
+	uint8_t* data = pet != nullptr && cast != nullptr ? At<uint8_t*>(pet, d2r::rva::UnitData) : nullptr;
+	uint8_t* ai = data != nullptr ? At<uint8_t*>(data, MonDataAi) : nullptr;
+	if (ai != nullptr) {
+		*reinterpret_cast<int32_t*>(ai + d2r::rva::AiControlParams) = cast->hits;
+	}
+	return pet;
+}
+
+auto SrvDoRaven(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	using namespace d2r::rva;
+	const uint8_t* skill = game != nullptr && unit != nullptr ? d2r::api.getSkillRecord(d2r::DataFlag(game), skillId)
+	                                                          : nullptr;
+	RavenCast cast {};
+	Unit* target = skill != nullptr ? d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(SkillTargetUnit)(game, unit) : nullptr;
+	if (skill == nullptr || !d2r::UnitXY(target != nullptr && target != unit ? target : unit, &cast.x, &cast.y)) {
+		return g_srvDoRaven(game, unit, skillId, level);  // D2R's refusals and one raven
+	}
+	const int32_t count = d2r::EvalCalc(game, unit, skill, SkCalc3, skillId, level);
+	cast.hits = level < 1 ? 0 : At<int32_t>(skill, SkParam5) + (level - 1) * At<int32_t>(skill, SkParam6);
+	cast.seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit);
+	int64_t result = 1;
+	t_raven = &cast;
+	for (; cast.index < count; ++cast.index) {
+		if (g_srvDoRaven(game, unit, skillId, level) == 0) {
+			result = 0;
+			break;
+		}
+	}
+	t_raven = nullptr;
+	if (pd2::HotSample(g_ravenCasts)) {
+		plog::Info("raven: skill %d level %d: %d of %d ravens at %d,%d, %d hits each, cast %u", skillId, level, cast.index,
+		           count, cast.x, cast.y, cast.hits, g_ravenCasts.load());
+	}
+	return result;
+}
+
+// The creator call first: alone it only passes through (no cast is set). False when either is refused.
+auto InstallRavenCount(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t entry = 0, call = 0;
+	if (d2r::sig::SrvDoTable.state != sigscan::State::Ok ||
+	    sigscan::ScanUnique(context->exeBase, SrvDoRavenEntry, 0, &entry) != 1 ||
+	    sigscan::ScanUnique(context->exeBase, RavenSummonCall, 0, &call) != 1 || call != entry + RavenSummonFromEntry) {
+		return false;
+	}
+	const uint64_t d2rDo = context->exeBase + entry;
+	g_srvDoRaven = reinterpret_cast<SrvDoFn>(d2rDo);
+	return RedirectCall(context, RavenSummonCall, RavenSummonCallAt, reinterpret_cast<uint64_t>(&RavenSummon),
+	                    reinterpret_cast<uint64_t*>(&g_ravenSummon)) &&
+	       SwapSlot(context, d2r::sig::SrvDoTable.rva + static_cast<uint64_t>(SrvDoRavenSlot) * 8, d2rDo,
+	                reinterpret_cast<const void*>(static_cast<SrvDoFn>(SrvDoRaven)));
+}
+
 // --- Combustion and the boss novas (PD2 srvdofunc 159 -> router 190, cltdofunc 100 -> 120) ----------------------------
 // Read from ProjectDiablo.dll: srvdo 159 at 0x103b1d00, cltdo 100 at 0x103ab580
 // (docs/research/skills/w27-static-field-combustion.md). A ring of calc2 missiles of the skill's missile a around the caster.
@@ -3474,6 +3589,82 @@ auto FrenzySwing(Game* game, Unit* unit, Unit* target, int32_t skillId, int32_t 
 	return 1;
 }
 
+// --- Blood Golem's heal per hit (#2001) ------------------------------------------------------------------------------
+// PD2 writes its own aura event 23 (ProjectDiablo.dll 0x10346f20, PD2.gpr; 0x10346f30 installed) over 1.13c's
+// (D2Game +0x4e5f0) in the event table (+0x1077a8). Its rule: the target is a player or a monster (a monster with
+// monstats Drain 0 for the game's difficulty is skipped, but the drain does not scale the heal), the target's
+// alignment (D2Common #10830) is 0, golem and owner (0x103749f0(golem, 1); no owner: the golem itself) are alive; then
+// h = calc2 (skill +0x13c) at the event's level for the owner, and the golem and the owner each get h life (1/256
+// units, clipped at max life, 1.13c's +0x4df20), with overlay 151 on each one that gained life. The damage dealt is not
+// read. D2R 93847's event 23 (0x55b2d0) evaluates calc2 and calc3 for the owner (or the golem) and calls 0x559ee0,
+// which heals min(damage x drain%, target life) x calc2% to the golem and x calc3% to the owner; core-rules redirects
+// that call. No SDK service runs a skill event, so the call is redirected.
+constexpr const char* BloodGolemHealCall =
+    "4c 8b c5 89 44 24 30 49 8b d6 89 5c 24 28 49 8b cd 89 7c 24 20 e8 ?? ?? ?? ?? 48 8b 74 24 78";
+constexpr uint32_t BloodGolemHealCallAt = 21;
+constexpr int32_t StatHitpoints = 6, OverlayLifeHeal = 151;
+using BloodGolemHealFn = uint64_t (*)(Game*, Unit*, Unit*, int32_t, int32_t, int32_t, int32_t) noexcept;
+BloodGolemHealFn g_bloodGolemHeal = nullptr;
+std::atomic<uint32_t> g_bloodGolemHeals {0};
+sigscan::Entry* const BloodGolemUses[] = {&d2r::sig::UnitAlignment, &d2r::sig::UnitDead, &d2r::sig::UnitStat,
+                                          &d2r::sig::UnitMaxLife, &d2r::sig::SetUnitStat, &d2r::sig::SetOverlay};
+
+// 1.13c's +0x4df20 and D2R's 0x55a2e0: life + amount, clipped at max life; returns the life added
+auto AddLife(Unit* unit, int32_t amount) noexcept -> int32_t {
+	if (amount < 1) {
+		return 0;
+	}
+	int32_t life = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(unit, StatHitpoints, 0) + amount;
+	const int32_t max = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::UnitMaxLife)(unit);
+	if (max < life) {
+		amount += max - life;
+		life = max;
+	}
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(d2r::sig::SetUnitStat)(unit, StatHitpoints, life, 0);
+	return amount;
+}
+
+// In place of 0x559ee0 (game, golem, target, damage, calc2, calc3, target life); the caller tests al.
+auto BloodGolemHeal(Game* game, Unit* golem, Unit* target, int32_t, int32_t calc2, int32_t, int32_t) noexcept -> uint64_t {
+	using namespace d2r::rva;
+	const AiOwnerFn aiOwner = AiOwnerGetter();
+	if (game == nullptr || golem == nullptr || target == nullptr || aiOwner == nullptr) {
+		return 0;
+	}
+	const int32_t type = At<int32_t>(target, UnitType);
+	if (type != 0 && type != UnitMonster) {
+		return 0;
+	}
+	if (type == UnitMonster) {
+		const auto* data = At<const uint8_t*>(target, UnitData);
+		const uint8_t* monstats = data != nullptr ? At<const uint8_t*>(data, 0) : nullptr;
+		if (data != nullptr && (monstats == nullptr || At<uint8_t>(monstats, MonDrain + At<uint8_t>(game, GameDifficulty)) == 0)) {
+			return 0;
+		}
+	}
+	const auto dead = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::UnitDead);
+	if (d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::UnitAlignment)(target) != 0 || dead(golem) != 0) {
+		return 0;
+	}
+	Unit* owner = StunOwner(golem, aiOwner);  // PD2's 0x103749f0(golem, 1)
+	if (owner == nullptr || dead(owner) != 0) {
+		return 0;
+	}
+	const auto overlay = d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::SetOverlay);
+	const int32_t toGolem = AddLife(golem, calc2);
+	if (toGolem > 0) {
+		overlay(golem, OverlayLifeHeal, 0);
+	}
+	const int32_t toOwner = AddLife(owner, calc2);
+	if (toOwner > 0) {
+		overlay(owner, OverlayLifeHeal, 0);
+	}
+	if (pd2::HotSample(g_bloodGolemHeals)) {
+		plog::Info("blood golem: heal %d (1/256 life), golem +%d, owner +%d, target type %d", calc2, toGolem, toOwner, type);
+	}
+	return 1;
+}
+
 // --- Redemption skips owned corpses (#1987) --------------------------------------------------------------------------
 // PD2 redirects the D2Common #10501 corpse test in 1.13c's Redemption callback (D2Game +0x98680, passed by srvdo 82 at
 // +0x9a5a8; call at +0x986d8) to ProjectDiablo.dll 0x102fb290 (PD2.gpr 0x102fb280), which returns 0 when the corpse's
@@ -3724,8 +3915,10 @@ auto LeapHitOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
 	target[0] = At<int32_t>(victim, d2r::rva::UnitType);
 	target[1] = d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(d2r::rva::UnitId)(victim, __FILE__, __LINE__);
 	setPathTarget(path, victim);
+	LeapAttackLeech(unit, victim);  // PD2's landing hit: life leech / 3 (#2009, skill/leech.cpp)
 	d2r::Engine<void (*)(void*, Unit*, int32_t, int32_t) noexcept>(d2r::rva::SkillMeleeHit)(area->game, unit, hit->skillId,
 	                                                                                       hit->level);
+	LeapAttackLeech(nullptr, nullptr);
 	setPathTarget(path, savedPathTarget);
 	target[0] = savedType;
 	target[1] = savedId;
@@ -3970,7 +4163,8 @@ auto CltDoChannel(Unit* unit, int32_t skillId, int32_t level) noexcept -> int32_
 			d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitFrame)(
 				unit, d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitFrame)(unit) - 2);
 		} else {
-			d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitFrames)(unit, 8);
+			// PD2 0x103abfae: #10542(unit, 1), frame 1 of its 8; D2R sets the speed below, as #10542 does (0x500)
+			d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitFrames)(unit, 1);
 			d2r::Engine<void (*)(Unit*, int32_t) noexcept>(SetUnitAnimSpeed)(unit, 5);
 		}
 	}
@@ -4453,6 +4647,10 @@ std::atomic<uint32_t> g_revives {0};
 // think, so a MutationService byte patch changes each imm8, found by signature, expected byte checked.
 constexpr const char* ValkyrieThinkDelay = "44 8b 8e 70 01 00 00 41 b8 02 00 00 00 44 89 6c 24 30 41 83 c1 14";
 constexpr const char* ReviveThinkDelay = "44 8b 8e 70 01 00 00 33 c0 89 44 24 30 41 83 c1 0f";
+// #1988: PD2's patch table also has 1.13c +0xa37b7 `19` -> `06`, the shared summon creator (+0xa3610) queuing a new
+// pet's AI event at frame + 6, not + 25. D2R's creator is 0x4350e0 (`add r9d,0x19` at 0x435444). Valkyrie's do calls
+// it, then drops that event and queues its own (+ 8 above), as in 1.13c; Revive does not call it.
+constexpr const char* SummonThinkDelay = "44 8b 8d 70 01 00 00 41 b8 02 00 00 00 44 89 64 24 30 41 83 c1 19";
 // PD2 0x102fb2b0 wraps Revive's last D2Common #10704 (collision refresh): with state 96 (revive) on, path +0x44 (unit
 // size) above 2 becomes 2, then the refresh. D2R's Revive ends with the same refresh, 0x3429b0 (reads path +0x58, writes
 // the collision class to +0x5c) and no cap; SrvDoRevive caps after it and refreshes again. No SDK service sets a size.
@@ -4465,7 +4663,7 @@ uint64_t g_collisionRefresh = 0;  // rva, 0 when the signature did not match onc
 std::atomic<uint32_t> g_reviveCaps {0};
 
 static auto PatchThinkDelay(const D2RL::PluginContext* context, const char* pattern, int at, uint8_t stock,
-                            const char* what) noexcept -> bool {
+                            uint8_t delay, const char* what) noexcept -> bool {
 	uint64_t rva = 0;
 	const D2RL::MutationService* mutations = nullptr;
 	D2RL::Mutations::TransactionHandle transaction = 0;
@@ -4476,7 +4674,7 @@ static auto PatchThinkDelay(const D2RL::PluginContext* context, const char* patt
 		plog::Info("summon think: %s first think FAILED (signature or mutation service)", what);
 		return false;
 	}
-	static constexpr uint8_t PD2Delay[] = {0x08};
+	const uint8_t PD2Delay[] = {delay};
 	const uint8_t expected[] = {stock};
 	const D2RL::Mutations::BytePatchRequest patch{.structSize = D2RL::Mutations::BytePatchRequestSize,
 	                                              .rva = rva,
@@ -4493,7 +4691,7 @@ static auto PatchThinkDelay(const D2RL::PluginContext* context, const char* patt
 		           static_cast<unsigned long long>(rva), stock);
 		return false;
 	}
-	plog::Info("summon think: %s first think at frame + 8 (was + %u) at 0x%llx", what, stock,
+	plog::Info("summon think: %s first think at frame + %u (was + %u) at 0x%llx", what, delay, stock,
 	           static_cast<unsigned long long>(rva));
 	return true;
 }
@@ -5746,6 +5944,221 @@ const SlotFunction Functions[] = {
 	{MissileCltHit, 72, reinterpret_cast<const void*>(static_cast<MissileCltHitFn>(CltHitThrowPotion)), "throw potion"},
 };
 
+// --- Sacrifice's corpse explosion (#1994, docs/features/core-rules.md "Sacrifice corpse explosion") ----------------
+// PD2 wraps 1.13c's damage deal (+0xdcf20) in ProjectDiablo.dll 0x103025c0 (PD2.gpr 0x103025b0). After the deal, a hit
+// with result flag 2 (the killing hit) whose attacker's current skill is Sacrifice (96) puts state sacrifice_explosion
+// on the victim and queues an event at frame + clamp(death animation ticks - 6, 3, 30) carrying the overkill: the damage
+// total (block +0x4c) minus stat previous_hitpoints, the life PD2's hit apply copy (0x103059a0) stores just before the
+// life loss, at least 0. The event's callback (0x10303aa0, PD2.gpr 0x10303a90) hits every unit within calc3 of the
+// corpse for physical damage = Param5 % of the monster's average monlvl life + Param6 % of the overkill.
+// D2R: the deal 0x44a9b0 calls the kill 0x44db20 (game, victim, attacker, 1) only for result flag 2, as its last step.
+// That call is redirected and its 1 becomes the damage block (rbx there), so the explosion is queued after the kill, as
+// PD2's is after the deal. The life before the loss is read after the hit apply's (0x44ce80) life add call (absorbed
+// life), the step just before the loss. No PluginSDK service gives a kill with its damage block, and the deal's entry
+// stays free for other plugins (d2r-tools' dps-counter hooks it).
+constexpr const char* SacrificeKillCall =
+    "0f b7 43 04 a8 02 74 ?? 41 b9 01 00 00 00 4d 8b c6 48 8b d7 48 8b cd e8 ?? ?? ?? ?? e9";
+constexpr uint32_t SacrificeKillArgAt = 8, SacrificeKillCallAt = 23;
+// mov r9d,1 -> mov r9,rbx (the deal keeps its block in rbx from its entry) / nop3
+constexpr uint8_t KillArgOne[] = {0x41, 0xb9, 0x01, 0x00, 0x00, 0x00};
+constexpr uint8_t KillArgBlock[] = {0x4c, 0x8b, 0xcb, 0x0f, 0x1f, 0x00};
+constexpr const char* SacrificeLifeCall = "8b 97 30 01 00 00 48 8b ce e8 ?? ?? ?? ?? 8b 9f 34 01 00 00 85 db 7e";
+constexpr uint32_t SacrificeLifeCallAt = 9;
+// (game, unit, type, frame, callback, a6, a7, a8): AddUnitEvent (0x48b720) is this with callback 0. The event loop
+// (0x48c545) calls callback(game, unit, type, a6, a7) at the frame in place of the type's handler. D2R's own user is
+// the object event of 0x590b00 (type 14, callback 0x595000); no RemoveUnitEvent call names 14. PD2 uses 1.13c's type 7,
+// which D2R's 0x4a1820 removes from dead monsters.
+constexpr uint64_t AddUnitEventCallback = 0x48be80;
+constexpr int32_t UnitEventCallback = 14;
+// (dataFlag, monstats id, expansion, difficulty, level, flags, int32* out, 0): 1.13c D2Common #11089. Flags 1 fills
+// out[0] / out[1] with the row's min / max life at that level (monlvl HP x monstats minHP / maxHP / 100).
+constexpr uint64_t MonLevelStats = 0x3a26c0;
+// (out, game, unit): byte +0 difficulty, int32 +4 and byte +8 non-zero for an expansion game, as the monster stat
+// set-up 0x588d50 reads them before MonLevelStats
+constexpr uint64_t GameMonsterInfo = 0x48ff40;
+// Unit animation (D2Common Units.cpp 0x34c880): +0x64 frames << 8, +0x68 uint16 speed (256 = a frame a tick), +0x70 the
+// animation data: 1.13c's +0x48, +0x4c, +0x50
+constexpr int UnitAnimFrames = 0x64, UnitAnimSpeed = 0x68, UnitAnimData = 0x70;
+constexpr int32_t SkillSacrifice = 96, StatLevel = 12, UnitMissile = 3;
+constexpr uint32_t OverkillMask = 0x0fffffff;  // PD2 packs the owner's unit type in the event value's top 4 bits
+
+using UnitKillFn = void (*)(Game*, Unit*, Unit*, uint64_t) noexcept;
+using AddLifeFn = void (*)(Unit*, int32_t) noexcept;
+UnitKillFn g_unitKill = nullptr;
+AddLifeFn g_addLife = nullptr;
+bool g_killGetsBlock = false;   // set once the kill's argument patch is in: before that its 4th argument is the 1
+int32_t g_sacrificeState = -1;  // states.txt sacrifice_explosion (ours 269, PD2 223)
+thread_local Unit* t_lifeUnit = nullptr;
+thread_local int32_t t_lifeBefore = 0;
+std::atomic<uint32_t> g_sacrificeKills {0}, g_sacrificeMissileSkips {0}, g_sacrificeSkillSkips {0};
+std::atomic<uint32_t> g_sacrificeBlasts {0};
+
+// PD2's 0x1037c530: value x percent / 100 in doubles, truncated, at most INT32_MAX
+constexpr auto Pd2Percent(int32_t value, int32_t percent) noexcept -> int32_t {
+	const double v = static_cast<double>(value) * static_cast<double>(percent) / 100.0;
+	return v > 2147483647.0 ? INT32_MAX : static_cast<int32_t>(v);
+}
+static_assert(Pd2Percent(256 * 1000, 5) == 256 * 50 && Pd2Percent(1000, 125) == 1250 && Pd2Percent(-1000, 5) == -50);
+
+// PD2's delay: the death animation's ticks - 6, from 3 to 30; 3 without animation data
+constexpr auto SacrificeDelay(bool anim, uint32_t frames, uint32_t speed) noexcept -> int32_t {
+	if (!anim || speed == 0) {
+		return 3;
+	}
+	const uint32_t ticks = frames / speed - 6;  // unsigned as PD2's: under 6 ticks wraps, so it takes 30
+	return ticks < 3 ? 3 : static_cast<int32_t>(std::min(ticks, 30u));
+}
+static_assert(SacrificeDelay(true, 20 << 8, 256) == 14 && SacrificeDelay(true, 7 << 8, 256) == 3 &&
+              SacrificeDelay(true, 5 << 8, 256) == 30 &&
+              SacrificeDelay(true, 99 << 8, 256) == 30 && SacrificeDelay(false, 0, 0) == 3);
+
+auto SacrificeLife(Unit* victim, int32_t absorbed) noexcept -> void {
+	g_addLife(victim, absorbed);
+	t_lifeUnit = victim;  // the life the loss starts from: PD2's previous_hitpoints
+	t_lifeBefore = victim != nullptr ? d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(
+	                                       victim, StatHitpoints, 0)
+	                                 : 0;
+}
+
+struct SacrificeHit {
+	d2r::LeapKnockback* block;
+	int64_t victims;
+};
+
+// One unit in range (PD2's 0x10304aa0): a copy of the block through the area apply
+auto SacrificeBlastOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t {
+	auto* hit = static_cast<SacrificeHit*>(area->arg);
+	d2r::LeapKnockback damage;
+	d2r::CopyRolled(*hit->block, damage);
+	d2r::Engine<void (*)(Game*, Unit*, Unit*, void*) noexcept>(d2r::rva::AreaApply)(static_cast<Game*>(area->game),
+	                                                                               area->unit, victim, &damage);
+	hit->victims += (damage.resultFlags & d2r::rva::ResultHit) != 0 ? 1 : 0;
+	d2r::ReleaseDamage(damage);
+	return 1;
+}
+
+// The event (PD2's 0x10303aa0): the corpse explosion
+auto SacrificeBlast(Game* game, Unit* corpse, int32_t /*type*/, int32_t ownerId, int32_t value) noexcept -> int64_t {
+	using namespace d2r::rva;
+	if (game == nullptr || corpse == nullptr) {
+		return 0;
+	}
+	const auto packed = static_cast<uint32_t>(value);
+	Unit* owner = d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(
+		game, static_cast<int32_t>(packed >> 28), ownerId);
+	const uint32_t dataFlag = d2r::DataFlag(game);
+	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, SkillSacrifice);
+	int32_t x = 0, y = 0;
+	if (owner == nullptr || At<uint32_t>(owner, UnitType) >= 6 || At<int32_t>(corpse, UnitType) != UnitMonster ||
+	    skill == nullptr || !d2r::UnitXY(corpse, &x, &y)) {
+		return 0;
+	}
+	int32_t radius = At<int32_t>(skill, SkParam4);  // an owner without the skill: Param4, as PD2's
+	void* unitSkill = d2r::Engine<void* (*)(Unit*, int32_t, int32_t) noexcept>(GetUnitSkill)(owner, SkillSacrifice, 0);
+	int32_t level = 0;
+	if (unitSkill != nullptr) {
+		level = d2r::Engine<int32_t (*)(Unit*, void*, int32_t) noexcept>(UnitSkillLevel)(owner, unitSkill, 1);
+		radius = d2r::EvalCalc(game, owner, skill, SkCalc3, SkillSacrifice, level);
+	}
+	uint8_t info[16] = {};
+	d2r::Engine<void* (*)(void*, Game*, Unit*) noexcept>(GameMonsterInfo)(info, game, corpse);
+	const int32_t expansion = (info[8] != 0 || At<int32_t>(info, 4) != 0) ? 1 : 0;
+	const int32_t monLevel = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(corpse, StatLevel, 0);
+	int32_t life[32] = {};  // the stats record; flags 1 writes [0] and [1]
+	d2r::Engine<int64_t (*)(uint32_t, int32_t, int32_t, int32_t, int32_t, uint32_t, int32_t*, int32_t) noexcept>(
+		MonLevelStats)(dataFlag, At<int32_t>(corpse, UnitClassId), expansion, info[0], monLevel, 1, life, 0);
+	const int32_t overkill = static_cast<int32_t>(packed & OverkillMask);
+	const int32_t base = Pd2Percent((life[0] + life[1]) << 7, At<int32_t>(skill, SkParam5));  // average life, 1/256
+	const int32_t extra = Pd2Percent(overkill, At<int32_t>(skill, SkParam6));
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(corpse, g_sacrificeState, 0);
+	// srvmissilea (sacrificecorpseexplosion): the guts, from the corpse at skill level 1, as PD2's
+	d2r::MissileParams params;
+	std::memset(&params, 0, sizeof(params));
+	params.flags = MissileAtXY;
+	params.owner = corpse;
+	params.origin = corpse;
+	params.missile = At<int16_t>(skill, SkSrvMissileA);
+	params.x = params.targetX = x;
+	params.y = params.targetY = y;
+	params.skill = SkillSacrifice;
+	params.skillLevel = 1;
+	const bool guts = d2r::ValidMissile(dataFlag, params.missile) && d2r::api.createMissile(game, &params) != nullptr;
+	d2r::LeapKnockback block;
+	block.resultFlags = ResultHit;  // PD2's block: hit flags 0, result 1, the physical damage only
+	*reinterpret_cast<int32_t*>(reinterpret_cast<uint8_t*>(&block) + DmgPhys) = base + extra;
+	SacrificeHit hit {&block, 0};
+	d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(corpse), x, y};
+	d2r::Engine<AreaFn>(AreaUnits)(game, owner, &center, radius, AreaUnitMask, SacrificeBlastOne, &hit, 0);
+	d2r::ReleaseDamage(block);
+	if (pd2::HotSample(g_sacrificeBlasts)) {
+		plog::Info("sacrifice: corpse explosion: monster class %d level %d at %d,%d, radius %d (skill level %d), "
+		           "physical %d (1/256) = %d%% of average life %d + %d%% of overkill %d, guts %d, units hit %lld, "
+		           "explosion %u", At<int32_t>(corpse, UnitClassId), monLevel, x, y, radius, level, base + extra,
+		           At<int32_t>(skill, SkParam5), (life[0] + life[1]) / 2, At<int32_t>(skill, SkParam6), overkill,
+		           guts ? 1 : 0, static_cast<long long>(hit.victims), g_sacrificeBlasts.load());
+	}
+	return 0;
+}
+
+// The deal's kill call (result flag 2): D2R's kill, then PD2's step after the deal
+auto SacrificeKill(Game* game, Unit* victim, Unit* attacker, uint64_t block) noexcept -> void {
+	using namespace d2r::rva;
+	g_unitKill(game, victim, attacker, 1);
+	const bool life = t_lifeUnit == victim;  // PD2's stat is 0 on a unit no hit apply has reached
+	const int32_t before = life ? t_lifeBefore : 0;
+	t_lifeUnit = nullptr;
+	// The chain (#2043): an explosion's kill arrives here with the killer as attacker (AreaApply -> DealDamage), so a
+	// killer still on Sacrifice queues the next one. A missile kill (D2R passes its owner; skill/sacrifice_missile.cpp
+	// keeps the missile) explodes as in PD2's 0x103025c0 only when the missile's skill is Sacrifice and the walked owner
+	// (a pet up to its player, 0x10374a60) has the skill: the guts missile of a pet's corpse, never a Blessed Hammer.
+	if (!g_killGetsBlock || game == nullptr || victim == nullptr || attacker == nullptr || g_sacrificeState < 0 ||
+	    At<int32_t>(attacker, UnitType) == UnitMissile) {
+		return;
+	}
+	Unit* owner = At<int32_t>(attacker, UnitType) == UnitMonster && g_petOwner != nullptr ? g_petOwner(attacker) : nullptr;
+	owner = owner != nullptr ? owner : attacker;
+	if (Unit* missile = SacrificeKillMissile(); missile != nullptr) {
+		const int32_t skillId = d2r::Engine<int32_t (*)(Unit*) noexcept>(MissileSkill)(missile);
+		if (skillId != SkillSacrifice ||
+		    d2r::Engine<void* (*)(Unit*, int32_t, int32_t) noexcept>(GetUnitSkill)(owner, SkillSacrifice, 0) == nullptr) {
+			if (pd2::HotSample(g_sacrificeMissileSkips)) {
+				plog::Info("sacrifice: missile kill of monster class %d skipped: missile skill %d, owner type %d, skip %u",
+				           At<int32_t>(victim, UnitClassId), skillId, At<int32_t>(owner, UnitType),
+				           g_sacrificeMissileSkips.load());
+			}
+			return;
+		}
+	} else {
+		void* current = d2r::Engine<void* (*)(Unit*) noexcept>(CurrentSkill)(attacker);
+		if (current == nullptr || UnitSkillIdOf(current) != SkillSacrifice) {
+			if (pd2::HotSample(g_sacrificeSkillSkips)) {
+				plog::Info("sacrifice: kill of monster class %d by unit type %d skipped: current skill %d, skip %u",
+				           At<int32_t>(victim, UnitClassId), At<int32_t>(attacker, UnitType),
+				           current != nullptr ? UnitSkillIdOf(current) : -1, g_sacrificeSkillSkips.load());
+			}
+			return;
+		}
+	}
+	const auto* damage = reinterpret_cast<const uint8_t*>(block);
+	const int32_t overkill = std::max(At<int32_t>(damage, DmgTotal) - before, 0);
+	const int32_t delay = SacrificeDelay(At<void*>(victim, UnitAnimData) != nullptr, At<uint32_t>(victim, UnitAnimFrames),
+	                                     At<uint16_t>(victim, UnitAnimSpeed));
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateBit)(victim, g_sacrificeState, 1);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetStateGfxFlag)(victim, g_sacrificeState, 1);
+	// PD2 queues the walked owner as the killer
+	const uint32_t value = (static_cast<uint32_t>(overkill) & OverkillMask) |
+	                       static_cast<uint32_t>(At<int32_t>(owner, UnitType)) << 28;
+	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t, void*, int32_t, int32_t, int32_t) noexcept>(AddUnitEventCallback)(
+		game, victim, UnitEventCallback, At<int32_t>(game, GameFrame) + delay, reinterpret_cast<void*>(&SacrificeBlast),
+		At<int32_t>(owner, UnitIdField), static_cast<int32_t>(value), 0);
+	if (pd2::HotSample(g_sacrificeKills)) {
+		plog::Info("sacrifice: kill of monster class %d by unit type %d: damage %d - life before %d (%s) = overkill %d "
+		           "(1/256), explosion in %d frames, kill %u", At<int32_t>(victim, UnitClassId),
+		           At<int32_t>(attacker, UnitType), At<int32_t>(damage, DmgTotal), before, life ? "this hit" : "none",
+		           overkill, delay, g_sacrificeKills.load());
+	}
+}
+
 }  // namespace
 
 static int g_skillTotal = 0;
@@ -5774,6 +6187,10 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 			used += n > 0 ? static_cast<size_t>(n) : 0;
 		}
 	}
+	const bool tempBuff = std::all_of(std::begin(TempBuffUses), std::end(TempBuffUses),
+	                                  [](const sigscan::Entry* e) { return e->state == sigscan::State::Ok; });
+	plog::Info("temp buff: PD2 flag-4 list until the mode changes %s", tempBuff ? "on" : "FAILED (signature)");
+	count({tempBuff});
 	AddSkillRoutes();
 	char routerReport[160];
 	const bool router = skill_router::InstallRouter(context, routerReport, sizeof(routerReport));
@@ -5869,17 +6286,20 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		                            allyBuff ? "" : " FAILED (table signature or slot)");
 		used += n > 0 ? static_cast<size_t>(n) : 0;
 	}
-	const bool valkyrieThink = PatchThinkDelay(context, ValkyrieThinkDelay, 21, 0x14, "valkyrie");
-	const bool reviveThink = PatchThinkDelay(context, ReviveThinkDelay, 16, 0x0f, "revive");
+	const bool valkyrieThink = PatchThinkDelay(context, ValkyrieThinkDelay, 21, 0x14, 0x08, "valkyrie");
+	const bool reviveThink = PatchThinkDelay(context, ReviveThinkDelay, 16, 0x0f, 0x08, "revive");
+	const bool summonThink = PatchThinkDelay(context, SummonThinkDelay, 21, 0x19, 0x06, "summon");
+	plog::Info("summon: first think 6 %s", summonThink ? "on" : "FAILED");
 	if (sigscan::ScanUnique(context->exeBase, CollisionRefreshEntry, 0, &g_collisionRefresh) != 1) {
 		g_collisionRefresh = 0;
 	}
 	plog::Info("revive: size cap %s", g_collisionRefresh != 0 ? "on" : "FAILED (collision refresh signature)");
-	count({valkyrieThink, reviveThink, g_collisionRefresh != 0});
+	count({valkyrieThink, reviveThink, summonThink, g_collisionRefresh != 0});
 	used = std::strlen(report);
 	if (used < reportSize) {
-		std::snprintf(report + used, reportSize - used, "; first think valkyrie%s revive%s, revive size cap%s",
-		              valkyrieThink ? "" : " FAILED", reviveThink ? "" : " FAILED", g_collisionRefresh != 0 ? "" : " FAILED");
+		std::snprintf(report + used, reportSize - used, "; first think valkyrie%s revive%s summon%s, revive size cap%s",
+		              valkyrieThink ? "" : " FAILED", reviveThink ? "" : " FAILED", summonThink ? "" : " FAILED",
+		              g_collisionRefresh != 0 ? "" : " FAILED");
 	}
 	uint64_t reschedule = 0;
 	if (sigscan::ScanUnique(context->exeBase, AttackRescheduleEntry, 0, &reschedule) == 1) {
@@ -5897,6 +6317,29 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; frenzy stacks%s, every swing%s", frenzy ? "" : " FAILED",
 		              swing ? "" : " FAILED");
+	}
+	// Sacrifice's corpse explosion (#1994): the redirect first, then the kill's argument; until the argument patch is
+	// in, the redirected kill only calls D2R's.
+	g_sacrificeState = StateRow(context, "sacrifice_explosion");
+	uint64_t killAt = 0;
+	const bool sacrifice =
+		g_sacrificeState >= 0 &&
+		RedirectCall(context, SacrificeLifeCall, SacrificeLifeCallAt, reinterpret_cast<uint64_t>(&SacrificeLife),
+		             reinterpret_cast<uint64_t*>(&g_addLife)) &&
+		RedirectCall(context, SacrificeKillCall, SacrificeKillCallAt, reinterpret_cast<uint64_t>(&SacrificeKill),
+		             reinterpret_cast<uint64_t*>(&g_unitKill)) &&
+		sigscan::ScanUnique(context->exeBase, SacrificeKillCall, 0, &killAt) == 1 &&
+		context->PatchBytes(killAt + SacrificeKillArgAt, KillArgOne, sizeof(KillArgOne), KillArgBlock,
+		                    sizeof(KillArgBlock));
+	g_killGetsBlock = sacrifice;
+	plog::Info("sacrifice: corpse explosion %s", sacrifice ? "on"
+	                                             : g_sacrificeState < 0
+	                                                 ? "FAILED (states.txt has no sacrifice_explosion)"
+	                                                 : "FAILED (hit apply life call, deal kill call signature or bytes)");
+	count({sacrifice});
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; sacrifice corpse explosion%s", sacrifice ? "" : " FAILED");
 	}
 	const bool redemption = RedirectCall(context, RedemptionCorpseCall, RedemptionCorpseCallAt,
 	                                     reinterpret_cast<uint64_t>(&RedemptionCorpse),
@@ -5962,6 +6405,14 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		std::snprintf(report + used, reportSize - used, "; mind blast stacks%s, no convert%s, mask%s",
 		              mindBlast ? "" : " FAILED", noConvert ? "" : " FAILED", mask ? "" : " FAILED");
 	}
+	// the skill/*.cpp rules register themselves (skill/registry.h): sorted by (order, name), the old call order
+	std::vector<pd2r::RuleEntry>& rules = pd2r::Rules();  // sorted in place: this runs once
+	std::sort(rules.begin(), rules.end(), [](const pd2r::RuleEntry& x, const pd2r::RuleEntry& y) {
+		return x.order != y.order ? x.order < y.order : std::strcmp(x.name, y.name) < 0;
+	});
+	for (const pd2r::RuleEntry& rule : rules) {
+		count({rule.install(context, report, reportSize)});
+	}
 	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
 	                                             sizeof(d2r::rva::BusyModeGateEntry), BusyModeGate, &g_gateOriginal);
 	count({gate});
@@ -6023,6 +6474,26 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		              "; blade sentinel think (monai %d)%s, monster caster owner (srvdofunc %d, monai init)%s",
 		              BladeCreeperRow, sentinel ? "" : " FAILED (signature or slot)", SentinelSrvDo,
 		              sentinelOwner ? "" : " FAILED (signature or slot)");
+	}
+	const bool raven = InstallRavenCount(context);
+	plog::Info("raven: pd2 count %s", raven ? "on" : "FAILED (srvdo 114 signature, creator call or slot)");
+	count({raven});
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; raven count%s", raven ? "" : " FAILED");
+	}
+	sigscan::Resolve(BloodGolemUses, std::size(BloodGolemUses), context->exeBase, nullptr, 0);
+	bool golem = AiOwnerGetter() != nullptr;
+	for (const sigscan::Entry* e : BloodGolemUses) {
+		golem = golem && e->state == sigscan::State::Ok;
+	}
+	golem = golem && RedirectCall(context, BloodGolemHealCall, BloodGolemHealCallAt, reinterpret_cast<uint64_t>(&BloodGolemHeal),
+	                              reinterpret_cast<uint64_t*>(&g_bloodGolemHeal));
+	plog::Info("blood golem: pd2 heal %s", golem ? "on" : "FAILED (event 23 call or helper signatures)");
+	count({golem});
+	used = std::strlen(report);
+	if (used < reportSize) {
+		std::snprintf(report + used, reportSize - used, "; blood golem heal%s", golem ? "" : " FAILED");
 	}
 	g_skillTotal = total;
 	return installed;

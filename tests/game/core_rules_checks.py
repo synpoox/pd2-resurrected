@@ -275,15 +275,17 @@ def split_throw_client_cast(ctx):
 @check("split-throw-temp-buff", tags=["core-rules"])
 def split_throw_temp_buff(ctx):
     """srvstfunc 79 put the skill's aurastate on the caster at the start frame with PD2's aurastat1 attackrate =
-    aurastatcalc1 par4 (Param4 10). The length is approximated (docs/features/core-rules.md)."""
-    buffs = re.findall(r"temp buff: skill \d+ level (\d+) state (\d+) for (\d+) frames, stat (\d+) \+(-?\d+)", _log(ctx))
+    aurastatcalc1 par4 (Param4 10), on a flag-4 list the next mode change frees: a first cast finds none (#2045)."""
+    buffs = re.findall(r"temp buff: skill \d+ level (\d+) state (\d+) on a (new|kept) flag-4 list, stat (\d+) \+(-?\d+)",
+                       _log(ctx))
     if not buffs:
         ctx.skip("no temp buff in the log yet (cast Split Throw, then run again)")
-    level, state, frames, stat, value = (int(v) for v in buffs[0])
-    assert state > 0 and frames > 0, buffs[0]
+    level, state, kind, stat, value = buffs[0]
+    level, state, stat, value = int(level), int(state), int(stat), int(value)
+    assert state > 0 and kind == "new", buffs[0]
     assert stat == ATTACKRATE, f"aurastat1 is stat {stat}, PD2 gives attackrate ({ATTACKRATE})"
     assert value == 10, f"attack rate +{value}, PD2's par4 is 10"
-    return f"level {level}: state {state} for {frames} frames, attackrate +{value}"
+    return f"level {level}: state {state} on a new flag-4 list, attackrate +{value}"
 
 
 @check("split-throw-return", tags=["core-rules"])
@@ -538,9 +540,9 @@ def channel_take_over(ctx):
 @check("blade-fury-refused", tags=["core-rules-w21", "core-rules-w32"])
 def blade_fury_refused(ctx):
     """PD2's gate A: a Blade Fury (srvdofunc 48) is not cut short by another Blade Fury; another skill is allowed. The
-    held Blade Fury's own re-request goes to D2R's gate: with D2R's seqinput 12 (merge/standins.tsv) it comes at the
-    input frame, after the throw, and D2R allows it (0), which throws the next blade. With PD2's seqinput 3 it came
-    back 4 and the Assassin stayed in the channel without throwing (docs/research/skills/w32-blade-fury.md)."""
+    held Blade Fury's own re-request goes to D2R's gate: with PD2's seqinput 3 on PD2's 11-frame sequence (#2028) it
+    comes at the throw frame and D2R allows it (0), which throws the next blade. With 1.13c's 19 frames seqinput 3 came
+    before the throw: back 4, and the Assassin stayed in the channel without throwing (w32-blade-fury.md)."""
     rows = [r for r in _take_overs(ctx) if r[1] == 48]
     held = [h for h in _held(ctx) if h[1] == 48]
     if not held:
