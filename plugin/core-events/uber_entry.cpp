@@ -56,7 +56,8 @@ constexpr int32_t StrippedStates[] = {16,  223, 31,  26,  32,  51,  139, 140, 15
                                       133, 134, 135, 136, 137, 176, 114, 89,  62,  1,   11};
 static_assert(std::size(StrippedStates) == 37);
 // PD2 0x1037fb10 walks every pet type but 3 (`golem`)
-// shortcut: 31 is the merged pettype.txt's row count; read it from the tables if a row is ever added
+// shortcut: 31 pet types; row 31 (`hireablelight`, #1953) only lends the Light Ascendant its icon and holds no
+// pets. Read the count from the tables if a row that holds pets is ever added
 constexpr int32_t PetTypes = 31, KeptPetType = 3;
 
 
