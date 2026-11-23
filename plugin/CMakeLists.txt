@@ -67,6 +67,7 @@ modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/merc_ai.cpp
 	core-rules/boss_aura.cpp
 	core-rules/skill/slow_prime_evil.cpp
+	core-rules/skill/to_hit.cpp
 	"${D2R_TOOLKIT_DIR}/plugin-template/src/skill_router.cpp"  # the toolkit's router: slot 190 dispatches this mod's skill routes
 	core-events/arena_spots.cpp  # Royal Fire's ring centre reads the arena's centre spot (#962)
 	core-rules/plugin.rc  # ABI manifest resource: D2RLoader rejects a plugin DLL without it

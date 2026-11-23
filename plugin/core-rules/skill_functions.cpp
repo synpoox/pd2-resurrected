@@ -6330,7 +6330,7 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		              mindBlast ? "" : " FAILED", noConvert ? "" : " FAILED", mask ? "" : " FAILED");
 	}
 	const bool monCurse = InstallMonsterCurse(context, report, reportSize);
-	count({monCurse});
+	count({monCurse, InstallToHit(context, report, reportSize)});
 	const bool gate = context->InstallInlineHook(d2r::rva::BusyModeGate, d2r::rva::BusyModeGateEntry,
 	                                             sizeof(d2r::rva::BusyModeGateEntry), BusyModeGate, &g_gateOriginal);
 	count({gate});
