@@ -10,6 +10,7 @@
 #include "invaders.h"
 #include "map_boss_tc.h"
 #include "map_events.h"
+#include "megademon_ai.h"
 #include "pd2_engine.h"
 #include "treasure_fallen.h"
 #include "wanderer.h"
@@ -97,6 +98,13 @@ void InstallMapBossTcPart(const D2RL::PluginContext* context, char* report, size
 	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
 }
 
+// Lieutenant of Sin's cooldown casts (#1871)
+void InstallMegademonAiPart(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
+	char rules[200] = "";
+	const int installed = InstallMegademonAi(context, rules, sizeof(rules));
+	std::snprintf(report, size, "%d/%d installed: %s", installed, 1, rules);
+}
+
 sigscan::Entry* const MapBossTcUses[] = {&d2r::sig::TcDrop, &d2r::sig::TcIndexByName, &d2r::sig::TcRecord, &d2r::sig::DataTables};
 
 sigscan::Entry* const AnyamapsUses[] = {&d2r::sig::FindUnit, &d2r::sig::ItemRecord};
@@ -110,6 +118,7 @@ PartReg r190(190, "invaders", InstallInvadersPart);
 PartReg r195(195, "invaderart", InstallInvaderartPart);
 PartReg r250(250, "mapbosstc", InstallMapBossTcPart, MapBossTcUses);
 PartReg r260(260, "gheedstore", InstallGheedStorePart);
+PartReg r270(270, "megademonai", InstallMegademonAiPart);
 CountersReg c40(40, MapEventsCounters);
 CountersReg c120(120, EventPortalsCounters);
 CountersReg c200(200, GuardianAiCounters);
@@ -119,5 +128,6 @@ CountersReg c230(230, InvadersCounters);
 CountersReg c235(235, InvaderArtCounters);
 CountersReg c250(250, MapBossTcCounters);
 CountersReg c260(260, GheedStoreCounters);
+CountersReg c270(270, MegademonAiCounters);
 
 }  // namespace
