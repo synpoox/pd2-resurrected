@@ -1486,6 +1486,67 @@ void RecountEthereal(const D2RL::PluginContext*, void* user) noexcept {
 	}
 }
 
+// --- Zero-charge skills stay on the skill list (#1992) -------------------------------------------------------------
+// 1.13c's item stat handler (D2Game +0xd9470, stat 204 item_charged_skill) removes a charged skill when its charges
+// reach 0 or the item is not the unit's (D2Common #10029, last argument 1), else adds it with its charges (last
+// argument 0). PD2 NOPs the 0-charge test's jle (+0xd9a41; D2Client's twin at +0x18d51), so 0 charges take the add path
+// (through ProjectDiablo.dll 0x1036f940, which only forces that argument to 0): the skill keeps its place and hotkey.
+// D2R has the same case 204 in the server's stat callback (93847: 0x46fdd0, `test al,al; jz` at 0x470850) and in the
+// client's (0xfd1c0, at 0xfd424), each before the owner check and the add/remove call (0x33a000), but D2RCore
+// replaces both entries (`jmp [rip+x]`), so their bodies never run. No SDK service covers the skill list: the
+// callbacks are wrapped where StatCallbackInit hands them out (EquipStatCallbackInit), and a 0-charge stat 204 of the
+// unit's own item takes the add path with 0 charges there, as in PD2. With the add path D2R never flags the skill 0x10,
+// so its after-cast removal (0x43b1d8) skips it too. A cast at 0 charges is refused by the charge use (0x4368a0:
+// charges < 1 returns 0), as in PD2.
+constexpr uint32_t StatChargedSkill = 204;  // item_charged_skill: charges | max << 8
+// The server callback's add/remove call (0x4708f8, to 0x33a000): (unit, item id, skill, level, charges, remove)
+constexpr const char* ItemSkillCall = "44 89 74 24 28 48 8b cf 44 89 7c 24 20 e8 ?? ?? ?? ?? e9";
+constexpr uint32_t ItemSkillCallAt = 13;
+// The server callback's 0-charge test and owner check (0x470845): the second call (0x2f8120) is (unit, 0) -> the unit
+// whose stats hold this unit's (null once an item is taken off)
+constexpr const char* StatOwnerCall =
+    "e8 ?? ?? ?? ?? 44 0f b6 f8 84 c0 74 0f 33 d2 48 8b ce e8 ?? ?? ?? ?? 48 3b c7 74";
+constexpr uint32_t StatOwnerCallAt = 18;
+// The client's stat callback (0xfd1c0) entry, D2RCore's `jmp [rip+x]` and the body that follows
+constexpr const char* ClientStatCallbackEntry =
+    "ff 25 ?? ?? ?? ?? 90 90 90 53 56 41 57 48 83 ec 30 48 89 7c 24 58 48 8b ca 41 8b f9";
+using ItemSkillFn = void* (*)(Unit*, uint32_t, int32_t, int32_t, int32_t, int32_t) noexcept;
+ItemSkillFn g_itemSkill = nullptr;
+Unit* (*g_statOwner)(Unit*, void*) noexcept = nullptr;
+uint64_t g_clientStatCallback = 0;  // its address, 0 until FindZeroChargeSkills finds all three
+std::atomic<uint32_t> g_zeroChargeKeeps {0};
+
+// True when it kept the skill: 0 charges on the unit's own item, which D2R would remove
+auto KeepZeroChargeSkill(Unit* unit, Unit* item, uint32_t layer, bool client) noexcept -> bool {
+	using namespace d2r::rva;
+	if (g_itemSkill == nullptr || unit == nullptr || item == nullptr ||
+	    (StatOf(item, StatChargedSkill, static_cast<int32_t>(layer)) & 0xff) != 0 ||
+	    g_statOwner(item, nullptr) != unit) {
+		return false;
+	}
+	const uint32_t dataFlag = d2r::Engine<uint8_t (*)(Unit*) noexcept>(UnitDataFlag)(unit);
+	if (DataTables(dataFlag) == nullptr) {
+		return false;
+	}
+	const int32_t skill = static_cast<int32_t>(layer >> LayerShift(dataFlag));
+	const int32_t level = static_cast<int32_t>(layer & LayerMask(dataFlag));
+	g_itemSkill(unit, At<uint32_t>(item, UnitIdField), skill, level, 0, 0);
+	if (pd2::HotSample(g_zeroChargeKeeps)) {
+		plog::Info("charges: %s keeps skill %d level %d with 0 charges (%u so far)", client ? "client" : "server", skill,
+		           level, g_zeroChargeKeeps.load());
+	}
+	return true;
+}
+
+auto ClientStatCallback(void* a1, Unit* unit, Unit* item, uint64_t statLayer, int32_t oldValue, int32_t newValue) noexcept
+	-> uint64_t {
+	if (statLayer >> 32 == StatChargedSkill && KeepZeroChargeSkill(unit, item, static_cast<uint32_t>(statLayer), true)) {
+		return 0;
+	}
+	using Fn = uint64_t (*)(void*, Unit*, Unit*, uint64_t, int32_t, int32_t) noexcept;
+	return reinterpret_cast<Fn>(g_clientStatCallback)(a1, unit, item, statLayer, oldValue, newValue);
+}
+
 using StatCallbackFn = uint64_t (*)(Game* game, Unit* unit, Unit* item, uint64_t statLayer, int32_t oldValue,
                                     int32_t newValue) noexcept;
 
@@ -1509,6 +1570,9 @@ auto EquipStatCallback(Game* game, Unit* unit, Unit* item, uint64_t statLayer, i
 	}
 	if (unit != nullptr && stat == StatLife) {
 		RefreshOpBase(unit, StatMissingHp);
+		return 0;
+	}
+	if (stat == StatChargedSkill && KeepZeroChargeSkill(unit, item, static_cast<uint32_t>(statLayer), false)) {
 		return 0;
 	}
 	if (stat != static_cast<uint64_t>(StatSkillOnEquip)) {
@@ -1535,12 +1599,39 @@ auto EquipStatCallback(Game* game, Unit* unit, Unit* item, uint64_t statLayer, i
 	return result;
 }
 
+// Both or neither: one side alone would keep the skill on one list and drop it from the other
+auto FindZeroChargeSkills(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t call = 0;
+	uint64_t owner = 0;
+	uint64_t client = 0;
+	if (sigscan::ScanUnique(context->exeBase, ItemSkillCall, ItemSkillCallAt, &call) != 1 ||
+	    sigscan::ScanUnique(context->exeBase, StatOwnerCall, StatOwnerCallAt, &owner) != 1 ||
+	    sigscan::ScanUnique(context->exeBase, ClientStatCallbackEntry, 0, &client) != 1) {
+		return false;
+	}
+	const auto target = [&](uint64_t rva) -> uint64_t {
+		const uint64_t site = context->exeBase + rva;
+		return *reinterpret_cast<const uint8_t*>(site) == 0xe8 ? site + 5 + *reinterpret_cast<const int32_t*>(site + 1) : 0;
+	};
+	const uint64_t skillFn = target(call);
+	const uint64_t ownerFn = target(owner);
+	if (skillFn == 0 || ownerFn == 0) {
+		return false;
+	}
+	g_itemSkill = reinterpret_cast<ItemSkillFn>(skillFn);
+	g_statOwner = reinterpret_cast<Unit* (*)(Unit*, void*) noexcept>(ownerFn);
+	g_clientStatCallback = context->exeBase + client;
+	return true;
+}
+
 using StatCallbackInitFn = uint64_t (*)(Unit* unit, uint32_t flags, void* callback, void* arg) noexcept;
 StatCallbackInitFn g_statCallbackInitOriginal = nullptr;
 
 auto EquipStatCallbackInit(Unit* unit, uint32_t flags, void* callback, void* arg) noexcept -> uint64_t {
 	if (reinterpret_cast<uint64_t>(callback) == d2r::imageBase + d2r::rva::StatCallback) {
 		callback = reinterpret_cast<void*>(static_cast<StatCallbackFn>(EquipStatCallback));
+	} else if (g_clientStatCallback != 0 && reinterpret_cast<uint64_t>(callback) == g_clientStatCallback) {
+		callback = reinterpret_cast<void*>(&ClientStatCallback);
 	}
 	return g_statCallbackInitOriginal(unit, flags, callback, arg);
 }
@@ -1623,7 +1714,6 @@ auto EquipAuraTick(Game* game, Unit* unit, int32_t key, int32_t skill, int32_t s
 // durability and quantity are unchanged. No merged item has both stats.
 // cut: PD2 halves the delay in PD2's PvP maps, cut.
 constexpr uint32_t StatReplenishCharges = 475;  // item_replenish_charges (PD2's 422)
-constexpr uint32_t StatChargedSkill = 204;      // item_charged_skill: charges | max << 8
 constexpr int32_t ReplenishFrames = 2500;
 
 using ScheduleReplenishFn = void (*)(Game* game, Unit* item) noexcept;
@@ -2899,6 +2989,7 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 		                                  &g_bossCurseOriginal);
 	}();
 	rule(bossCurse, "boss curse", " FAILED (curse hook, signature or bytes differ)");
+	const bool zeroFound = FindZeroChargeSkills(context);  // before the init hook hands out a callback
 	// Both or neither: a callback without the tick would start item_skillonequip's aura and stop it at its first tick
 	const bool tick = context->InstallInlineHook(ItemAuraTick, ItemAuraTickEntry, sizeof(ItemAuraTickEntry),
 	                                             EquipAuraTick, &g_itemAuraTickOriginal);
@@ -2906,6 +2997,9 @@ auto InstallItemRules(const D2RL::PluginContext* context, char* report, size_t r
 	                                                      sizeof(StatCallbackInitEntry), EquipStatCallbackInit,
 	                                                      &g_statCallbackInitOriginal);
 	rule(equip, "skill on equip and op bases");
+	const bool zeroCharges = equip && zeroFound;
+	plog::Info("charges: keep 0-charge skills %s", zeroCharges ? "on" : "FAILED (signature, or the stat callback hook)");
+	rule(zeroCharges, "zero-charge skills", " FAILED (signature, or the stat callback hook)");
 	// The scheduler first: the handler alone would only see events that durability or quantity items schedule
 	const bool replenish = context->InstallInlineHook(ScheduleReplenish, ScheduleReplenishEntry,
 	                                                  sizeof(ScheduleReplenishEntry), ReplenishSchedule,
