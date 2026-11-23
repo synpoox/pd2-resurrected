@@ -64,7 +64,8 @@ not uninterruptable; everything else goes to D2R's code. The skill id comes from
   show on screen.
 - PD2's seqinput 3 kept D2R's client from ever calling cltdo 111: the client loops the sequence at the input frame,
   before its action frame (a hook on D2R's client do `0x216d20` saw Firestorm's calls, none for Arctic Blast). PD2 gets
-  by with its event re-timing (`0x1037a7c0`); without it the rows keep D2R's seqinput 10 (`merge/standins.tsv`).
+  by with its event re-timing (`0x1037a7c0`); without it the rows kept D2R's seqinput 10. [#2028](https://github.com/synpoox/pd2-resurrected/issues/2028)
+  gives them PD2's 8-frame sequence, whose frame 3 is the action frame, and PD2's seqinput 3.
 - D2R re-sends a held skill every frame: with "182 allows any skill" applied to it, the channel restarted ~30 times a
   second (100 take-overs in 3 s). The held skill itself now goes to D2R's gate; another skill (Firestorm, by F-key swap
   mid-hold) took over at once.
