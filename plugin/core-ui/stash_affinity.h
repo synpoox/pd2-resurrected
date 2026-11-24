@@ -41,6 +41,10 @@ auto Resend(uint32_t itemId) noexcept -> bool;
 // (Withdraw). False when nothing could be queued.
 auto TakeOut(uint32_t itemId) noexcept -> bool;
 
+// Any thread (#2116): the tabs (GlowMaps, GlowBossing) a quick-moved item went home to since the last call; clears them.
+constexpr uint32_t GlowMaps = 1, GlowBossing = 2;
+auto TakeGlow() noexcept -> uint32_t;
+
 // Any thread: the base the Maps tab shows (0 for none).
 auto WantedBase() noexcept -> uint32_t;
 

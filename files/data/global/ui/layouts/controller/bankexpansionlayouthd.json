@@ -132,6 +132,24 @@
                 "visible": false
             }
         },
+        // #2116: the stash's tab notification over BankTabs' Maps and Bossing tabs (x 109 + 140 per tab), scaled from 215 to
+        // the 140 tabs, blinked by core-ui when a quick-moved item goes home there
+        {
+            "type": "ImageWidget", "name": "pd2rMapsGlow",
+            "fields": {
+                "rect": { "x": 809, "y": -1, "scale": 0.651 },
+                "filename": "Controller/Panel/Stash/V2/AdditionalStash/StashNotification",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBossingGlow",
+            "fields": {
+                "rect": { "x": 949, "y": -1, "scale": 0.651 },
+                "filename": "Controller/Panel/Stash/V2/AdditionalStash/StashNotification",
+                "visible": false
+            }
+        },
         {
             "type": "Widget", "name": "PreviousSeasonToggleDisplay",
             "children": [

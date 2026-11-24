@@ -1068,6 +1068,23 @@
                 "style": { "fontColor": "$TabsActiveTextColor", "pointSize": "$SmallPanelFontSize", "alignment": { "v": "center", "h": "center" } }
             }
         },
+        // #2116: the stash's tab notification over our tabs, blinked by core-ui when a quick-moved item goes home there
+        {
+            "type": "ImageWidget", "name": "pd2rMapsGlow",
+            "fields": {
+                "rect": { "x": 82, "y": 74 },
+                "filename": "PANEL\\Stash\\AdditionalStash\\StashNotification",
+                "visible": false
+            }
+        },
+        {
+            "type": "ImageWidget", "name": "pd2rBossingGlow",
+            "fields": {
+                "rect": { "x": 277, "y": 74 },
+                "filename": "PANEL\\Stash\\AdditionalStash\\StashNotification",
+                "visible": false
+            }
+        },
         {
             "type": "ButtonWidget", "name": "pd2rSharedOff",
             "fields": {

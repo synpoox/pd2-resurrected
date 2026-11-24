@@ -356,6 +356,12 @@ void ShowButton(Named& w, bool visible) noexcept {
 Named g_background {"pd2rMapsBackground"}, g_bossingBackground {"pd2rBossingBackground"}, g_navigation {"StashNavigation"}, g_cube {"advancedstash_horadriccube"},
 	g_cubeWithdraw {"withdraw_button"}, g_sharedOff {"pd2rSharedOff"}, g_mapsOn {"pd2rMapsTabsOn"}, g_mapsOnText {"pd2rMapsTabsOnText"},
 	g_bossingOn {"pd2rBossingTabsOn"}, g_bossingOnText {"pd2rBossingTabsOnText"}, g_padTabs {"pd2rPadTabs"}, g_mapsBar {"pd2rMapsTabs"}, g_bossingBar {"pd2rBossingTabs"}, g_mapsLegend {"pd2rMapsLegend"};
+// #2116: StashNotification over our Maps and Bossing tabs, as the stash's notificationIconTemplate over Gems/Materials/Runes
+Named g_glow[2] = {{"pd2rMapsGlow"}, {"pd2rBossingGlow"}};
+float g_glowLeft[2] = {0.0f, 0.0f};  // UI thread: seconds of blinking left
+// The stock bar's tabNotificationDurationSeconds and tabNotificationFadeOccurrences (bankexpansionlayouthd.json)
+// shortcut: shown and hidden, not faded (the widget service has no alpha); fade it if the SDK gains one
+constexpr float GlowStep = 0.33f, GlowTotal = GlowStep * 2 * 3;
 Named g_tiers[3][2] = {{{"pd2rTier1"}, {"pd2rTier1On"}}, {{"pd2rTier2"}, {"pd2rTier2On"}}, {{"pd2rTier3"}, {"pd2rTier3On"}}};
 struct BaseWidgets {
 	char names[3][24];
@@ -662,6 +668,7 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 		g_head = g_tail = g_page = g_sendFails = 0;
 		g_pending = false;
 		g_tab = g_padTab = 0;  // a new game opens the stash on Personal
+		g_glowLeft[0] = g_glowLeft[1] = 0.0f;
 		g_stashOpen = false;
 		g_cycleHeld = false;
 		stash_affinity::ShowBase(0);
@@ -693,6 +700,18 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 		if (g_pages <= aff::MapsPage) {
 			ShowButton(g_mapsBar, false);
 		}
+	}
+	const uint32_t glow = stash_affinity::TakeGlow();
+	for (int i = 0; i < 2; ++i) {
+		const bool open = g_view == (i == 0 ? View::Maps : View::Bossing);  // an item onto the open tab is seen there
+		if (open) {
+			g_glowLeft[i] = 0.0f;
+		} else if ((glow & (i == 0 ? stash_affinity::GlowMaps : stash_affinity::GlowBossing)) != 0) {
+			g_glowLeft[i] = GlowTotal;
+		}
+		const float left = g_glowLeft[i];
+		g_glowLeft[i] = left > frame->deltaTimeSeconds ? left - frame->deltaTimeSeconds : 0.0f;
+		Show(g_glow[i], left > 0.0f && static_cast<int>((GlowTotal - left) / GlowStep) % 2 == 0);
 	}
 	const bool ours = g_view != View::None, maps = g_view == View::Maps;
 	Show(g_mapsOn, maps);
