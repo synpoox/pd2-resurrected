@@ -92,7 +92,6 @@ auto OnPresetSpawn(d2r::Game* game, void* room, const uint8_t* preset) noexcept 
 				*reinterpret_cast<int32_t*>(mutablePreset + PresetId) = classId;
 				g_presetSpawnOriginal(game, room, preset);
 			}
-			plog::Info("uber: level %d placeholder %d became Lucion and his controller", level, id);
 			return;
 		}
 		if (level == placements::LevelOf("tristram")) {
@@ -102,7 +101,6 @@ auto OnPresetSpawn(d2r::Game* game, void* room, const uint8_t* preset) noexcept 
 			}
 			if (prime > 0) {
 				*reinterpret_cast<int32_t*>(mutablePreset + PresetId) = prime;
-				plog::Info("uber: Tristram placeholder %d became prime %d", id, prime);
 			}
 		}
 	}

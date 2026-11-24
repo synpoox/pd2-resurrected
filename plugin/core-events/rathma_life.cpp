@@ -13,7 +13,6 @@
 #include "rathma_life.h"
 
 #include "log.h"
-#include "hot_log.h"
 #include "pd2_engine.h"
 #include "rathma_pair.h"
 #include "rathma_split.h"
@@ -41,11 +40,6 @@ PoisonFn g_poisonOriginal = nullptr;
 std::atomic<uint32_t> g_hits {0};
 std::atomic<uint32_t> g_shared {0};
 std::atomic<uint32_t> g_poisons {0};
-
-// The first 20, then every 500th: enough to read both lives in a game check
-inline auto Logged(uint32_t n) noexcept -> bool {
-	return pd2::HotSample(n);
-}
 
 auto Life(Unit* unit) noexcept -> int32_t {
 	return d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(unit, StatLife, 0);
@@ -75,12 +69,7 @@ auto SharedStep(uint8_t* ctx, uint8_t* type, uint32_t flag) noexcept -> uint64_t
 	const int32_t before = Life(other);
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(other, StatLife,
 	                                                                             std::max(0, before - half), 0);
-	if (const uint32_t n = ++g_shared; Logged(n)) {
-		plog::Info("rathma life: class %d takes %d (1/256 life, halved) at life %d; class %d too: life %d -> %d "
-		           "(%u shared so far)",
-		           At<int32_t>(victim, UnitClassId), half, Life(victim), At<int32_t>(other, UnitClassId), before,
-		           Life(other), n);
-	}
+	++g_shared;
 	return halved;
 }
 
@@ -93,10 +82,7 @@ auto SharedPoison(Unit* attacker, Unit* victim, int32_t rate, int32_t length, in
 	}
 	if (Unit* other = pd2::rathma::Partner(At<Game*>(victim, d2r::rva::UnitGame), victim); other != nullptr) {
 		g_poisonOriginal(attacker, other, rate, length, a5, a6, a7);
-		if (const uint32_t n = ++g_poisons; Logged(n)) {
-			plog::Info("rathma life: poison %d for %d frames on class %d, class %d too (%u so far)", rate, length,
-			           At<int32_t>(victim, d2r::rva::UnitClassId), At<int32_t>(other, d2r::rva::UnitClassId), n);
-		}
+		++g_poisons;
 	}
 }
 

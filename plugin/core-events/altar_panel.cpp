@@ -95,7 +95,6 @@ uint32_t g_focusWait = 0;
 uint32_t g_focusReady = 0;  // frames both panels have been active
 uint32_t g_focusStage = 0;  // 0: overlay not asked for yet, 1: waiting for it
 void* g_focusedPanel = nullptr;
-uint32_t g_focusCheck = 0;  // frames left before the focus manager is read back
 bool g_padOpen = false;     // UI thread: a pad open asked for the ControllerOverlay, so a close must undo it
 
 const D2RL::PluginContext* g_context = nullptr;
@@ -153,9 +152,6 @@ auto MoveToInventory(D2RL::PlayerHandle player, D2RL::ItemHandle item) noexcept 
 		.structSize = items::ExistingItemTransactionSize, .player = player, .operationCount = 1, .operations = &op};
 	items::ExistingItemTransactionResult result {.structSize = items::ExistingItemTransactionResultSize};
 	const items::Result status = g_items->executeExistingItemTransaction(g_context, &transaction, &result);
-	if (status != items::Result::Success) {
-		plog::Info("altar: the amulet did not move to the inventory (%u)", static_cast<uint32_t>(status));
-	}
 	return status == items::Result::Success;
 }
 
@@ -174,7 +170,6 @@ void PadCleanup() noexcept {
 	                                     .command = "ClosePanel",
 	                                     .text = "ControllerOverlay"};
 	g_widgets->dispatchUiAction(g_context, &close);
-	plog::Info("altar: pad close: focus cleared, controller overlay closed");
 }
 
 // UI thread: every panel closed (the altar's, and an inventory that was open before it)
@@ -185,7 +180,6 @@ void CloseAll(const D2RL::PluginContext*, void*) noexcept {
 	                                     .command = "Close",
 	                                     .text = ""};
 	const auto status = g_widgets->dispatchUiAction(g_context, &close);
-	plog::Info("altar: panels closed (inventory close message %u)", static_cast<uint32_t>(status));
 	PadCleanup();
 }
 
@@ -224,9 +218,9 @@ void ReturnAltarItem(const D2RL::PluginContext*, void* user) noexcept {
 	const D2RL::ItemHandle amulet = SlotAmulet(player);
 	if (amulet != D2RL::InvalidItemHandle) {
 		if (MoveToInventory(player, amulet)) {
-			plog::Info("altar: amulet %llu returned to the inventory", static_cast<unsigned long long>(amulet));
 			++g_returned;
 		} else {
+			plog::Warn("altar: the amulet did not move back to the inventory");  // once per streak (the flag below)
 			g_returnFailLogged.store(true);  // one log per streak: no retry until the panel opens again
 		}
 	}
@@ -306,21 +300,11 @@ void WrapOnMessage(void* panel) noexcept {
 	g_onMessage = reinterpret_cast<OnMessageFn>(vtable[4]);
 	g_vtable[1 + 4] = reinterpret_cast<void*>(&AltarOnMessage);
 	vtable = g_vtable + 1;
-	plog::Info("altar: B closes the panel (OnMessage wrapped, %zu methods)", n);
 }
 
 // UI thread: B pressed while the altar panel was open
 void PadClose() noexcept {
-	plog::Info("altar: closed by B");
 	CloseAll(g_context, nullptr);
-}
-
-void LogFocus(const char* when) noexcept {
-	void* m = reinterpret_cast<void* (*)() noexcept>(FocusManager.address)();
-	if (m != nullptr) {
-		plog::Info("altar: focus %s: panel %p widget %p last %p (altar %p)", when, At<void*>(m, 0x188), At<void*>(m, 0x190),
-		           At<void*>(m, 0x198), g_focusedPanel);
-	}
 }
 
 // UI thread, each frame while a pad open waits, in the stash's order (0x23cc40): the inventory is up, the input reset,
@@ -360,7 +344,6 @@ void FocusAltarPanel() noexcept {
 			                                    .text = "ControllerOverlay"};
 			g_widgets->dispatchUiAction(g_context, &open);
 		}
-		plog::Info("altar: pad open %u frames after the panel (overlay %s)", g_focusWait, active(overlay) ? "up" : "opening");
 		return;
 	}
 	if (!active(overlay) && ++g_focusStage < 10) {  // shortcut: the overlay is waited for 10 frames, then the focus goes on without it
@@ -375,22 +358,12 @@ void FocusAltarPanel() noexcept {
 	reinterpret_cast<void (*)(void*) noexcept>(ClearFocus.address)(inventory);
 	*reinterpret_cast<void**>(static_cast<char*>(panel) + 0x160) = nullptr;  // the panel's remembered widget (0x858070): every open starts on the slot, so DOWN is the confirm
 	reinterpret_cast<void (*)(void*) noexcept>(FocusPanel.address)(panel);
-	LogFocus("after the panel focus");
 	WrapOnMessage(panel);
 	void* manager = reinterpret_cast<void* (*)() noexcept>(FocusManager.address)();
 	void* slot = reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address)(panel, SlotName);
 	if (manager != nullptr && slot != nullptr && At<void*>(slot, 0x550) == panel &&  // +0x550: a widget's panel
 	    (At<void*>(manager, 0x188) != panel || At<void*>(manager, 0x190) == nullptr)) {
 		reinterpret_cast<void (*)(void*, void*) noexcept>(FocusWidget.address)(manager, slot);
-		LogFocus("after the slot focus");
-	}
-	g_focusCheck = 5;
-}
-
-// UI thread: a few frames after the focus, who holds it
-void CheckFocus() noexcept {
-	if (--g_focusCheck == 0) {
-		LogFocus("5 frames later");
 	}
 }
 
@@ -412,9 +385,6 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 	}
 	if (g_focusPending) {
 		FocusAltarPanel();
-	}
-	if (g_focusCheck != 0) {
-		CheckFocus();
 	}
 	if (++g_frames % WatchFrames != 0 || g_returning.load(std::memory_order_acquire) || g_returnFailLogged.load()) {
 		return;
@@ -446,20 +416,16 @@ void PickPlayer(const D2RL::PluginContext*, void* user) noexcept {
 	g_returning.store(false, std::memory_order_release);  // a lost ReturnAltarItem must not stop the watcher for good
 	d2r::Unit* local = d2r::Engine<d2r::Unit* (*)(uint32_t) noexcept>(ClientPlayer)(d2r::Engine<uint32_t (*)() noexcept>(LocalPlayerSlot)());
 	if (local == nullptr || At<uint32_t>(local, UnitIdField) != usedBy) {
-		plog::Info("altar: used by another player than this game's own, no panel");
 		return;
 	}
 	g_game = use->game;  // only the local player's pair is kept: a remote click must not swap it
 	g_unit = use->unit;
 	g_acceptedId.store(usedBy);
 	const auto status = g_panels->openPanel(g_context, g_panel);
-	plog::Info("altar: panel %s (%u)", status == D2RL::Panels::Result::Success ? "opened" : "NOT opened",
-	           static_cast<uint32_t>(status));
 	g_returnFailLogged.store(false);
 	if (status == D2RL::Panels::Result::Success) {
 		++g_opened;
 		const bool pad = g_focusSigs && reinterpret_cast<bool (*)() noexcept>(PadMode.address)();
-		plog::Info("altar: pad mode %d, focus signatures %s", pad ? 1 : 0, g_focusSigs ? "ok" : "off");
 		if (pad) {
 			g_focusPending = true;
 			g_focusWait = 0;

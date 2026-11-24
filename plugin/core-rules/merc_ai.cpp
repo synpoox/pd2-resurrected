@@ -25,7 +25,6 @@
 // monstats class. A merc without the skill (a Classic hireling row, another merc type) keeps D2R's think.
 #include "merc_ai.h"
 
-#include "hot_log.h"
 #include "item_rules.h"
 #include "log.h"
 #include "monster_count.h"
@@ -245,10 +244,6 @@ auto MercThink(Game* game, Unit* merc, uint8_t* tick) noexcept -> void {
 	} else if (owner != nullptr && (rule = BattleOrders(game, merc, owner)) != nullptr) {
 		++g_battleOrders;
 	}
-	if (pd2::HotSample(n)) {
-		plog::Info("merc think %u: class %d, owner %s, %s", n, merc != nullptr ? At<int32_t>(merc, d2r::rva::UnitClassId) : -1,
-		           owner != nullptr ? "yes" : "no", rule != nullptr ? rule : "D2R think");
-	}
 	if (rule == nullptr) {
 		g_thinkOriginal(game, merc, tick);
 	}
@@ -277,9 +272,6 @@ auto MercAttack(Game* game, Unit* merc, int32_t cls, Unit* owner, Unit* target, 
 				rule = "PD2 A4 AmpDmg";
 			}
 		}
-	}
-	if (pd2::HotSample(n)) {
-		plog::Info("merc attack %u: class %d, %s", n, cls, rule != nullptr ? rule : "D2R attack");
 	}
 	if (rule == nullptr) {
 		g_attackOriginal(game, merc, cls, owner, target, seed, tick, aip);

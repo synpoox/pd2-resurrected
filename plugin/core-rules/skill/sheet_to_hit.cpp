@@ -22,7 +22,6 @@
 // server roll's function, so a host and a joined client show the same chance for the same AR, defense and levels.
 #include "common.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "sig.h"
 
@@ -108,7 +107,6 @@ constexpr int32_t StatIgnoreAc = 115, StatFractionalAc = 116, StatDemonHit = 123
 
 using MonStatsRowFn = const uint8_t* (*)(uint32_t dataFlag, int32_t monster) noexcept;
 MonStatsRowFn g_row = nullptr;
-std::atomic<uint32_t> g_shown {0};
 
 auto SheetChance(const uint8_t* locals, int32_t, int32_t dlvl, int32_t alvl) noexcept -> int32_t {
 	const int32_t ar = d2r::At<int32_t>(locals, LocAr);
@@ -125,12 +123,6 @@ auto SheetChance(const uint8_t* locals, int32_t, int32_t dlvl, int32_t alvl) noe
 	const int32_t pd2Def = TargetDefense(def, ignore, fraction, flags);
 	const int32_t pd2Ar = TargetAr(ar, demon, undead, flags);
 	const int32_t chance = Pd2Chance(pd2Def, pd2Ar, dlvl, alvl);
-	if (pd2::HotSample(g_shown)) {
-		plog::Info("sheet-to-hit: monster %d flags 0x%x, stats 115 %d 116 %d 123 %d 124 %d: ar %d -> %d def %d -> %d, alvl %d "
-		           "dlvl %d -> %d%% (%u so far)",
-		           monster, flags, ignore, fraction, demon, undead, ar, pd2Ar, def, pd2Def, alvl, dlvl, chance,
-		           g_shown.load());
-	}
 	return chance;
 }
 
@@ -186,7 +178,6 @@ auto InstallSheetToHit(const D2RL::PluginContext* context, char* report, size_t 
 	const bool cap = PatchCap(context);
 	const char* a = chance ? "on" : "FAILED";
 	const char* b = cap ? "on" : "FAILED";
-	plog::Info("sheet-to-hit: pd2 chance %s, cap 100 %s", a, b);
 	const size_t used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; sheet-to-hit: pd2 chance %s, cap 100 %s", a, b);

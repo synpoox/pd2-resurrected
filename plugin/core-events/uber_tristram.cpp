@@ -68,7 +68,6 @@ auto Drop(Game* game, Unit* monster, uint32_t code, int32_t quality, int32_t uni
 	}
 	d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(DropItemAt)(
 		game, monster, row, quality, uniqueRow + 1, 0);
-	plog::Info("tristram: dropped %.4s", reinterpret_cast<const char*>(&code));
 }
 
 }  // namespace
@@ -124,7 +123,7 @@ auto TristramDeath(Game* game, Unit* monster) noexcept -> void {
 	                 xy[1], Harrogath) != nullptr) {
 		++g_portals;
 	}
-	plog::Info("tristram: primes dead (%u kills, %u portals)", ++g_kills, g_portals.load());
+	++g_kills;
 }
 
 auto TristramCounters(char* out, size_t size) noexcept -> void {

@@ -103,9 +103,7 @@ auto OperateTempleChest(ObjectOperate* args) noexcept -> int32_t {
 			game, chest, UnitEventOpen, open, 0, 0, 0);
 	}
 	g_items.fetch_add(static_cast<uint32_t>(low + high), std::memory_order_relaxed);
-	plog::Info("temple: chest opened at tier %d, difficulty %d, item level %d: %d of %d low, %d of %d high (%u so far)",
-	           tier, At<uint8_t>(game, GameDifficulty), ilvl, low, LowMax, high, HighMax(tier),
-	           g_opened.fetch_add(1, std::memory_order_relaxed) + 1);
+	g_opened.fetch_add(1, std::memory_order_relaxed);
 	return 1;
 }
 

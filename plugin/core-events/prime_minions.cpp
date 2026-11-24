@@ -112,10 +112,7 @@ auto Summon(Game* game, Unit* boss, const Prime& prime, const uint8_t* tick) noe
 		return;
 	}
 	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(SetUnitFlags)(minion, UnitNoTreasure | UnitNoExperience, 1);
-	if (plog::Sample(g_spawned)) {
-		plog::Info("primes: prime %d summoned %d at (%d, %d), r %d (%u so far)", prime.classId, id, xy[0], xy[1], r,
-		           g_spawned.load());
-	}
+	++g_spawned;
 }
 
 constexpr int32_t AiRows[] = {50, 51, 135};

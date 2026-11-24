@@ -57,7 +57,6 @@
 #include "item_rules.h"
 #include "pd2_engine.h"
 #include "log.h"
-#include "hot_log.h"
 #include "sig.h"
 
 #include <D2RLPlugin/data_tables.h>
@@ -158,10 +157,6 @@ auto ApplyEthereal(Unit* item) noexcept -> void {
 		Scale(item, StatArmorClass);
 	}
 	const uint32_t n = ++g_ethereal;
-	if (pd2::HotSample(n)) {
-		plog::Info("ethereal: %s %d -> %d (5/4), %u so far", weapon ? "max damage" : "armor class", before,
-		           Bonus(before), n);
-	}
 }
 
 // The decoder's own 3/2 (0x378860), which client tooltips and every save load use: 3/2 -> 5/4 in place, through the
@@ -476,10 +471,6 @@ auto RollStaffMods(Unit* item, uint32_t list, int32_t ilvl, int32_t bonus) noexc
 			++set;
 		}
 	}
-	if (pd2::HotSample(total)) {
-		plog::Info("staffmods: list %u ilvl %d bonus %d: %d of %d skills (%d %d %d), %u so far", list, ilvl, bonus,
-		           set, count, picked[0], picked[1], picked[2], total);
-	}
 }
 
 auto StaffMods(Unit* item, const uint8_t* drop) noexcept -> void {
@@ -593,7 +584,6 @@ auto ImbueSpawn(Game* game, uint8_t* drop, int32_t flag) noexcept -> Unit* {
 	const uint32_t roll = d2r::RandomBelow(g_imbueSeed, ArmageddonOdds[difficulty]);
 	const uint32_t rolls = ++g_imbueRolls;
 	if (roll != 0) {
-		plog::Info("armageddon: imbued Phase Blade, roll %u of %u missed (%u rolls)", roll, ArmageddonOdds[difficulty], rolls);
 		return g_imbueSpawnOriginal(game, drop, flag);
 	}
 	uint8_t stock[DropRequestSize];
@@ -603,8 +593,7 @@ auto ImbueSpawn(Game* game, uint8_t* drop, int32_t flag) noexcept -> Unit* {
 	// A failed unique roll (0x442d60: once per game, or the row's version) still makes an item, a rare 7cr2: free it
 	const int32_t quality = item != nullptr ? d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::ItemQuality)(item) : -1;
 	if (quality == QualityUnique) {
-		plog::Info("armageddon: imbued Phase Blade hit 1 in %u: 2H Phase Blade, unique row %d, item level %d (%u made)",
-		           ArmageddonOdds[difficulty], rows.unique, ArmageddonLevel, ++g_armageddons);
+		++g_armageddons;
 		return item;
 	}
 	if (item != nullptr) {

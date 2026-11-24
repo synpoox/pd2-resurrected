@@ -202,7 +202,6 @@ auto Create(D2RL::PlayerHandle player, const Leftover& left, items::ItemContaine
 		const pd2::mapstack::Entry& e = left.saved.entry[i];
 		if (e.stat == d2r::rva::StatMapForceEvent) {  // MapProperties refused the stack when the property is missing
 			props[propCount++] = items::MakeExactProperty(static_cast<uint32_t>(propForceEvent), e.value, e.layer);
-			plog::Info("stacks: leftover %.4s gets forced event layer %d value %d", reinterpret_cast<const char*>(&left.code), e.layer, e.value);
 		}
 	}
 	const items::ItemCreateSpec spec {.structSize = items::ItemCreateSpecSize,
@@ -245,22 +244,24 @@ void MakeLeftovers(const D2RL::PluginContext*, void* user) noexcept {
 			continue;
 		}
 		if (left.quantity == 0) {
-			plog::Info("stacks: leftover %.4s not made: its stack is whole in the cube", reinterpret_cast<const char*>(&left.code));
 			continue;
 		}
 		items::Result made = Create(player, left, items::ItemContainer::Cube);
 		if (made != items::Result::Success) {
 			made = Create(player, left, items::ItemContainer::Ground);
 		}
-		plog::Info("stacks: leftover %.4s x%u back: result %u (%u so far)", reinterpret_cast<const char*>(&left.code),
-		           left.quantity, static_cast<uint32_t>(made), ++g_leftovers);
+		if (made != items::Result::Success) {
+			plog::Warn("stacks: leftover %.4s x%u not made: result %u", reinterpret_cast<const char*>(&left.code), left.quantity,
+			           static_cast<uint32_t>(made));
+		}
+		++g_leftovers;
 	}
 	g_pendingCount = 0;
 	g_busy.store(false, std::memory_order_release);
 }
 
 void DropBatch(const char* why) noexcept {
-	plog::Info("stacks: %s; %d leftovers not made", why, g_pendingCount);
+	plog::Warn("stacks: %s; %d leftovers not made", why, g_pendingCount);
 	g_pendingCount = 0;
 	g_busy.store(false, std::memory_order_release);
 }

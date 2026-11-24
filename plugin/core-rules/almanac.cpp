@@ -49,7 +49,7 @@ void IdentifyAll(Game* game, Unit* player) noexcept {
 		identify(game, player, item, 1);
 		++identified;
 	}
-	plog::Info("almanac: use handler ran, %d items identified, %d elsewhere left, %u uses", identified, left, ++g_uses);
+	++g_uses;
 }
 
 // The stock handler sends the current game's Cairn Stone order to the reader (#1538).

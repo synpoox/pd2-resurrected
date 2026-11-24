@@ -45,7 +45,6 @@ auto InstallRunningDefense(const D2RL::PluginContext* context, char* report, siz
 	const bool sheet = Patch(context, SheetCheck, SheetJumpAt, 0x78);
 	const char* r = roll ? "on" : "FAILED";
 	const char* c = sheet ? "on" : "FAILED";
-	plog::Info("running-defense: to-hit roll on runners %s, sheet defense while running %s", r, c);
 	const size_t used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used,
