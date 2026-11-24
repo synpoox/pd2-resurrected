@@ -417,10 +417,8 @@ Fade g_tierFade[aff::Tiers];
 void Tick(Fade& f, bool start, bool stop, float dt) noexcept {
 	if (start) {
 		f.left = GlowTotal;
-	} else if (f.left <= 0.0f) {
-		return;
 	}
-	f.left = stop ? 0.0f : f.left - dt;
+	f.left = stop || f.left <= 0.0f ? 0.0f : f.left - dt;  // hidden every frame it is not fading: the stash shows it again on a tab change
 	void* panel = g_glowOk && f.left > 0.0f ? reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(Panel) : nullptr;
 	void* image = panel != nullptr ? reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address)(panel, f.glow.name) : nullptr;
 	if (image != nullptr) {
@@ -804,7 +802,7 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 	for (int t = 0; t < aff::Tiers; ++t) {
 		const uint32_t homed = stash_affinity::TakeMapGlow(t);
 		Tick(g_tierFade[t], maps && t != g_tier && homed != 0, !maps || t == g_tier, frame->deltaTimeSeconds);
-		for (int i = 0; i < aff::PageWidth; ++i) {
+		for (int i = 0; i < aff::PageWidth && aff::BaseCode(t, i) != 0; ++i) {
 			const bool other = maps && t == g_tier && g_base[t] != i;
 			Tick(g_bases[t][i].fade, other && (homed >> i & 1) != 0, !other, frame->deltaTimeSeconds);
 		}
