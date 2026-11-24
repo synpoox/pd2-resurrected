@@ -12,7 +12,6 @@
 
 #include "ai_common.h"
 #include "ai_hooks.h"
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"

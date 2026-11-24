@@ -20,7 +20,6 @@
 // Slots are written with PatchWriteU64, each expecting the pointer it holds at install (D2R's function).
 #include "descdam_lines.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 

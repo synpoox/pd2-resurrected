@@ -14,7 +14,6 @@
 #include "common.h"
 #include "registry.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"
@@ -78,9 +77,7 @@ auto AimAtNearestEnemy(Game* game, Unit* caster) noexcept -> void {
 auto Remove(Game* game, Unit* pet) noexcept -> void {
 	d2r::Engine<AddEventFn>(d2r::rva::AddUnitEvent)(game, pet, EventPetEnd,
 	                                                d2r::At<int32_t>(game, d2r::rva::GameFrame) + PetEndFrames, PetEndKey, 0, 0);
-	const uint32_t n = g_removed.fetch_add(1, std::memory_order_relaxed) + 1;
-	plog::Info("decoy: Decoy %u made outside a cast (restored): removed, %u so far",
-	           d2r::At<uint32_t>(pet, d2r::rva::UnitIdField), n);
+	g_removed.fetch_add(1, std::memory_order_relaxed);
 }
 
 auto SrvDoSummon(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {

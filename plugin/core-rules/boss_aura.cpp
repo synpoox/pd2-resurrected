@@ -87,10 +87,7 @@ auto Pd2Pick(Unit* unit, int32_t* level) noexcept -> int32_t {
 	}
 	const int32_t mlvl = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(unit, StatLevel, 0);
 	*level = std::clamp(mlvl / 7, 1, 13);
-	if (plog::Sample(g_picks)) {
-		plog::Info("boss aura: class %d mlvl %d -> skill %d level %d (%u so far)", At<int32_t>(unit, d2r::rva::UnitClassId),
-		           mlvl, skill, *level, g_picks.load());
-	}
+	++g_picks;
 	return skill;
 }
 

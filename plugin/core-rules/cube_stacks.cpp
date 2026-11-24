@@ -256,7 +256,7 @@ void MakeLeftovers(const D2RL::PluginContext*, void* user) noexcept {
 	g_busy.store(false, std::memory_order_release);
 }
 
-void DropBatch(const char* why) noexcept {
+void DropBatch() noexcept {
 	g_pendingCount = 0;
 	g_busy.store(false, std::memory_order_release);
 }
@@ -268,12 +268,12 @@ void PickPlayer(const D2RL::PluginContext*, void* user) noexcept {
 	Unit* local = d2r::Engine<Unit* (*)(uint32_t) noexcept>(ClientPlayer)(d2r::Engine<uint32_t (*)() noexcept>(LocalPlayerSlot)());
 	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
 	if (local == nullptr || At<uint32_t>(local, UnitIdField) != pressedBy) {
-		DropBatch("pressed by another player");
+		DropBatch();
 	} else if (g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success) {
-		DropBatch("no local player");
+		DropBatch();
 	} else if (g_threads->runOnGameThread(g_context, MakeLeftovers, reinterpret_cast<void*>(player)) !=
 	           D2RL::Threads::Result::Success) {
-		DropBatch("could not queue them");
+		DropBatch();
 	}
 }
 
@@ -378,7 +378,7 @@ auto KeepCubeLeftovers(Game* game, Unit* player, const uint8_t* record) noexcept
 	const uint32_t id = At<uint32_t>(player, UnitIdField);
 	if (g_threads->runOnUiThread(g_context, PickPlayer, reinterpret_cast<void*>(static_cast<uintptr_t>(id))) !=
 	    D2RL::Threads::Result::Success) {
-		DropBatch("could not queue them; transmute refused");
+		DropBatch();
 		return false;
 	}
 	return true;

@@ -275,10 +275,6 @@ void ShowTier(int32_t tier) noexcept {
 	stash_affinity::ShowBase(aff::BaseCode(tier, g_base[tier]));
 }
 
-void Log(const char* what) noexcept {
-	plog::Info("stash tabs: %s (view %u, tier %d, base %d)", what, static_cast<uint32_t>(g_view), g_tier + 1, g_base[g_tier]);
-}
-
 auto Open(View view) noexcept -> bool {
 	const uint32_t page = view == View::Maps ? aff::MapsPage : aff::BossingPage;
 	if (page >= g_pages) {  // the arrows would stop on the last page there is, under our tab
@@ -293,7 +289,6 @@ auto Open(View view) noexcept -> bool {
 	}
 	g_pending = true;  // the page is known once every arrow is sent (OnFrame)
 	stash_affinity::SetTabOpen(true, 0);
-	Log(view == View::Maps ? "Maps" : "Bossing");
 	return true;
 }
 
@@ -312,13 +307,11 @@ void Click(const char* what) noexcept {
 		plog::Info("stash tabs: unknown command %s", what);
 		return;
 	}
-	Log(what);
 }
 
 // The pad's steps on the Maps tab: the same ShowTier the buttons' clicks call
 void StepTier() noexcept {
 	ShowTier((g_tier + 1) % 3);
-	Log("pad tier");
 }
 
 void StepBase(int32_t by) noexcept {
@@ -328,7 +321,6 @@ void StepBase(int32_t by) noexcept {
 	} while (aff::BaseCode(g_tier, i) == 0);  // the tier has at least the base on show
 	g_base[g_tier] = i;
 	ShowTier(g_tier);
-	Log("pad base");
 }
 
 // The layout's widgets by name, found once: handles are paths the loader resolves on each call
@@ -421,11 +413,9 @@ auto PadTab(bool right) noexcept -> bool {
 		OpenPad(right ? View::Maps : View::Bossing);
 	} else if (g_view == View::Maps && !right) {
 		Leave();
-		Log("Runes");
 		SelectStock(4);
 	} else if (g_view == View::Bossing && right) {
 		Leave();
-		Log("Personal");
 		SelectStock(0);
 	} else {
 		OpenPad(right ? View::Bossing : View::Maps);
@@ -567,7 +557,6 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 		}
 		if (g_view != View::None && g_frames - g_opened > OursFrames) {  // not our tab's own SelectTab, nor our select's
 			Leave();
-			Log("stock tab");
 		}
 		return Action::Continue;  // the stash selects the tab (ours: Shared)
 	}
@@ -596,7 +585,6 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 	} else if (std::strcmp(what, "Shared") == 0) {  // the stock Shared tab, already selected under ours: its first page
 		Leave();
 		g_tab = 1;
-		Log("Shared");
 	} else if (std::strcmp(what, "Hidden") != 0) {  // Hidden: our bars' off-screen tab 0 (an empty message asserts, #1649)
 		Click(what);
 	}

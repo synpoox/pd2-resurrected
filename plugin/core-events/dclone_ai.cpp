@@ -15,7 +15,6 @@
 #include "arena_spots.h"
 #include "nihlathak_ai.h"
 #include "log.h"
-#include "hot_log.h"
 #include "placements.h"
 
 #include <atomic>

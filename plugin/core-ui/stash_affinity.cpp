@@ -24,7 +24,6 @@
 #include "stash_affinity.h"
 
 #include "log.h"
-#include "hot_log.h"
 #include "log_once.h"
 #include "map_stack.h"
 #include "pd2_engine.h"
@@ -95,7 +94,7 @@ std::atomic<uint32_t> g_want {0};
 std::atomic<bool> g_open {false};
 std::atomic<uint32_t> g_viewPage {0};
 std::atomic<bool> g_tidyFailed {false};
-pd2::LogOnce g_moveLogged, g_refusalLogged, g_failLogged;  // game thread only: a retry loop writes a line once (#2094)
+pd2::LogOnce g_failLogged;  // game thread only: a retry loop writes a line once (#2094)
 std::atomic<bool> g_hinted {false}, g_stopped {false};
 std::atomic<uint32_t> g_handStacked {0};
 std::atomic<uint32_t> g_routed {0}, g_merged {0}, g_swapped {0}, g_returned {0}, g_failed {0}, g_updates {0};
@@ -183,11 +182,6 @@ auto MoveTo(D2RL::PlayerHandle player, items::ItemInfo& item, uint32_t page, int
 	}
 	if (x >= 0) {
 		Use(page, x, y, true);
-	}
-	// a tab or base switch moves every stored map (20 lines a click, #2094) and a moved item may get a new id: hot-gated
-	if (pd2::HotLogsOn() && g_moveLogged.First(pd2::Key(item.runtimeId, page * 256 + static_cast<uint32_t>(y + 1) * 16 + static_cast<uint32_t>(x + 1)))) {
-		plog::Info("affinity: %08x from container %u page %u to page %u cell %d,%d", item.code,
-		           static_cast<uint32_t>(item.container), item.sharedStashPage, page, x, y);
 	}
 	item.container = C::SharedStash;
 	item.sharedStashPage = page;
@@ -283,12 +277,6 @@ auto MapRefusal(const items::ItemInfo& a, const items::ItemInfo& b, uint32_t sta
 		reason = "count";
 	} else {
 		reason = MapStatsRefusal(a, b, same);
-	}
-	// a refusal is one line per stored stack for every item, every pass (290 lines for 25 maps, #2094): hot-gated
-	if ((reason == nullptr || pd2::HotLogsOn()) && g_refusalLogged.First(pd2::Key(a.runtimeId, b.runtimeId))) {
-		plog::Info("affinity: map %08x (quality %u) onto the stack at page %u cell %d,%d (quality %u): stats equal %d, %s%s", a.code,
-		           static_cast<uint32_t>(a.quality), b.sharedStashPage, b.x, b.y, static_cast<uint32_t>(b.quality), same,
-		           reason == nullptr ? "merge" : "refused: ", reason == nullptr ? "" : reason);
 	}
 	return reason;
 }
@@ -435,9 +423,10 @@ void ResendCursor(D2RL::PlayerHandle player, uint32_t cursorId) noexcept {
 	items::ItemInfo after {.structSize = items::ItemInfoSize};
 	const bool kept = Quantity(held) == count && g_items->getItemInfo(g_context, held, &after) == items::Result::Success &&
 	                  (after.stateFlags & items::ItemStateIdentified) == identified;
-	(sent == items::Result::Success && kept ? plog::Info : plog::Warn)(
-	    "affinity: cursor item %08x x%d sent to the client again: result %u%s", item.code, count, static_cast<uint32_t>(sent),
-	    kept ? "" : ", ITEM CHANGED");
+	if (sent != items::Result::Success || !kept) {
+		plog::Warn("affinity: cursor item %08x x%d sent to the client again: result %u%s", item.code, count,
+		           static_cast<uint32_t>(sent), kept ? "" : ", ITEM CHANGED");
+	}
 }
 
 // Game thread (#1744): a hand drop's 0x21, which D2R cannot resolve on a Maps or Bossing page. The cursor item is
@@ -636,9 +625,11 @@ void Withdraw(D2RL::PlayerHandle player, const Noted& noted) noexcept {
 	    g_items->getItemInfo(g_context, held, &cursor) == items::Result::Success) {
 		ResendCursor(player, cursor.runtimeId);
 	}
-	plog::Info("affinity: %08x x%d taken out of the stash: %d to the cursor (split result %u, counts %s), the rest %s", item.code,
-	           had, split == items::Result::Success ? aff::WithdrawMax : 0, static_cast<uint32_t>(split),
-	           busy ? "untouched" : sums ? "add up" : "DO NOT add up", home ? "back home" : "kept in the inventory");
+	if ((!busy && !sums) || !home) {
+		plog::Warn("affinity: %08x x%d taken out of the stash: %d to the cursor (split result %u, counts %s), the rest %s", item.code,
+		           had, split == items::Result::Success ? aff::WithdrawMax : 0, static_cast<uint32_t>(split),
+		           busy ? "untouched" : sums ? "add up" : "DO NOT add up", home ? "back home" : "kept in the inventory");
+	}
 	if (!home && g_kept.count < MaxNoted) {
 		g_kept.item[g_kept.count++] = noted;
 	}
@@ -898,9 +889,10 @@ auto TakeOut(uint32_t itemId) noexcept -> bool {
 				home.placement = items::Placement::Automatic;
 				resent = Move(player, on.handle, home);
 			}
-			(resent == items::Result::Success ? plog::Info : plog::Warn)(
-			    "affinity: %08x stays in the stash; sent to the client again by a move on page %u: result %u", on.code,
-			    on.sharedStashPage, static_cast<uint32_t>(resent));
+			if (resent != items::Result::Success) {
+				plog::Warn("affinity: %08x stays in the stash; sent to the client again by a move on page %u: result %u",
+				           on.code, on.sharedStashPage, static_cast<uint32_t>(resent));
+			}
 		}
 	};
 	return g_threads->runOnGameThread(g_context, now, reinterpret_cast<void*>(static_cast<uintptr_t>(itemId))) ==

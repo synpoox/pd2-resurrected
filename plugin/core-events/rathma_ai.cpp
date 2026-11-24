@@ -12,7 +12,6 @@
 
 #include "ai_hooks.h"
 #include "log.h"
-#include "hot_log.h"
 #include "placements.h"
 #include "map_open.h"
 
@@ -557,14 +556,6 @@ auto LifeEvent(Tick& t) noexcept -> bool {
 		HoldLife(t.unit, 15);
 		SetImmune(t.game, t.unit, true, true);
 		t.next = 6;
-		// The resists as SetImmune left them: the monsterinfo readout rarely catches a retreating boss (#604)
-		const bool state8 = d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::rva::UnitHasState)(t.unit,
-		                                                                                          StateResistAll) != 0;
-		plog::Info("rathma: class %d event 8 at %d%% life: retreat (stage %d), resists %d/%d/%d/%d/%d/%d "
-		           "(fire/cold/lightning/poison/magic/damage), state 8 %s",
-		           t.classId, t.life, stage, Stat(t.unit, ImmuneStats[0]), Stat(t.unit, ImmuneStats[1]),
-		           Stat(t.unit, ImmuneStats[2]), Stat(t.unit, ImmuneStats[3]), Stat(t.unit, ImmuneStats[4]),
-		           Stat(t.unit, ImmuneStats[5]), state8 ? "on" : "off");
 		if (original) {
 			Retreat(t);  // PD2 runs state 6's code here, whatever the state
 		} else {

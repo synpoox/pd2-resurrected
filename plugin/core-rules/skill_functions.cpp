@@ -18,7 +18,6 @@
 #include "pd2_engine.h"
 #include "item_rules.h"
 #include "log.h"
-#include "hot_log.h"
 #include "missile_functions.h"
 #include "skill_router.h"
 #include "line_spread.h"
@@ -3211,8 +3210,7 @@ auto SrvStSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 		value = charges < 3 ? calc2 * charges : 0;
 	}
 	DropStateList(dataFlag, unit, TempSkillBuff);  // always a new list
-	const char* made =
-		TimedStatList(dataFlag, unit, unit, skillId, level, SplashFrames, TempSkillBuff, {{IncSplashRadius, value}});
+	TimedStatList(dataFlag, unit, unit, skillId, level, SplashFrames, TempSkillBuff, {{IncSplashRadius, value}});
 	++g_splashStarts;
 	return 1;
 }
@@ -3938,7 +3936,7 @@ auto BusyModeGate(Game* game, Unit* unit, int32_t mode, void* request, int32_t f
 		if (next != nullptr) {
 			const int32_t nextFunc = At<uint16_t>(next, SkSrvDoFunc);
 			const bool refused = func == SrvDoBladeFury && nextFunc == SrvDoBladeFury;
-			auto& counter = refused ? g_bladeFuryRefusals : g_takeOvers;
+			++(refused ? g_bladeFuryRefusals : g_takeOvers);
 			return refused ? 1 : 0;
 		}
 	}
@@ -4153,8 +4151,8 @@ auto SrvDoMeleeSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) no
 std::atomic<uint32_t> g_reviveEvents {0};
 std::atomic<uint32_t> g_reviveSplashes {0};
 
-auto AuraEventReviveSplash(Game* game, int32_t event, Unit* unit, Unit* target, void* damage, int32_t skillId,
-                           int32_t level) noexcept -> int32_t {
+auto AuraEventReviveSplash(Game* game, int32_t, Unit* unit, Unit* target, void* damage, int32_t,
+                           int32_t) noexcept -> int32_t {
 	(void)damage;
 	if (t_splashing) {
 		return 0;  // PD2 skips this handler for a splash's own hits
@@ -4466,7 +4464,7 @@ constexpr int32_t ItemTypeSword = 30, ItemTypeTwoHanded = 120;  // merged itemty
 constexpr int32_t StatCrushingBlow = 136;                       // itemstatcost crushingblow
 
 // Holy Sword start: the weapon must be both a sword and two-handed.
-auto SrvStHolySword(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+auto SrvStHolySword(Game* game, Unit* unit, int32_t, int32_t) noexcept -> int64_t {
 	Unit* weapon = game != nullptr && unit != nullptr
 	                   ? d2r::Engine<Unit* (*)(Unit*) noexcept>(d2r::rva::UnitWeapon)(unit)
 	                   : nullptr;
@@ -4480,7 +4478,7 @@ auto SrvStHolySword(Game* game, Unit* unit, int32_t skillId, int32_t level) noex
 
 // Smite start: PD2 adds Smite's auraevent1 (domeleedamage -> 16) here. D2R calls no aura event on a player's melee hit
 // (#165 game check: slot 16 never ran on Smite or with a crushing-blow item), so the roll rides on Smite's do instead.
-auto SrvStSmite(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+auto SrvStSmite(Game* game, Unit* unit, int32_t, int32_t) noexcept -> int64_t {
 	if (game == nullptr || unit == nullptr) {
 		return 0;
 	}
@@ -4671,7 +4669,7 @@ std::map<std::pair<const void*, uint32_t>, NestCount> g_nestCounts;
 
 // TorajanBossNest (PD2 srvdofunc 181 -> router 190): D2R's Nest (srvdo 91) spawning one monster per cast, at most
 // Param1 over the nest's life, each with no treasure class and no experience and sumoverlay.
-auto SrvDoTorajanNest(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+auto SrvDoTorajanNest(Game* game, Unit* unit, int32_t skillId, int32_t) noexcept -> int64_t {
 	using namespace d2r::rva;
 	const uint8_t* skill = d2r::api.getSkillRecord(d2r::DataFlag(game), skillId);
 	const uint8_t* uskill = d2r::Engine<const uint8_t* (*)(Unit*) noexcept>(CurrentSkill)(unit);
@@ -4855,7 +4853,7 @@ auto VoidKnightList(int32_t life, int32_t* out) noexcept -> int {
 	return n;
 }
 
-auto SrvDoRathmaSummon(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+auto SrvDoRathmaSummon(Game* game, Unit* unit, int32_t skillId, int32_t) noexcept -> int64_t {
 	using namespace d2r::rva;
 	// shortcut: PD2 also needs the game's area type to be Rathma's (game +0x1df4 == 0x2b), which the port does not keep
 	// (docs/deviations.md); only the Rathma group has the skill
@@ -4972,7 +4970,7 @@ auto SrvDoUberDiabSummon(Game* game, Unit* unit, int32_t skillId, int32_t level)
 // target unit and refuses the cast without one; PD2's takes the path's target unit, aims the path at its spot, and
 // starts without one too, keeping the point the caster's AI set (Dclone's run to the arena centre, #471).
 
-auto SrvStUberDiabRun(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+auto SrvStUberDiabRun(Game* game, Unit* unit, int32_t, int32_t) noexcept -> int64_t {
 	using namespace d2r::rva;
 	UnitSkill* uskill = game != nullptr && unit != nullptr ? CurrentUnitSkill(unit) : nullptr;
 	if (uskill == nullptr) {

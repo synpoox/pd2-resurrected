@@ -25,7 +25,6 @@
 // monstats class. A merc without the skill (a Classic hireling row, another merc type) keeps D2R's think.
 #include "merc_ai.h"
 
-#include "hot_log.h"
 #include "item_rules.h"
 #include "log.h"
 #include "monster_count.h"

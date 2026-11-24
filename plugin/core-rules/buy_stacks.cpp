@@ -16,7 +16,6 @@
 #include "buy_stacks.h"
 
 #include "item_rules.h"
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"

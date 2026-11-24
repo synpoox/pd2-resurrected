@@ -21,7 +21,6 @@
 #include "merc_rules.h"
 
 #include "pd2_engine.h"
-#include "hot_log.h"
 #include "log.h"
 #include "sig.h"
 

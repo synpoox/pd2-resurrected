@@ -23,7 +23,7 @@ The **Maps** and **Bossing** tabs sit on a row above D2R's five stash tabs; one 
 core-ui's `tabs` part (`stash_tabs.cpp`) runs the buttons; the widgets are in `bankexpansionlayouthd.json`, all hidden until it
 shows them. A tab click switches the stash to Shared through D2R's tab-bar select (found by signature; no SDK service does
 it), then the stash's page arrows open the page.
-The tab's page is published to the drop filter (`ViewPage`) only once every arrow was sent (log `stash tabs: shared page <n> on show`);
+The tab's page is published to the drop filter (`ViewPage`) only once every arrow was sent (proof: the filter follows the open page);
 an arrow that fails is retried for 30 frames, then the page stays unknown (no filter) and a warning is logged. The stash's page count
 is read from `add_shared_tabs` in `[d2rcore.stash]` of the mod's `d2rloader.toml`, else of the game-wide `<game>/d2rloader/config/d2rloader.toml`, else the loader default 0 (pages = n + 3, the fewest stock pages of any mode: Classic/LoD have 3, RotW 5; only when no file can be read is there no limit): with fewer than 20 pages (n below 17) the Bossing tab is hidden (fewer than 16 pages: Maps too) and the log says so.
 The SDK has no read of the shown page, so a page change that sends no arrow is still not seen.
@@ -69,8 +69,7 @@ sends it whenever the two items stack, 0x375960) does not work natively on these
 target up by cell (0x472590, 0x474220) in the player's current inventory (0x34a360), which does not hold the Maps or
 Bossing page's stack, and logs `No item found at page: 4` (#1744). So while either tab is open the hook consumes a 0x21
 onto the stash (grid 4) and queues it for the game thread, which merges the cursor item into the stack through the same
-SDK merge when it is the same stackable item on its own cell of the open page. Log: `stash tabs: stack message 0x21 onto
-page .. cell x,y: the plugin stacks it`, then `affinity: .. merged with the stack ..`. Otherwise, or when a step fails (a
+SDK merge when it is the same stackable item on its own cell of the open page. Proof: the stack on the cell holds the sum. Otherwise, or when a step fails (a
 full inventory), the item stays on the cursor: it is destroyed only after the stack holds the sum. A sum past 255 tops the stack up to 255 and leaves the rest on the cursor item, as D2R's own 0x4c1940 does ([#1758](https://github.com/synpoox/pd2-resurrected/issues/1758)).
 The counts are read first (stat 70 through `editNativeItem`, which also reads a shared-stash item): a stack already at 255 refuses with no move, as D2R's
 handler refuses that message (0x4f2a80 returns 2 only below the item's maxstack; the refusal only writes telemetry). Before #1758 the
@@ -112,8 +111,8 @@ Refusals resend the item ([#1766](https://github.com/synpoox/pd2-resurrected/iss
 the server answers, but it marks the item pending (`0x2c81d0` or `0x15f8b0` call `0x1c6ac0`, state 0x36) and ignores stack
 and swap clicks with it until an item packet for it arrives (`0x1c6a40`). D2R's own failure branches send none, so every
 refusal queues `stash_affinity::Resend` for the game thread: the same `ResendCursor` as a consumed 0x21, which also finds a
-quick-moved item still in the inventory or Cube, and edits an item that does not stack to its own identified state. Log:
-`stash tabs: refused message 0x.. .. ; the item is sent again`, then `affinity: cursor item .. sent to the client again: result 0`.
+quick-moved item still in the inventory or Cube, and edits an item that does not stack to its own identified state. Proof: the item
+is back on its cell and the next click works; a failed send warns.
 
 Red cells ([#1745](https://github.com/synpoox/pd2-resurrected/issues/1745)): the client asks the same rule first. Two
 D2Common cell tests are hooked by signature (`inventory_lock.cpp`): 93847 `0x38a250` (the cursor item's cells are free: green

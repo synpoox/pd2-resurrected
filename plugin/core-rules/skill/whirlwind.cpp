@@ -10,7 +10,6 @@
 #include "registry.h"
 
 #include "pd2_engine.h"
-#include "hot_log.h"
 #include "log.h"
 #include "sig_hook.h"
 
@@ -105,14 +104,13 @@ using ClientTargetFn = int32_t (*)(Unit*, int32_t*, int32_t*) noexcept;
 ServerTargetFn g_serverTarget = nullptr;
 ClientTargetFn g_clientTarget = nullptr;
 uint64_t g_serverReturn = 0, g_clientReturn = 0;
-std::atomic<uint32_t> g_serverSpins {0}, g_clientSpins {0};
 
 auto Sign(int32_t v) noexcept -> int32_t {
 	return (v > 0) - (v < 0);
 }
 
 // PD2's 0x1036c800 after a successful target point: past the path's target unit, then the path aims at that point
-auto SpinPast(Unit* unit, int32_t* x, int32_t* y, const char* side, std::atomic<uint32_t>& count) noexcept -> void {
+auto SpinPast(Unit* unit, int32_t* x, int32_t* y) noexcept -> void {
 	auto* path = At<uint8_t*>(unit, d2r::rva::UnitPath);
 	Unit* target = path != nullptr ? At<Unit*>(path, d2r::rva::PathTargetUnit) : nullptr;
 	int32_t ux = 0, uy = 0;
@@ -131,7 +129,7 @@ auto SpinPast(Unit* unit, int32_t* x, int32_t* y, const char* side, std::atomic<
 auto ServerTarget(d2r::Game* game, Unit* unit, int32_t* x, int32_t* y) noexcept -> int32_t {
 	const int32_t ok = g_serverTarget(game, unit, x, y);
 	if (ok != 0 && reinterpret_cast<uint64_t>(_ReturnAddress()) == g_serverReturn) {
-		SpinPast(unit, x, y, "server", g_serverSpins);
+		SpinPast(unit, x, y);
 	}
 	return ok;
 }
@@ -139,7 +137,7 @@ auto ServerTarget(d2r::Game* game, Unit* unit, int32_t* x, int32_t* y) noexcept 
 auto ClientTarget(Unit* unit, int32_t* x, int32_t* y) noexcept -> int32_t {
 	const int32_t ok = g_clientTarget(unit, x, y);
 	if (ok != 0 && reinterpret_cast<uint64_t>(_ReturnAddress()) == g_clientReturn) {
-		SpinPast(unit, x, y, "client", g_clientSpins);
+		SpinPast(unit, x, y);
 	}
 	return ok;
 }

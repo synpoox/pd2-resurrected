@@ -13,7 +13,6 @@
 
 #include "ai_hooks.h"
 #include "log.h"
-#include "hot_log.h"
 #include "map_events.h"
 
 #include <intrin.h>

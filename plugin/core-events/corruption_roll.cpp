@@ -42,7 +42,7 @@ auto RollRand() noexcept -> int32_t {
 // it and never the destroyed one; the first row whose value beats the roll puts its mods on.
 // With `desecrate` (PD2's flag 1, Desecration) the roll is 851-999 from the start (an amulet's rows 682-689) and the
 // row's corrupt/corruptnum go on as desecrate/desecratenum; the caller checks the item.
-auto CorruptItem(Game* game, Unit* item, bool desecrate, const char* label) noexcept -> bool {
+auto CorruptItem(Game* game, Unit* item, bool desecrate) noexcept -> bool {
 	using namespace d2r::rva;
 	static const CorruptProps props;  // resolved on first use, after the plugin loaded (propids::Init)
 	if (!props.ok()) {

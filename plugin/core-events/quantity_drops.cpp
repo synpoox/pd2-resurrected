@@ -5,7 +5,6 @@
 // D2R's own MonsterTcDrop, as uber_deaths' extra drop; every engine call resolves by signature.
 #include "quantity_drops.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "quantity_rolls.h"
 #include "sig.h"

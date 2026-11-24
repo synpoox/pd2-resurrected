@@ -155,7 +155,7 @@ auto QueueRun(size_t slot) noexcept -> bool {
 // PD2's buff on the boss: max life x mult, and current life too when it was full (a deviation, deviations.md); then a
 // stat list with state `mapevent`, damagepercent +bonus and the four masteries at twice that. As lucion_ai's SetShroud
 // and uber_scaling, then QueueUnitUpdate (PD2's queue-update call).
-void Buff(Game* game, Unit* boss, bool poolA, int32_t id, uint32_t unitId, int32_t tryNo, int32_t frame) noexcept {
+void Buff(Game* game, Unit* boss, bool poolA, int32_t id, uint32_t unitId) noexcept {
 	using namespace d2r::rva;
 	const Scale s = Multipliers(poolA, id);
 	const auto stat = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat);
@@ -245,7 +245,7 @@ void SpawnBoss(Game* game, const Pending& p) noexcept {
 		if (boss != nullptr) {
 			g_boss = {static_cast<uint32_t>(At<uint16_t>(game, GameIdField)),
 			          static_cast<uint32_t>(d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(d2r::sig::UnitId)(boss, __FILE__, __LINE__))};
-			Buff(game, boss, poolA, id, p.unitId, attempt, frame);
+			Buff(game, boss, poolA, id, p.unitId);
 			return;
 		}
 	}

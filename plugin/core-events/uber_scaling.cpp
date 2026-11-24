@@ -6,7 +6,6 @@
 #include "uber_scaling.h"
 
 #include "log.h"
-#include "hot_log.h"
 
 #include <algorithm>
 #include <atomic>

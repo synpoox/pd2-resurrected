@@ -28,8 +28,8 @@
 #include "ai_hooks.h"
 #include "corruption_roll.h"
 #include "invader_dress.h"
-#include "hot_log.h"
 #include "log.h"
+#include "log_once.h"
 #include "map_events.h"
 
 #include <D2RLPlugin/item.h>
@@ -78,6 +78,7 @@ std::atomic<uint32_t> g_closed {0};
 std::atomic<uint32_t> g_deaths {0};
 std::atomic<uint32_t> g_drops {0};
 std::atomic<uint32_t> g_noTc {0};
+pd2::LogOnce g_failLogged;  // game thread only: a failed spawn or TC writes its warning once per class (#2101)
 std::atomic<uint32_t> g_held {0};      // items rolled at spawn and held
 std::atomic<uint32_t> g_released {0};  // held items put on the floor at death
 std::atomic<uint32_t> g_lost {0};      // held items with no unit or no floor spot at death
@@ -263,6 +264,9 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 		usedX = x + step[0], usedY = y + step[1];
 	}
 	if (invader == nullptr) {
+		if (g_failLogged.First(pd2::Key(1, static_cast<uint32_t>(which)))) {
+			plog::Warn("invaders: no %s at the portal (%d, %d)", ClassNames[which], x, y);
+		}
 		Idle(game, unit, aidel);
 		return;
 	}
@@ -300,6 +304,9 @@ auto DropTc(Game* game, Unit* monster, Unit* killer, const char* name, Unit** it
 										dataFlag, static_cast<uint16_t>(index), 0)
 	                              : nullptr;
 	if (tc == nullptr) {
+		if (g_failLogged.First(pd2::Key(2, static_cast<uint32_t>(reinterpret_cast<uintptr_t>(name))))) {
+			plog::Warn("invaders: no TC \"%s\"", name);
+		}
 		++g_noTc;
 		return false;
 	}
@@ -455,7 +462,7 @@ void RollGear(Game* game, Unit* invader, Unit* player, int32_t which) noexcept {
 }
 
 // At the death: the held items on the floor by the invader, as the cursor drop puts one down. False when none was held.
-auto DropHeld(Game* game, Unit* monster, int32_t which) noexcept -> bool {
+auto DropHeld(Game* game, Unit* monster) noexcept -> bool {
 	using namespace d2r::rva;
 	std::vector<uint32_t> held;
 	{
@@ -508,7 +515,7 @@ void OnInvaderDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	                                : nullptr;
 	const int32_t which = event->monster.classId - FirstInvader;
 	// held gear drops whatever the event is now; with none held, the event's invaders roll at death as before
-	const bool held = monster != nullptr && g_gearOn && DropHeld(game, monster, which);
+	const bool held = monster != nullptr && g_gearOn && DropHeld(game, monster);
 	if (game == nullptr || (!held && MapEvent(game) != InvadersEvent)) {
 		return;
 	}

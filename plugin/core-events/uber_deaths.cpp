@@ -1,7 +1,6 @@
 // The uber lane's steps of the monster-death listener (death_steps.h), moved out of key_drops.cpp (#943).
 #include "death_steps.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "placements.h"
 #include "rathma.h"

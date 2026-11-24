@@ -14,7 +14,6 @@
 #include "common.h"
 
 #include "../item_rules.h"
-#include "hot_log.h"
 #include "log.h"
 #include "sig.h"
 

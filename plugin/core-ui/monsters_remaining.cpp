@@ -28,7 +28,6 @@
 // shortcut: single player and the host only.
 #include "monsters_remaining.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "monster_count.h"  // common/: the ledger read and its text
 #include "sig.h"

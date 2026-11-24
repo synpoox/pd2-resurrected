@@ -23,7 +23,6 @@
 #include "../item_rules.h"
 #include "registry.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"

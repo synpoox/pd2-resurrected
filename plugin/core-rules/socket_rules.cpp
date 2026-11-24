@@ -15,7 +15,6 @@
 
 #include "item_rules.h"
 #include "pd2_engine.h"
-#include "hot_log.h"
 #include "log.h"
 
 #include <D2RLPlugin/data_tables.h>

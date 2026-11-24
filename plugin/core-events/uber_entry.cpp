@@ -301,8 +301,6 @@ auto OpenUber(Game* game, Unit* player, Unit* item, int32_t level) noexcept -> v
 	// PD2 0x10383060 keeps the arrival count in game +0x2628, but sets it to 0 for Uber Tristram
 	*OpenCounter(game, EntryKey) = level == UberTristram() ? 0 : arrived;
 	g_warped += static_cast<uint32_t>(arrived);
-	// stock areas (Vanilla mini-ubers, D2R's Tristram) and the authored private ones open through this same path
-	const placements::Binding* bound = placements::BindingAt(level);
 	++g_ubers;
 	if (tier == 0) {
 		g_portals += static_cast<uint32_t>(made);

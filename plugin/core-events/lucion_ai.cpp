@@ -12,7 +12,6 @@
 #include "arena_spots.h"
 #include "level_fx.h"
 #include "log.h"
-#include "hot_log.h"
 #include "placements.h"
 
 #include <atomic>

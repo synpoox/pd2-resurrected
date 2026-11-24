@@ -11,7 +11,6 @@
 // Dclone's (110) is raised to PD2's item level for the drop: at 110, Annihilus (lvl 130) came out magic.
 #include "uber_drops.h"
 
-#include "hot_log.h"
 #include "log.h"
 
 #include <D2RLPlugin/item.h>

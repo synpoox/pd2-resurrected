@@ -31,7 +31,6 @@
 #include "rathma_pair.h"
 #include "rathma_split.h"
 #include "log.h"
-#include "hot_log.h"
 
 #include <D2RLPlugin/data_tables.h>
 #include <D2RLPlugin/mutations.h>
@@ -878,7 +877,7 @@ auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept ->
 		damage = pd2::rathma::Half(damage);
 	}
 	int32_t stacks = 0;
-	void* list = ApplyWounds(game, unit, target, damage, &stacks);
+	ApplyWounds(game, unit, target, damage, &stacks);
 	if (other != nullptr) {
 		const int32_t mode = At<int32_t>(other, UnitMode);
 		const bool otherList = mode != 0 && mode != 12 &&
@@ -1414,7 +1413,7 @@ Unit* (*g_statOwner)(Unit*, void*) noexcept = nullptr;
 uint64_t g_clientStatCallback = 0;  // its address, 0 until FindZeroChargeSkills finds all three
 
 // True when it kept the skill: 0 charges on the unit's own item, which D2R would remove
-auto KeepZeroChargeSkill(Unit* unit, Unit* item, uint32_t layer, bool client) noexcept -> bool {
+auto KeepZeroChargeSkill(Unit* unit, Unit* item, uint32_t layer) noexcept -> bool {
 	using namespace d2r::rva;
 	if (g_itemSkill == nullptr || unit == nullptr || item == nullptr ||
 	    (StatOf(item, StatChargedSkill, static_cast<int32_t>(layer)) & 0xff) != 0 ||
@@ -1433,7 +1432,7 @@ auto KeepZeroChargeSkill(Unit* unit, Unit* item, uint32_t layer, bool client) no
 
 auto ClientStatCallback(void* a1, Unit* unit, Unit* item, uint64_t statLayer, int32_t oldValue, int32_t newValue) noexcept
 	-> uint64_t {
-	if (statLayer >> 32 == StatChargedSkill && KeepZeroChargeSkill(unit, item, static_cast<uint32_t>(statLayer), true)) {
+	if (statLayer >> 32 == StatChargedSkill && KeepZeroChargeSkill(unit, item, static_cast<uint32_t>(statLayer))) {
 		return 0;
 	}
 	using Fn = uint64_t (*)(void*, Unit*, Unit*, uint64_t, int32_t, int32_t) noexcept;
@@ -1465,7 +1464,7 @@ auto EquipStatCallback(Game* game, Unit* unit, Unit* item, uint64_t statLayer, i
 		RefreshOpBase(unit, StatMissingHp);
 		return 0;
 	}
-	if (stat == StatChargedSkill && KeepZeroChargeSkill(unit, item, static_cast<uint32_t>(statLayer), false)) {
+	if (stat == StatChargedSkill && KeepZeroChargeSkill(unit, item, static_cast<uint32_t>(statLayer))) {
 		return 0;
 	}
 	if (stat != static_cast<uint64_t>(StatSkillOnEquip)) {

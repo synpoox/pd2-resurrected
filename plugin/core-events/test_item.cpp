@@ -57,10 +57,7 @@ void Act(const D2RL::PluginContext*, void* native, void* user) noexcept {
 		const uint32_t key = LucionStageKey;
 		*d2r::Engine<int32_t* (*)(uint8_t*, uint32_t*) noexcept>(GameCounter)(reinterpret_cast<uint8_t*>(job->game) + GameCounters,
 		                                                                   const_cast<uint32_t*>(&key)) = LucionDeadStage;
-		const DesecrateResult result = Desecrate(job->game, job->player, item);
-		plog::Info("test aid: desecrate: item %d %s", At<int32_t>(item, UnitClassId),
-		           result == DesecrateResult::Desecrated ? "desecrated" : result == DesecrateResult::Failed ? "roll failed (no brick here)"
-		                                                                                                    : "refused, see the line above");
+		Desecrate(job->game, job->player, item);
 		return;  // Desecrate refreshes the item for the client itself
 	}
 	// As Desecrate does for its success: refresh the item on the client

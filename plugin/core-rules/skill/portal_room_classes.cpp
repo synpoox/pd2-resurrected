@@ -17,7 +17,6 @@
 // two functions' entries in its RVA table; both sites are mid-function. No SDK service reaches either test.
 #include "common.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "sig.h"
 

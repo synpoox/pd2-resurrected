@@ -9,7 +9,6 @@
 // the call and not rerun. No SDK service reaches an item event node.
 #include "common.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 

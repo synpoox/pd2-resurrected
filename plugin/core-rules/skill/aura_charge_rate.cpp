@@ -9,7 +9,6 @@
 #include "common.h"
 #include "registry.h"
 
-#include "hot_log.h"
 #include "../item_rules.h"
 #include "log.h"
 #include "pd2_engine.h"

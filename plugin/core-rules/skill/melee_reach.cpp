@@ -20,7 +20,6 @@
 // growth through the roll's redirected #11138) and D2Common's own caller follow ours (docs/deviations.md).
 #include "common.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"

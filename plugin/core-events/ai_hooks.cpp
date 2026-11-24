@@ -3,7 +3,6 @@
 #include "ai_hooks.h"
 
 #include "ai_registry.h"
-#include "hot_log.h"
 #include "log.h"
 
 #include <algorithm>

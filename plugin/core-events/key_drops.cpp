@@ -9,7 +9,6 @@
 // DataTableService answers Busy off the captured game thread and has no TC lookup by name.
 #include "key_drops.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "map_events.h"
 #include "quantity_drops.h"

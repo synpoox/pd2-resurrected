@@ -11,7 +11,6 @@
 #include "missile_functions.h"
 
 #include "log.h"
-#include "hot_log.h"
 
 #include <algorithm>
 #include <atomic>
@@ -355,7 +354,7 @@ auto SrvHitExplodeSpread(Game* game, Unit* missile, Unit* hit) noexcept -> int32
 // less damage, down to dParam1 percent. Scales physical, the elements and the leeches.
 // shortcut: PD2 counts pierces in its own pierce hook; this counts hits on the missile's pierce_count stat, so the last
 // (not piercing) hit takes one step less than PD2's. Upgrade if the pierce hook is ported.
-void SrvDmgPierceFalloff(Game* game, Unit* missile, Unit* target, d2r::Damage* damageBlock) noexcept {
+void SrvDmgPierceFalloff(Game* game, Unit* missile, Unit*, d2r::Damage* damageBlock) noexcept {
 	auto* damage = reinterpret_cast<uint8_t*>(damageBlock);  // the block is opaque in the toolkit; its fields are read by offset
 	using namespace d2r::rva;
 	if (game == nullptr || missile == nullptr || damage == nullptr) {

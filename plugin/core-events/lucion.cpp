@@ -166,7 +166,7 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	if (lucion == nullptr || At<int32_t>(lucion, UnitClassId) != Lucion) {
 		return;
 	}
-	const uint32_t deaths = g_deaths.fetch_add(1, std::memory_order_relaxed) + 1;
+	g_deaths.fetch_add(1, std::memory_order_relaxed);
 	const bool portal = OpenTemplePortal(game, lucion);
 	if (portal) {
 		g_portals.fetch_add(1, std::memory_order_relaxed);
@@ -191,10 +191,10 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	*CounterOf(game, LucionStageKey) = LucionDeadStage;
 	const int32_t killed = KillAdds(game);
 	g_killed.fetch_add(static_cast<uint32_t>(killed), std::memory_order_relaxed);
-	plog::Info("lucion: dead at tier %d (%u so far): Temple portal %s, Harrogath portal %s, Demonic Cube 1 in %u %s, "
-	           "%d adds killed, stage %d",
-	           tier, deaths, portal ? "open" : "FAILED", back ? "open" : "FAILED", odds, cube ? "dropped" : "not dropped",
-	           killed, LucionDeadStage);
+	if (!portal || !back) {
+		plog::Warn("lucion: dead at tier %d: Temple portal %s, Harrogath portal %s", tier, portal ? "open" : "FAILED",
+		           back ? "open" : "FAILED");
+	}
 }
 
 }  // namespace
@@ -285,10 +285,11 @@ auto BrickAmulet(Game* game, Unit* playerUnit, D2RL::PlayerHandle player, D2RL::
 	}
 	Rolls rolls;
 	const items::Result edited = g_items->editNativeItem(g_context, brick, RollBrick, &rolls);
-	plog::Info("desecration: brick %u, a rare amulet at item level %u replaces the amulet: corruption %s, "
-	           "desecration %s (edit %u)",
-	           ++g_bricks, BrickLevel, rolls.corrupted ? "rolled" : "NOT rolled", rolls.desecrated ? "rolled" : "NOT rolled",
-	           static_cast<uint32_t>(edited));
+	++g_bricks;
+	if (!rolls.corrupted || !rolls.desecrated) {
+		plog::Warn("desecration: brick: corruption %s, desecration %s (edit %u)", rolls.corrupted ? "rolled" : "NOT rolled",
+		           rolls.desecrated ? "rolled" : "NOT rolled", static_cast<uint32_t>(edited));
+	}
 	return true;
 }
 

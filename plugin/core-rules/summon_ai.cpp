@@ -18,7 +18,6 @@
 #include "summon_ai.h"
 
 #include "skill/common.h"
-#include "hot_log.h"
 #include "pd2_engine.h"
 #include "log.h"
 #include "sig.h"

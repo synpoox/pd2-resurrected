@@ -17,7 +17,6 @@
 // function; no SDK service reaches the test.
 #include "common.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "sig.h"
 

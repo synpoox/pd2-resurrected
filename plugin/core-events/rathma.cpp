@@ -316,8 +316,10 @@ auto RathmaRoom(Game* game, void* room, int32_t level) noexcept -> bool {
 		for (int i = 0; i < s->bossCount; ++i) {
 			spawned += SpawnBoss(game, room, level, s->bosses[i]) ? 1 : 0;
 		}
-		plog::Info("rathma: level %d, %d of %d bosses spawned, arena portal %s", level, spawned, s->bossCount,
-		           s->from == 0 ? "none (stage 1, #1262)" : portal ? "open" : "FAILED");
+		if (spawned < s->bossCount || (s->from != 0 && !portal)) {
+			plog::Warn("rathma: level %d, %d of %d bosses spawned, arena portal %s", level, spawned, s->bossCount,
+			           s->from == 0 ? "none (stage 1, #1262)" : portal ? "open" : "FAILED");
+		}
 	}
 	const int32_t x = At<int32_t>(room, RoomX), y = At<int32_t>(room, RoomY);
 	const bool arena = Meets(s->arena.x - ArenaHalf, s->arena.x + ArenaHalf, x, x + At<int32_t>(room, RoomWidth)) &&

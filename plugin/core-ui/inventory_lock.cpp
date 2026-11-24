@@ -496,18 +496,20 @@ auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexc
 	if (local && view != 0 && BigTake(message, static_cast<size_t>(size), [=](uint32_t owner) noexcept { return SharedPageOf(player, owner); },
 	                    [game](uint32_t id) noexcept { return BigStashStack(game, id); })) {
 		const bool queued = stash_affinity::TakeOut(ReadU32(message + 1));
-		plog::Info("stash tabs: take message 0x46 of a stack past %d (open tab %u): %s", aff::WithdrawMax, view,
-		           queued ? "the plugin takes it out" : "not queued, left to D2R");
+		if (!queued) {
+			plog::Warn("stash tabs: take message 0x46 of a stack past %d (open tab %u) not queued, left to D2R", aff::WithdrawMax,
+			           view);
+		}
 		if (queued) {
 			return 0;
 		}
 	}
 	if (local && size > 0 && TabStack(message, static_cast<size_t>(size), view)) {
-		const uint32_t cell = ReadU32(message + 0x11);
 		// consumed only once the plugin's stack is queued: the cursor item then stacks or stays on the cursor
 		const bool queued = stash_affinity::StackOnto(ReadU32(message + 1), ReadU32(message + 5));
-		plog::Info("stash tabs: stack message 0x21 onto page %u cell %u,%u: %s", view, cell & 0xffff, cell >> 16,
-		           queued ? "the plugin stacks it" : "not queued, left to D2R");
+		if (!queued) {
+			plog::Warn("stash tabs: stack message 0x21 onto page %u not queued, left to D2R", view);
+		}
 		if (queued) {
 			return 0;
 		}

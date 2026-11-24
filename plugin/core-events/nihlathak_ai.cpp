@@ -5,7 +5,6 @@
 #include "ai_common.h"
 #include "ai_hooks.h"
 #include "log.h"
-#include "hot_log.h"
 #include "uber_drops.h"
 
 #include <D2RLPlugin/item.h>

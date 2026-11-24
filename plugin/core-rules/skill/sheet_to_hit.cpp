@@ -22,7 +22,6 @@
 // server roll's function, so a host and a joined client show the same chance for the same AR, defense and levels.
 #include "common.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "sig.h"
 

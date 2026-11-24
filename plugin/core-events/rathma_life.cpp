@@ -13,7 +13,6 @@
 #include "rathma_life.h"
 
 #include "log.h"
-#include "hot_log.h"
 #include "pd2_engine.h"
 #include "rathma_pair.h"
 #include "rathma_split.h"

@@ -95,7 +95,6 @@ uint32_t g_focusWait = 0;
 uint32_t g_focusReady = 0;  // frames both panels have been active
 uint32_t g_focusStage = 0;  // 0: overlay not asked for yet, 1: waiting for it
 void* g_focusedPanel = nullptr;
-uint32_t g_focusCheck = 0;  // frames left before the focus manager is read back
 bool g_padOpen = false;     // UI thread: a pad open asked for the ControllerOverlay, so a close must undo it
 
 const D2RL::PluginContext* g_context = nullptr;
@@ -307,10 +306,6 @@ void PadClose() noexcept {
 	CloseAll(g_context, nullptr);
 }
 
-void LogFocus(const char* when) noexcept {
-	void* m = reinterpret_cast<void* (*)() noexcept>(FocusManager.address)();
-}
-
 // UI thread, each frame while a pad open waits, in the stash's order (0x23cc40): the inventory is up, the input reset,
 // the ControllerOverlay opened, then (once it is up) its frame and tabs refreshed and the panel focused. The focus
 // manager picks the panel's first focusable widget (0x857d70); should it pick none, D-pad input goes to the neighbouring
@@ -362,22 +357,12 @@ void FocusAltarPanel() noexcept {
 	reinterpret_cast<void (*)(void*) noexcept>(ClearFocus.address)(inventory);
 	*reinterpret_cast<void**>(static_cast<char*>(panel) + 0x160) = nullptr;  // the panel's remembered widget (0x858070): every open starts on the slot, so DOWN is the confirm
 	reinterpret_cast<void (*)(void*) noexcept>(FocusPanel.address)(panel);
-	LogFocus("after the panel focus");
 	WrapOnMessage(panel);
 	void* manager = reinterpret_cast<void* (*)() noexcept>(FocusManager.address)();
 	void* slot = reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address)(panel, SlotName);
 	if (manager != nullptr && slot != nullptr && At<void*>(slot, 0x550) == panel &&  // +0x550: a widget's panel
 	    (At<void*>(manager, 0x188) != panel || At<void*>(manager, 0x190) == nullptr)) {
 		reinterpret_cast<void (*)(void*, void*) noexcept>(FocusWidget.address)(manager, slot);
-		LogFocus("after the slot focus");
-	}
-	g_focusCheck = 5;
-}
-
-// UI thread: a few frames after the focus, who holds it
-void CheckFocus() noexcept {
-	if (--g_focusCheck == 0) {
-		LogFocus("5 frames later");
 	}
 }
 
@@ -399,9 +384,6 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 	}
 	if (g_focusPending) {
 		FocusAltarPanel();
-	}
-	if (g_focusCheck != 0) {
-		CheckFocus();
 	}
 	if (++g_frames % WatchFrames != 0 || g_returning.load(std::memory_order_acquire) || g_returnFailLogged.load()) {
 		return;
