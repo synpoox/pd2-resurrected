@@ -79,3 +79,7 @@ cast_observer_enabled = false
 skill_tree_toggle_enabled = true
 projection_hz = 60.0 # ground projection sampling, 10..120; actual rate <= UI rate
 overlay_smoothing_ms = 60.0 # screen-motion smoothing, 0..150; zero disables; stick adjustments stay direct
+
+# Per-skill aim defaults for a new skill profile; QoL moves this section into the profile on first start.
+[aim.amazon]
+"28" = true # Dopplezon (Decoy): reticle aim, #2068

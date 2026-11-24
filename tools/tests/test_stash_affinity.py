@@ -22,14 +22,18 @@ class StashAffinity(unittest.TestCase):
         self.misc = {r["code"]: r for r in D.rows("misc") if r.get("code")}
         self.lists = lists()
 
+    def tiers(self):
+        return sorted(int(n[4:]) for n in self.lists if n[:4] == "Tier" and n[4:].isdigit())
+
     def test_tiers_are_the_tables_maps(self):
-        for tier in (1, 2, 3):
+        for tier in self.tiers():
             want = sorted(c for c, r in self.misc.items() if r["type"] == f"t{tier}m")
             self.assertEqual(self.lists[f"Tier{tier}"], want)
             self.assertLessEqual(len(want), 10)  # one row per base on a 10 x 10 page
 
     def test_codes_exist_once(self):
-        codes = [c for name in ("Tier1", "Tier2", "Tier3", "MapMaterials", "Bossing") for c in self.lists[name]]
+        names = [f"Tier{t}" for t in self.tiers()] + ["MapMaterials", "Bossing"]
+        codes = [c for name in names for c in self.lists[name]]
         self.assertEqual(len(codes), len(set(codes)))
         for code in codes:
             self.assertIn(code, self.misc)

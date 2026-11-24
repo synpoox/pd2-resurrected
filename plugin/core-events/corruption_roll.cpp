@@ -3,6 +3,7 @@
 // map-drop and brick callers only borrow them.
 #include "corruption_roll.h"
 
+#include "cube_input_match.h"
 #include "log.h"
 #include "property_ids.h"
 
@@ -41,7 +42,7 @@ auto RollRand() noexcept -> int32_t {
 // it and never the destroyed one; the first row whose value beats the roll puts its mods on.
 // With `desecrate` (PD2's flag 1, Desecration) the roll is 851-999 from the start (an amulet's rows 682-689) and the
 // row's corrupt/corruptnum go on as desecrate/desecratenum; the caller checks the item.
-auto CorruptItem(Game* game, Unit* item, bool desecrate, const char* label) noexcept -> bool {
+auto CorruptItem(Game* game, Unit* item, bool desecrate) noexcept -> bool {
 	using namespace d2r::rva;
 	static const CorruptProps props;  // resolved on first use, after the plugin loaded (propids::Init)
 	if (!props.ok()) {
@@ -53,8 +54,6 @@ auto CorruptItem(Game* game, Unit* item, bool desecrate, const char* label) noex
 		return false;
 	}
 	const auto record = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(CubeRecipe);
-	const auto itemRecord = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(ItemRecord);
-	const auto has = [item](uint64_t fn) noexcept { return d2r::Engine<int32_t (*)(Unit*) noexcept>(fn)(item) != 0; };
 	const int32_t rows = d2r::Engine<int32_t (*)(uint32_t) noexcept>(CubeRecipeCount)(dataFlag);
 	int32_t floor = desecrate ? DesecrateFloor : 0;
 	int32_t roll = desecrate ? DesecrateFloor + RollRand() % (1000 - DesecrateFloor) : 0;
@@ -65,18 +64,7 @@ auto CorruptItem(Game* game, Unit* item, bool desecrate, const char* label) noex
 			continue;
 		}
 		const uint8_t* in = r + CubeInputs;
-		const int32_t shard = At<int32_t>(in + CubeInputSize, 2);
-		const uint8_t* shardRecord = shard > 0 ? itemRecord(dataFlag, shard) : nullptr;
-		if (shardRecord != nullptr && At<uint32_t>(shardRecord, ItCode) != 0x20737377) {  // 'wss '
-			continue;
-		}
-		const auto flags = At<uint16_t>(in, 0);
-		const int32_t id = At<int32_t>(in, 2);
-		if (((flags & 2) != 0 && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(ItemIsType)(item, id) == 0) ||
-		    ((flags & 1) != 0 && id != -1 && id != 0xffff && At<int32_t>(item, UnitClassId) != id) ||
-		    (in[6] != 0 && d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(item) != in[6]) ||
-		    ((flags & 0x20) != 0 && has(ItemIsEthereal)) || ((flags & 0x10) != 0 && !has(ItemIsEthereal)) ||
-		    ((flags & 4) != 0 && has(ItemHasSockets)) || ((flags & 8) != 0 && !has(ItemHasSockets))) {
+		if (!pd2::CorruptionShardOk(dataFlag, r) || !pd2::CubeInputMatches(in, item)) {
 			continue;
 		}
 		const int32_t value = At<int32_t>(r, CubeValue);
@@ -100,8 +88,6 @@ auto CorruptItem(Game* game, Unit* item, bool desecrate, const char* label) noex
 			int32_t property[4] = {prop, At<int16_t>(mod, 4), At<int16_t>(mod, 6), At<int16_t>(mod, 8)};
 			d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(ApplyCubeMod)(item, property);
 		}
-		plog::Info("%s: item %d %s by cubemain row %d (roll %d of %d-999)", desecrate ? "desecration" : label,
-		           At<int32_t>(item, UnitClassId), desecrate ? "desecrated" : "corrupted", i, roll, floor);
 		return true;
 	}
 	return false;

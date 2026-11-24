@@ -16,7 +16,6 @@
 #include "buy_stacks.h"
 
 #include "item_rules.h"
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"
@@ -103,9 +102,7 @@ auto BuyFinder(void* inventory, Unit* item, Unit* a3) noexcept -> Unit* {
 		const int32_t quantity = stat(held, StatQuantity, 0);
 		const int32_t max = g_maxStack(held);
 		if ((quantity > 0 ? quantity : 0) < max) {
-			if (pd2::HotSample(g_merges)) {
-				plog::Info("buy stacks: bought item joins a held stack (quantity %d of %d)", quantity, max);
-			}
+			++g_merges;
 			return held;
 		}
 	}

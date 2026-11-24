@@ -1,4 +1,5 @@
-"""PD2's to-hit chance (#2010): a mirror of ProjectDiablo.dll 0x10304e70 pins core-rules' Pd2Chance (to_hit.cpp)."""
+"""PD2's to-hit chance (#2010): a mirror of ProjectDiablo.dll 0x10304e70 pins core-rules' Pd2Chance (skill/common.h,
+pinned in to_hit.cpp)."""
 import re
 import unittest
 from pathlib import Path

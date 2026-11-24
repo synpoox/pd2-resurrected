@@ -12,7 +12,6 @@
 
 #include "ai_common.h"
 #include "ai_hooks.h"
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"
@@ -90,7 +89,6 @@ void ClearCounts() noexcept {
 	for (Count& c : g_counts) {
 		c = {};
 	}
-	plog::Info("treasure fallen: counts cleared for new game");
 }
 
 void CheckGame(Game* game) noexcept {
@@ -119,9 +117,6 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 			if (Drop(game, unit, killer)) {  // no player: nothing is counted, the next tick tries again
 				++c->n;
 				g_hitDrops.fetch_add(1);
-				if (pd2::HotSample(g_hitDrops.load())) {  // already counted above
-					plog::Info("treasure fallen: hit drop %d of 9 at %d%% life (unit %u)", c->n, pct, At<uint32_t>(unit, UnitIdField));
-				}
 			}
 		}
 	}
@@ -166,7 +161,6 @@ void OnDeath(const D2RL::PluginContext*, const D2RL::Lifecycle::MonsterDeathEven
 		dropped += Drop(game, monster, killer) ? 1 : 0;
 	}
 	g_deathDrops.fetch_add(static_cast<uint32_t>(dropped));
-	plog::Info("treasure fallen: death drops %d (n %d)", dropped, n);
 }
 
 }  // namespace

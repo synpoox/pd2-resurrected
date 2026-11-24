@@ -20,7 +20,6 @@
 #include "../item_rules.h"
 #include "registry.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig_hook.h"
@@ -56,7 +55,6 @@ LeechFn g_leech = nullptr;
 thread_local int32_t t_missile = 0;          // the flag of the innermost HitEvents on this thread
 thread_local Unit* t_leapUnit = nullptr;     // the Leap Attack hit in progress (LeapAttackLeech)
 thread_local Unit* t_leapVictim = nullptr;
-std::atomic<uint32_t> g_halved {0}, g_leapDivided {0};
 
 // The leech fields of the block: unsigned, as PD2's shr and 1.13c's div read them
 auto Field(uint8_t* damage, int offset) noexcept -> uint32_t& {
@@ -79,17 +77,10 @@ auto Leech(Game* game, Unit* unit, Unit* target, uint8_t* damage) noexcept -> vo
 			const uint32_t lifeIn = life, manaIn = mana;
 			life >>= 1;
 			mana >>= 1;
-			if (pd2::HotSample(g_halved)) {
-				plog::Info("leech: missile hit halved, unit type %d, life %u -> %u, mana %u -> %u",
-				           unit != nullptr ? d2r::At<int32_t>(unit, d2r::rva::UnitType) : -1, lifeIn, life, manaIn, mana);
-			}
 		}
 		if (unit != nullptr && unit == t_leapUnit && target == t_leapVictim && life != 0) {
 			const uint32_t lifeIn = life;
 			life = std::max(life / LeapLifeDivisor, 1u);
-			if (pd2::HotSample(g_leapDivided)) {
-				plog::Info("leech: leap attack life %u -> %u, mana %u kept", lifeIn, life, mana);
-			}
 		}
 	}
 	g_leech(game, unit, target, damage);

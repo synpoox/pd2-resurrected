@@ -4,6 +4,7 @@
 #include <D2RLPlugin/api.h>
 
 #include <cstddef>
+#include <cstdint>
 
 namespace stash_tabs {
 
@@ -12,6 +13,9 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 
 // `core-ui stash <tab>`: queues the request for the UI thread; false (reply says why): bad word
 auto Console(const char* args, char* reply, size_t size) noexcept -> bool;
+
+// Whether the stash has this shared page (true while the page count is unknown).
+auto HasPage(uint32_t page) noexcept -> bool;
 
 // The tab state, for the status command.
 void Counters(char* out, size_t size) noexcept;

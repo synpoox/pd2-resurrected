@@ -29,7 +29,7 @@ plugins = ["core-rules", "core-events", "core-ui"]
 companions = true
 item_type_check = false   # not checked before the toolkit either: a mod table's item type ids are its own
 loader_from_game = true   # pin --game's official D2RLoader.exe in the catalog
-notes = "docs/release-notes/{version}.md"   # condensed player notes (toolkit #311)
+notes = "release/notes/{version}.md"   # launcher copy without issue numbers; originals in docs/release-notes
 
 # Files players may edit: shipped_default in the launcher manifest, kept on Update and Repair.
 [package]
@@ -42,9 +42,13 @@ product_id = "pd2r"
 feed_url = "https://github.com/synpoox/resurrected-launcher/releases/download/catalog/feed.json"
 feed_repo = "synpoox/resurrected-launcher"
 feed_tag = "catalog"
-min_launcher_version = "0.1.0"
+min_launcher_version = "0.1.9"   # the first launcher that reads save_format_version (launcher #290)
 loader_versions = ["1.3.1-beta"]
 required_settings = [{file = "d2rloader/config/d2rloader.toml", key = "d2rcore.save_format.mode", value = "extended"}]
-save_breaking = true  # #1853: Classic/LoD characters read the mod's tables now
-incompatibility_notice = "Classic and Lord of Destruction characters from earlier versions may not load. Before making a new Classic or LoD character, move SharedStashSoftCoreV2.d2i out of the save folder, or the new character fails to save."
+save_breaking = false
+# The save format the launcher compares (#2149): raise it, with save_breaking = true and a notice, in each release
+# that breaks saves. 1 = since 0.2.5-alpha (#1853). Installs of the unnumbered releases listed keep their saves;
+# any other unnumbered install (0.2.4-alpha or earlier) gets the launcher's save warning.
+save_format_version = 1
+unnumbered_compatible_versions = ["0.2.5-alpha", "0.2.6-alpha"]
 upcoming = ["project-09", "project-forever"]

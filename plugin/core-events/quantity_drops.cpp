@@ -5,7 +5,6 @@
 // D2R's own MonsterTcDrop, as uber_deaths' extra drop; every engine call resolves by signature.
 #include "quantity_drops.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "quantity_rolls.h"
 #include "sig.h"
@@ -19,7 +18,7 @@ using d2r::At;
 using d2r::Game;
 using d2r::Unit;
 
-std::atomic<uint32_t> g_kills {0}, g_drops {0}, g_logged {0};
+std::atomic<uint32_t> g_kills {0}, g_drops {0};
 
 auto Ready() noexcept -> bool {
 	using sigscan::State;
@@ -64,10 +63,6 @@ auto QuantityDrops(const DeathContext& death) noexcept -> void {
 		                                                                                     &drop);
 	}
 	const uint32_t n = g_drops.fetch_add(static_cast<uint32_t>(rolls), std::memory_order_relaxed) + rolls;
-	if (rolls > 0 && pd2::HotSample(g_logged)) {
-		plog::Info("item quantity: %+d%%, %d extra TC roll(s) for monster %d in level %d (%u so far)", percent, rolls,
-		           At<int32_t>(death.monster, UnitClassId), event->levelId, n);
-	}
 }
 
 auto QuantityDropsCounters(char* out, size_t size) noexcept -> void {

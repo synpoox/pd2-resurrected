@@ -92,8 +92,7 @@ auto RecipeSearch(SearchResult* result, Game* game, Unit* player, MatchOut* out)
 	if (block < 0) {
 		return;
 	}
-	plog::Info("op 30: cubemain row %d blocks the transmute (D2R found %s %d), %u so far", block,
-	           result->found != 0 ? "row" : "no row", result->found != 0 ? result->row : -1, ++g_blocks);
+	++g_blocks;
 	result->found = 0;
 }
 

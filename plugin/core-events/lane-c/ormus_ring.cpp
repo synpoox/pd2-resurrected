@@ -39,7 +39,7 @@ std::atomic<uint32_t> g_rings {0};
 auto OrmusRing(void* closure, void* arg) noexcept -> Unit* {
 	Unit* ring = g_original(closure, arg);
 	auto* game = closure != nullptr ? At<Game*>(closure, ClosureGame) : nullptr;
-	if (ring == nullptr || game == nullptr || !CorruptItem(game, ring, false, "ormus ring")) {
+	if (ring == nullptr || game == nullptr || !CorruptItem(game, ring, false)) {
 		return ring;
 	}
 	g_rings.fetch_add(1, std::memory_order_relaxed);

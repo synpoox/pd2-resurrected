@@ -24,9 +24,11 @@
 #include "stash_affinity.h"
 
 #include "log.h"
+#include "log_once.h"
 #include "map_stack.h"
 #include "pd2_engine.h"
 #include "stash_home.h"
+#include "stash_tabs.h"
 
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
@@ -89,9 +91,13 @@ std::atomic<uintptr_t> g_generation {0};
 uintptr_t g_seen = 0;  // the watch generation g_noted belongs to (game thread only)
 uint32_t g_shown = 0;  // the base whose maps are on the Maps page (game thread only)
 std::atomic<uint32_t> g_want {0};
+std::atomic<uint32_t> g_glow {0};  // TakeGlow's bits: the reserved tabs quick-moved items went home to (#2116)
+std::atomic<uint32_t> g_mapGlow[aff::Tiers] = {};  // TakeMapGlow's bits: per tier, the base of each quick-moved map gone home
+static_assert(aff::PageWidth <= 32);
 std::atomic<bool> g_open {false};
 std::atomic<uint32_t> g_viewPage {0};
 std::atomic<bool> g_tidyFailed {false};
+pd2::LogOnce g_failLogged;  // game thread only: a retry loop writes a line once (#2094)
 std::atomic<bool> g_hinted {false}, g_stopped {false};
 std::atomic<uint32_t> g_handStacked {0};
 std::atomic<uint32_t> g_routed {0}, g_merged {0}, g_swapped {0}, g_returned {0}, g_failed {0}, g_updates {0};
@@ -180,8 +186,6 @@ auto MoveTo(D2RL::PlayerHandle player, items::ItemInfo& item, uint32_t page, int
 	if (x >= 0) {
 		Use(page, x, y, true);
 	}
-	plog::Info("affinity: %08x from container %u page %u to page %u cell %d,%d", item.code,
-	           static_cast<uint32_t>(item.container), item.sharedStashPage, page, x, y);
 	item.container = C::SharedStash;
 	item.sharedStashPage = page;
 	item.x = x;
@@ -277,9 +281,6 @@ auto MapRefusal(const items::ItemInfo& a, const items::ItemInfo& b, uint32_t sta
 	} else {
 		reason = MapStatsRefusal(a, b, same);
 	}
-	plog::Info("affinity: map %08x (quality %u) onto the stack at page %u cell %d,%d (quality %u): stats equal %d, %s%s", a.code,
-	           static_cast<uint32_t>(a.quality), b.sharedStashPage, b.x, b.y, static_cast<uint32_t>(b.quality), same,
-	           reason == nullptr ? "merge" : "refused: ", reason == nullptr ? "" : reason);
 	return reason;
 }
 
@@ -305,8 +306,6 @@ auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& st
 	// an unread count (0) is left to the read after the move below
 	if (const int32_t was = Quantity(stack.handle), more = Quantity(item.handle);
 	    was > 0 && more > 0 && (topUp ? aff::ToppedUp(was, more, MaxStack).stack : aff::MergedCount(was, more, MaxStack)) == 0) {
-		plog::Info("affinity: %08x onto the stack on page %u cell %d,%d (%d + %d): it does not fit; nothing moved", item.code, page,
-		           x, y, was, more);
 		return items::Result::Conflict;
 	}
 	if (const auto out = Move(player, stack.handle, bag); out != items::Result::Success) {
@@ -366,8 +365,6 @@ auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& st
 	}
 	const auto back = MoveTo(player, stack, page, x, y);  // MoveTo notes the cell used again
 	if (result != items::Result::Success) {
-		plog::Info("affinity: %08x merge failed at %s (result %u, stack %d + %d); the stack went back: result %u", item.code,
-		           step, static_cast<uint32_t>(result), have, add, static_cast<uint32_t>(back));
 		return result;  // Route sends the incoming item back to the inventory
 	}
 	if (rest == 0) {
@@ -375,8 +372,6 @@ auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& st
 	}
 	stack.quantity = sum;
 	++g_merged;
-	plog::Info("affinity: %08x x%d merged with the stack on page %u cell %d,%d (now %d, %d left on the incoming item; back on its cell: result %u)",
-	           stack.code, add - rest, page, x, y, sum, rest, static_cast<uint32_t>(back));
 	return items::Result::Success;  // a failed move back leaves the whole stack in the inventory: nothing lost
 }
 
@@ -431,9 +426,10 @@ void ResendCursor(D2RL::PlayerHandle player, uint32_t cursorId) noexcept {
 	items::ItemInfo after {.structSize = items::ItemInfoSize};
 	const bool kept = Quantity(held) == count && g_items->getItemInfo(g_context, held, &after) == items::Result::Success &&
 	                  (after.stateFlags & items::ItemStateIdentified) == identified;
-	(sent == items::Result::Success && kept ? plog::Info : plog::Warn)(
-	    "affinity: cursor item %08x x%d sent to the client again: result %u%s", item.code, count, static_cast<uint32_t>(sent),
-	    kept ? "" : ", ITEM CHANGED");
+	if (sent != items::Result::Success || !kept) {
+		plog::Warn("affinity: cursor item %08x x%d sent to the client again: result %u%s", item.code, count,
+		           static_cast<uint32_t>(sent), kept ? "" : ", ITEM CHANGED");
+	}
 }
 
 // Game thread (#1744): a hand drop's 0x21, which D2R cannot resolve on a Maps or Bossing page. The cursor item is
@@ -483,13 +479,16 @@ void SyncReserved(const items::ItemInfo& item) noexcept {
 // A fixed cell's stack tops up to its cap and the rest stays on the item, in the inventory (Withdraw #1763, quick-move #1771)
 auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 	const aff::Home home = aff::HomeOf(item.code);
-	if (aff::AtHome(home, item.code, g_shown, item.container == C::SharedStash, item.sharedStashPage, item.x, item.y)) {
+	const bool atHome = aff::AtHome(home, item.code, g_shown, item.container == C::SharedStash, item.sharedStashPage, item.x, item.y);
+	if (atHome && home.category != aff::Category::Maps) {
 		return true;
 	}
 	items::Result moved = items::Result::Conflict;
+	bool full = false;  // the shown base's Maps view has no free cell (#2095)
 	if (home.category == aff::Category::Maps) {
 		const bool shown = g_shown != 0 && aff::Normal(item.code) == aff::Normal(g_shown);
-		// A stack of the same map below a full one takes it first (#1759); a full stack or a failed merge falls through
+		// A stack of the same map below a full one takes it first (#1759), also a map quick-moved onto a free cell of its
+		// own page, which AtHome already calls home (#2096); a full stack or a failed merge falls through
 		const uint32_t stackPage = shown ? aff::MapsPage : home.page;
 		for (uint32_t i = 0; i < g_pass.reservedCount && moved != items::Result::Success; ++i) {
 			items::ItemInfo& stack = g_pass.reserved[i];
@@ -504,8 +503,19 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 			++g_routed;
 			return true;
 		}
+		if (atHome && item.container == C::SharedStash) {  // a merge that failed after its take step left it in the inventory
+			return true;
+		}
 		const aff::Cell cell = shown ? FreeMapCell() : aff::Cell {};
-		moved = cell.x >= 0 ? MoveTo(player, item, aff::MapsPage, cell.x, cell.y) : ToStorage(player, item);
+		// #2095: with the shown base's view full the map stays in the inventory (below); its storage row is not on screen, so it looked deleted
+		if (cell.x >= 0) {
+			moved = MoveTo(player, item, aff::MapsPage, cell.x, cell.y);
+		} else if (!shown) {
+			moved = ToStorage(player, item);
+		} else {
+			full = true;
+			moved = items::Result::Unsupported;  // no page problem: skips the add_shared_tabs hint below
+		}
 	} else {  // a fixed cell: Map Materials, Bossing
 		int32_t& on = At(home.page, home.row, home.column);
 		if (on == -1) {
@@ -527,12 +537,16 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 	                                   .placement = items::Placement::Automatic};
 	const items::Result returned = Move(player, item.handle, back);
 	(returned == items::Result::Success ? g_returned : g_failed)++;
-	static std::atomic<bool> pageFailLogged {false};  // a stuck item retries about once a second
-	if (!pageFailLogged.exchange(true)) {
+	if (full && returned == items::Result::Success && g_failLogged.First(pd2::Key(item.runtimeId, 0xFFFFu))) {  // once per item
+		plog::Info("affinity: the Maps tab is full: %08x stays in the inventory", item.code);
+	}
+	// a stuck item retries about once a second: one line per item and page (#1705, #2094)
+	if (g_failLogged.First(pd2::Key(item.runtimeId, home.page))) {
 		plog::Info("affinity: %08x could not go to page %u (result %u); back to the inventory: result %u", item.code, home.page,
 		           static_cast<uint32_t>(moved), static_cast<uint32_t>(returned));
 	}
-	if (moved != items::Result::Unsupported && !g_hinted.exchange(true)) {  // Unsupported: a stack count that could not be read
+	// Unsupported: a stack count that could not be read; a page the stash has is full or its cell taken, not missing (#1705)
+	if (moved != items::Result::Unsupported && !stash_tabs::HasPage(home.page) && !g_hinted.exchange(true)) {
 		plog::Info("affinity: the reserved pages are shared tabs %u-%u; set [d2rcore.stash] add_shared_tabs to at least %u",
 		           aff::FirstReservedPage, aff::LastReservedPage, aff::RequiredExtraTabs);
 	}
@@ -614,9 +628,11 @@ void Withdraw(D2RL::PlayerHandle player, const Noted& noted) noexcept {
 	    g_items->getItemInfo(g_context, held, &cursor) == items::Result::Success) {
 		ResendCursor(player, cursor.runtimeId);
 	}
-	plog::Info("affinity: %08x x%d taken out of the stash: %d to the cursor (split result %u, counts %s), the rest %s", item.code,
-	           had, split == items::Result::Success ? aff::WithdrawMax : 0, static_cast<uint32_t>(split),
-	           busy ? "untouched" : sums ? "add up" : "DO NOT add up", home ? "back home" : "kept in the inventory");
+	if ((!busy && !sums) || !home) {
+		plog::Warn("affinity: %08x x%d taken out of the stash: %d to the cursor (split result %u, counts %s), the rest %s", item.code,
+		           had, split == items::Result::Success ? aff::WithdrawMax : 0, static_cast<uint32_t>(split),
+		           busy ? "untouched" : sums ? "add up" : "DO NOT add up", home ? "back home" : "kept in the inventory");
+	}
 	if (!home && g_kept.count < MaxNoted) {
 		g_kept.item[g_kept.count++] = noted;
 	}
@@ -659,7 +675,6 @@ void Swap(D2RL::PlayerHandle player, uint32_t want) noexcept {
 	}
 	g_shown = want;
 	++g_swapped;
-	plog::Info("affinity: the Maps tab shows %08x: %u maps stored, %u shown", want, off, on);
 }
 
 // While a reserved tab is up: an item on the Maps or Bossing page off its place (one put straight onto the page on show,
@@ -784,7 +799,12 @@ void Update(const D2RL::PluginContext*, void* user) noexcept {
 		Swap(player, want);
 	}
 	for (uint32_t i = 0; i < g_pass.foundCount; ++i) {
-		Route(player, g_pass.found[i]);
+		if (Route(player, g_pass.found[i])) {
+			g_glow.fetch_or(aff::HomeOf(g_pass.found[i].code).category == aff::Category::Bossing ? GlowBossing : GlowMaps);
+			if (const aff::Base b = aff::BaseOf(g_pass.found[i].code); b.tier >= 0) {
+				g_mapGlow[b.tier].fetch_or(1u << b.index);
+			}
+		}
 	}
 	for (uint32_t i = 0; i < big.count; ++i) {
 		Withdraw(player, big.item[i]);
@@ -865,8 +885,6 @@ auto TakeOut(uint32_t itemId) noexcept -> bool {
 		                                  .placement = items::Placement::Automatic};
 		const items::ItemInfo& on = stack.info;
 		const auto moved = Move(player, on.handle, bag);
-		plog::Info("affinity: %08x x%d taken from page %u cell %d,%d to the inventory for the split: result %u", on.code,
-		           Quantity(on.handle), on.sharedStashPage, on.x, on.y, static_cast<uint32_t>(moved));
 		if (moved != items::Result::Success) {
 			// the consumed take left the stack pending on the client (0x1c6ac0) until an item packet: a move onto its own
 			// cell sends one, else anywhere on its page (the tidy pass routes it home)
@@ -879,13 +897,22 @@ auto TakeOut(uint32_t itemId) noexcept -> bool {
 				home.placement = items::Placement::Automatic;
 				resent = Move(player, on.handle, home);
 			}
-			(resent == items::Result::Success ? plog::Info : plog::Warn)(
-			    "affinity: %08x stays in the stash; sent to the client again by a move on page %u: result %u", on.code,
-			    on.sharedStashPage, static_cast<uint32_t>(resent));
+			if (resent != items::Result::Success) {
+				plog::Warn("affinity: %08x stays in the stash; sent to the client again by a move on page %u: result %u",
+				           on.code, on.sharedStashPage, static_cast<uint32_t>(resent));
+			}
 		}
 	};
 	return g_threads->runOnGameThread(g_context, now, reinterpret_cast<void*>(static_cast<uintptr_t>(itemId))) ==
 	       D2RL::Threads::Result::Success;
+}
+
+auto TakeGlow() noexcept -> uint32_t {
+	return g_glow.exchange(0);
+}
+
+auto TakeMapGlow(int32_t tier) noexcept -> uint32_t {
+	return tier >= 0 && tier < aff::Tiers ? g_mapGlow[tier].exchange(0) : 0;
 }
 
 auto WantedBase() noexcept -> uint32_t {

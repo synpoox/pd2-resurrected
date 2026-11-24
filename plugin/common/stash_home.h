@@ -25,7 +25,7 @@ inline constexpr uint32_t VanillaSharedPages = 5;
 inline constexpr uint32_t GeneralExtraPages = 10;
 inline constexpr uint32_t FirstReservedPage = VanillaSharedPages + GeneralExtraPages;
 inline constexpr uint32_t MapsPage = FirstReservedPage;              // the Maps tab: shown maps and the map currency
-inline constexpr uint32_t FirstStoragePage = FirstReservedPage + 1;  // tier 1's stored maps; tiers 2 and 3 follow
+inline constexpr uint32_t FirstStoragePage = FirstReservedPage + 1;  // tier 1's stored maps; the other tiers follow
 inline constexpr uint32_t BossingPage = FirstReservedPage + 4;
 inline constexpr uint32_t LastReservedPage = BossingPage;
 inline constexpr uint32_t MinStockSharedPages = 3;  // Classic and LoD (unitDataFlag 1, 2); RotW has VanillaSharedPages
@@ -38,6 +38,12 @@ inline constexpr int32_t PageWidth = 10;  // inventory.txt Big Bank Page: 10 x 1
 inline constexpr const char* Tier1[] = {"m01", "m04", "m05", "m06", "m12", "m20", "m23", "m24"};
 inline constexpr const char* Tier2[] = {"m02", "m03", "m08", "m10", "m13", "m15", "m16", "m21"};
 inline constexpr const char* Tier3[] = {"m07", "m09", "m11", "m14", "m17", "m18", "m19", "m22", "m25"};
+// The tiers; core-ui's buttons, clicks and glows size from it. A new tier adds: its list here and in BaseOf and BaseCode;
+// a storage page, which moves BossingPage (and RequiredExtraTabs, and the "17" in stash_tabs.cpp's notices) up one, so a
+// save's Bossing items then sit on the new storage page; its @StashMapTier<n> string; and in both stash layouts its tier
+// button and base buttons (pd2rTier<n>, pd2rBase<n>_<i>, each with its glow, and the pad's navigation links).
+// tools/tests/test_stash_glow.py and test_stash_affinity.py check the lists, buttons and glows against Tiers.
+inline constexpr int32_t Tiers = 3;
 
 // PD2's map crafting and modification items: orbs, ready orbs, Fortify, Dungeon Scarab, Force Mapevent Shard and the
 // invader ears the map + ear recipes take. Each plain orb is followed by its ready orb, so the two share a row (#1776)
@@ -110,7 +116,7 @@ inline constexpr Cell BossingCell[] = {{4, 4}, {0, 0}, {1, 0}, {2, 0}, {3, 0}, {
 // spare cells, #1699)
 inline constexpr const char* BossingMaps[] = {"ubtm", "dcma", "rtma", "luca"};
 
-// The tier (0-2) and the place in its list of a map code; {-1, -1} for the rest
+// The tier (0 to Tiers - 1) and the place in its list of a map code; {-1, -1} for the rest
 struct Base {
 	int32_t tier = -1;
 	int32_t index = -1;
@@ -244,7 +250,8 @@ static_assert(HomeOf(Code("m24")).page == 16 && HomeOf(Code("m24")).row == 7);
 static_assert(HomeOf(Code("m02")).page == 17 && HomeOf(Code("m21")).row == 7);
 static_assert(HomeOf(Code("m25")).page == 18 && HomeOf(Code("m25")).row == 8);
 static_assert(HomeOf('m' | ('0' << 8) | ('7' << 16)).page == 18);  // zero-padded code
-static_assert(BaseCode(2, 8) == Code("m25") && BaseCode(0, 8) == 0 && BaseCode(3, 0) == 0);
+static_assert(BaseCode(Tiers - 1, 0) != 0 && BaseCode(Tiers, 0) == 0 && FirstStoragePage + Tiers <= BossingPage);
+static_assert(BaseCode(2, 8) == Code("m25") && BaseCode(0, 8) == 0);
 static_assert(HomeOf(Code("imma")).page == 15 && HomeOf(Code("imma")).column == 0 && HomeOf(Code("imma")).row == 4);
 static_assert(HomeOf(Code("ivea")).category == Category::MapMaterials);  // ear: Map Materials before Bossing
 static_assert(HomeOf(Code("ivea")).column == 9 && HomeOf(Code("ivea")).row == 5);  // index 15: the right block

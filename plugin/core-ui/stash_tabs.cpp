@@ -41,6 +41,7 @@
 #include <windows.h>
 
 #include <atomic>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -70,7 +71,7 @@ const D2RL::OverlayService* g_overlay = nullptr;
 // UI thread only
 View g_view = View::None;
 int32_t g_tier = 0;
-int32_t g_base[3] = {0, 0, 0};  // the selected base of each tier
+int32_t g_base[aff::Tiers] = {};  // the selected base of each tier
 bool g_dispatching = false;
 uint32_t g_frames = 0, g_opened = 0;  // the frame our tab was clicked or Shared selected for it
 constexpr uint32_t OursFrames = 2;      // a SelectTab this soon after is that click's or that select's
@@ -105,6 +106,48 @@ sigscan::Entry MarkHandled {"MessageMarkHandled", "stash", sigscan::Kind::Code, 
                             "48 8b 05 ?? ?? ?? ?? 48 85 c0 74 07 c6 80 b8 00 00 00 01 c3"};
 sigscan::Entry* const Sigs[] = {&FetchPanel, &FindChild, &SelectTab, &MessageHandled, &MarkHandled};
 bool g_select = false;
+// #2116: our Maps and Bossing tabs glow with their tab bar's own notification icon (notificationIconTemplate), faded as
+// the stash fades Gems/Materials/Runes (93847 0x23de70: alpha 0 to 1 and back, tabNotificationFadeOccurrences 3 times
+// of 2 x tabNotificationDurationSeconds 0.33), which it does for BankTabs' tabs 2-4 only. No SDK service reaches a tab's icon.
+// 93847: 0x879470, void (tab bar, tab, on): shows the tab's icon at alpha 1, or hides it
+sigscan::Entry TabNotify {"TabBarNotify", "stash", sigscan::Kind::Code, 0, 0,
+                          "40 57 48 83 ec 20 48 63 c2 44 88 84 08 ?? ?? 00 00 48 8b bc c1 ?? ?? 00 00 48 85 ff"};
+// 93847: 0x879d20, void (tab bar, tab, alpha): the tab's icon alpha, clamped to 0-1
+sigscan::Entry TabNotifyAlpha {"TabBarNotifyAlpha", "stash", sigscan::Kind::Code, 0, 0,
+                               "48 63 c2 f3 0f 11 54 24 18 48 8b 94 c1 ?? ?? 00 00 48 85 d2 74 ?? 0f 57 c0 c7 44 24 10 00 00 80 3f"};
+sigscan::Entry* const GlowSigs[] = {&TabNotify, &TabNotifyAlpha};
+bool g_glowOk = false;
+float g_glowLeft[2] = {0.0f, 0.0f};  // UI thread: seconds of the Maps (0) and Bossing (1) glow left
+constexpr float GlowStep = 0.33f, GlowTotal = GlowStep * 2 * 3;
+
+// The stash's fade at `left` seconds before its end: 0 to 1 and back, each way GlowStep
+auto FadeAlpha(float left) noexcept -> float {
+	const float t = std::fmod(GlowTotal - left, 2 * GlowStep) / GlowStep;
+	return t < 1.0f ? t : 2.0f - t;
+}
+
+// Our tab `i`'s icon: on or off (alpha < 0), else its alpha. The mouse layout's own bar (tab 1), else the pad's BankTabs (tab 5 or 6)
+void Glow(int i, bool on, float alpha = -1.0f) noexcept {
+	void* panel = g_glowOk ? reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(Panel) : nullptr;
+	if (panel == nullptr) {
+		return;
+	}
+	const auto find = reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address);
+	int32_t tab = 1;
+	void* bar = find(panel, i == 0 ? "pd2rMapsTabs" : "pd2rBossingTabs");
+	if (bar == nullptr) {
+		bar = find(panel, "BankTabs");
+		tab = 5 + i;
+	}
+	if (bar == nullptr) {
+		return;
+	}
+	if (alpha < 0.0f) {
+		reinterpret_cast<void (*)(void*, int32_t, bool) noexcept>(TabNotify.address)(bar, tab, on);
+	} else {
+		reinterpret_cast<void (*)(void*, int32_t, float) noexcept>(TabNotifyAlpha.address)(bar, tab, alpha);
+	}
+}
 // UI thread: the shared page on show (0-based), counted from the arrows; a new game starts on page 0.
 // A tab's page is published to stash_affinity (ViewPage) only once every arrow was sent (g_pending); until then, and after
 // MaxSendFails failed frames, it is unknown (0: no drop filter). Our tab is refused when the stash has too few pages (g_pages).
@@ -276,10 +319,6 @@ void ShowTier(int32_t tier) noexcept {
 	stash_affinity::ShowBase(aff::BaseCode(tier, g_base[tier]));
 }
 
-void Log(const char* what) noexcept {
-	plog::Info("stash tabs: %s (view %u, tier %d, base %d)", what, static_cast<uint32_t>(g_view), g_tier + 1, g_base[g_tier]);
-}
-
 auto Open(View view) noexcept -> bool {
 	const uint32_t page = view == View::Maps ? aff::MapsPage : aff::BossingPage;
 	if (page >= g_pages) {  // the arrows would stop on the last page there is, under our tab
@@ -294,7 +333,6 @@ auto Open(View view) noexcept -> bool {
 	}
 	g_pending = true;  // the page is known once every arrow is sent (OnFrame)
 	stash_affinity::SetTabOpen(true, 0);
-	Log(view == View::Maps ? "Maps" : "Bossing");
 	return true;
 }
 
@@ -304,22 +342,20 @@ void Click(const char* what) noexcept {
 	if (g_view != View::Maps) {
 		return;  // a tier or base button of a hidden Maps tab
 	}
-	if (sscanf_s(what, "Tier%d", &t) == 1 && t >= 1 && t <= 3) {
+	if (sscanf_s(what, "Tier%d", &t) == 1 && t >= 1 && t <= aff::Tiers) {
 		ShowTier(t - 1);
-	} else if (sscanf_s(what, "Base%d_%d", &t, &i) == 2 && t >= 1 && t <= 3 && aff::BaseCode(t - 1, i) != 0) {
+	} else if (sscanf_s(what, "Base%d_%d", &t, &i) == 2 && t >= 1 && t <= aff::Tiers && aff::BaseCode(t - 1, i) != 0) {
 		g_base[t - 1] = i;
 		ShowTier(t - 1);
 	} else {
 		plog::Info("stash tabs: unknown command %s", what);
 		return;
 	}
-	Log(what);
 }
 
 // The pad's steps on the Maps tab: the same ShowTier the buttons' clicks call
 void StepTier() noexcept {
-	ShowTier((g_tier + 1) % 3);
-	Log("pad tier");
+	ShowTier((g_tier + 1) % aff::Tiers);
 }
 
 void StepBase(int32_t by) noexcept {
@@ -329,7 +365,6 @@ void StepBase(int32_t by) noexcept {
 	} while (aff::BaseCode(g_tier, i) == 0);  // the tier has at least the base on show
 	g_base[g_tier] = i;
 	ShowTier(g_tier);
-	Log("pad base");
 }
 
 // The layout's widgets by name, found once: handles are paths the loader resolves on each call
@@ -364,15 +399,50 @@ void ShowButton(Named& w, bool visible) noexcept {
 Named g_background {"pd2rMapsBackground"}, g_bossingBackground {"pd2rBossingBackground"}, g_navigation {"StashNavigation"}, g_cube {"advancedstash_horadriccube"},
 	g_cubeWithdraw {"withdraw_button"}, g_sharedOff {"pd2rSharedOff"}, g_mapsOn {"pd2rMapsTabsOn"}, g_mapsOnText {"pd2rMapsTabsOnText"},
 	g_bossingOn {"pd2rBossingTabsOn"}, g_bossingOnText {"pd2rBossingTabsOnText"}, g_padTabs {"pd2rPadTabs"}, g_mapsBar {"pd2rMapsTabs"}, g_bossingBar {"pd2rBossingTabs"}, g_mapsLegend {"pd2rMapsLegend"};
-Named g_tiers[3][2] = {{{"pd2rTier1"}, {"pd2rTier1On"}}, {{"pd2rTier2"}, {"pd2rTier2On"}}, {{"pd2rTier3"}, {"pd2rTier3On"}}};
-struct BaseWidgets {
+struct TierWidgets {
 	char names[3][24];
-	Named button, frame, box;
+	Named button, on;
 };
-BaseWidgets g_bases[3][aff::PageWidth];
+TierWidgets g_tiers[aff::Tiers];
+// #2116: in the Maps tab, a map gone home to another tier fades that tier's button, one to another base of the shown tier
+// that base's button: pd2rTierGlow<t> and pd2rBaseGlow<t>_<i> (PANEL\pd2r\stash_glow, the tab icon's fill), faded as the tabs
+struct Fade {
+	Named glow;
+	float left = 0.0f;  // UI thread: seconds of the fade left
+};
+Fade g_tierFade[aff::Tiers];
+
+// One frame of a button's fade: `start` restarts it, `stop` ends it. The alpha is the ImageWidget's +0x94, the field
+// TabBarNotifyAlpha writes on the tab icon (an ImageWidget): the SDK's widget service sets no alpha (1.3.1)
+void Tick(Fade& f, bool start, bool stop, float dt) noexcept {
+	if (start) {
+		f.left = GlowTotal;
+	}
+	f.left = stop || f.left <= 0.0f ? 0.0f : f.left - dt;  // hidden every frame it is not fading: the stash shows it again on a tab change
+	void* panel = g_glowOk && f.left > 0.0f ? reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(Panel) : nullptr;
+	void* image = panel != nullptr ? reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address)(panel, f.glow.name) : nullptr;
+	if (image != nullptr) {
+		*reinterpret_cast<float*>(static_cast<char*>(image) + 0x94) = FadeAlpha(f.left);
+	}
+	Show(f.glow, image != nullptr);
+	f.left = f.left > 0.0f ? f.left : 0.0f;
+}
+struct BaseWidgets {
+	char names[4][24];
+	Named button, frame, box;
+	Fade fade;
+};
+BaseWidgets g_bases[aff::Tiers][aff::PageWidth];
 
 void InitNames() noexcept {
-	for (int t = 0; t < 3; ++t) {
+	for (int t = 0; t < aff::Tiers; ++t) {
+		TierWidgets& w = g_tiers[t];
+		std::snprintf(w.names[0], sizeof w.names[0], "pd2rTier%d", t + 1);
+		std::snprintf(w.names[1], sizeof w.names[1], "pd2rTier%dOn", t + 1);
+		std::snprintf(w.names[2], sizeof w.names[2], "pd2rTierGlow%d", t + 1);
+		w.button.name = w.names[0];
+		w.on.name = w.names[1];
+		g_tierFade[t].glow.name = w.names[2];
 		for (int i = 0; i < aff::PageWidth; ++i) {
 			BaseWidgets& b = g_bases[t][i];
 			std::snprintf(b.names[0], sizeof b.names[0], "pd2rBase%d_%d", t + 1, i);
@@ -381,6 +451,8 @@ void InitNames() noexcept {
 			b.button.name = b.names[0];
 			b.frame.name = b.names[1];
 			b.box.name = b.names[2];
+			std::snprintf(b.names[3], sizeof b.names[3], "pd2rBaseGlow%d_%d", t + 1, i);
+			b.fade.glow.name = b.names[3];
 		}
 	}
 }
@@ -422,11 +494,9 @@ auto PadTab(bool right) noexcept -> bool {
 		OpenPad(right ? View::Maps : View::Bossing);
 	} else if (g_view == View::Maps && !right) {
 		Leave();
-		Log("Runes");
 		SelectStock(4);
 	} else if (g_view == View::Bossing && right) {
 		Leave();
-		Log("Personal");
 		SelectStock(0);
 	} else {
 		OpenPad(right ? View::Bossing : View::Maps);
@@ -491,9 +561,6 @@ void StashOnMessage(void* panel, const uint64_t* message) noexcept {
 		const auto* action = reinterpret_cast<const uint8_t*>(message[0x22]);
 		if (action != nullptr && action[0x18] == 0 && !reinterpret_cast<bool (*)() noexcept>(MessageHandled.address)()) {
 			const int32_t id = *reinterpret_cast<const int32_t*>(action + 0x10);
-			if (id == TabLeft || id == TabRight || id == CycleLeft || id == CycleRight || id == Option3) {
-				plog::Info("stash tabs: pad action %d (view %u, tab %d)", id, static_cast<uint32_t>(g_view), g_tab);
-			}
 			g_cycleHeld = id == CycleLeft ? true : g_cycleHeld;
 			if (g_stashOpen && OnPadAction(id)) {
 				reinterpret_cast<void (*)() noexcept>(MarkHandled.address)();
@@ -571,7 +638,6 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 		}
 		if (g_view != View::None && g_frames - g_opened > OursFrames) {  // not our tab's own SelectTab, nor our select's
 			Leave();
-			Log("stock tab");
 		}
 		return Action::Continue;  // the stash selects the tab (ours: Shared)
 	}
@@ -600,7 +666,6 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 	} else if (std::strcmp(what, "Shared") == 0) {  // the stock Shared tab, already selected under ours: its first page
 		Leave();
 		g_tab = 1;
-		Log("Shared");
 	} else if (std::strcmp(what, "Hidden") != 0) {  // Hidden: our bars' off-screen tab 0 (an empty message asserts, #1649)
 		Click(what);
 	}
@@ -677,6 +742,12 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 		g_head = g_tail = g_page = g_sendFails = 0;
 		g_pending = false;
 		g_tab = g_padTab = 0;  // a new game opens the stash on Personal
+		for (int i = 0; i < 2; ++i) {
+			if (std::exchange(g_glowLeft[i], 0.0f) > 0.0f) {
+				Glow(i, false);
+			}
+		}
+		stash_affinity::TakeGlow();  // drops a glow routed as the last game ended
 		g_stashOpen = false;
 		g_cycleHeld = false;
 		stash_affinity::ShowBase(0);
@@ -701,7 +772,6 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 		if (g_pending && g_view != View::None && g_head == g_tail) {  // every arrow sent: the page is the one asked for
 			g_pending = false;
 			stash_affinity::SetTabOpen(true, g_page);
-			plog::Info("stash tabs: shared page %u on show (all %u arrows sent)", g_page + 1, LeftPresses + g_page);
 		}
 	}
 	if (g_pages <= aff::BossingPage) {  // no such page: its tab is gone, not a button onto another page
@@ -710,7 +780,33 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 			ShowButton(g_mapsBar, false);
 		}
 	}
+	const uint32_t glow = stash_affinity::TakeGlow();
+	for (int i = 0; i < 2; ++i) {
+		const bool open = g_view == (i == 0 ? View::Maps : View::Bossing);  // an item onto the open tab is seen there
+		if (!open && (glow & (i == 0 ? stash_affinity::GlowMaps : stash_affinity::GlowBossing)) != 0) {
+			g_glowLeft[i] = GlowTotal;
+			Glow(i, true);
+		}
+		if (g_glowLeft[i] <= 0.0f) {
+			continue;
+		}
+		g_glowLeft[i] = open ? 0.0f : g_glowLeft[i] - frame->deltaTimeSeconds;
+		if (g_glowLeft[i] <= 0.0f) {
+			g_glowLeft[i] = 0.0f;
+			Glow(i, false);
+			continue;
+		}
+		Glow(i, true, FadeAlpha(g_glowLeft[i]));
+	}
 	const bool ours = g_view != View::None, maps = g_view == View::Maps;
+	for (int t = 0; t < aff::Tiers; ++t) {
+		const uint32_t homed = stash_affinity::TakeMapGlow(t);
+		Tick(g_tierFade[t], maps && t != g_tier && homed != 0, !maps || t == g_tier, frame->deltaTimeSeconds);
+		for (int i = 0; i < aff::PageWidth && aff::BaseCode(t, i) != 0; ++i) {
+			const bool other = maps && t == g_tier && g_base[t] != i;
+			Tick(g_bases[t][i].fade, other && (homed >> i & 1) != 0, !other, frame->deltaTimeSeconds);
+		}
+	}
 	Show(g_mapsOn, maps);
 	Show(g_mapsOnText, maps);
 	Show(g_bossingOn, g_view == View::Bossing);
@@ -725,9 +821,9 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 		ShowButton(g_cube, true);  // enabled too: off a RotW tab the stash disables it, and its grid and Transmute with it
 		Show(g_cubeWithdraw, false);  // the RotW tabs' Withdraw, not ours
 	}
-	for (int t = 0; t < 3; ++t) {
-		ShowButton(g_tiers[t][0], maps && g_tier != t);
-		ShowButton(g_tiers[t][1], maps && g_tier == t);
+	for (int t = 0; t < aff::Tiers; ++t) {
+		ShowButton(g_tiers[t].button, maps && g_tier != t);
+		ShowButton(g_tiers[t].on, maps && g_tier == t);
 		for (int i = 0; i < aff::PageWidth; ++i) {
 			if (aff::BaseCode(t, i) == 0) {
 				continue;
@@ -768,6 +864,14 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		if (e->state != sigscan::State::Ok) {
 			g_select = false;
 			plog::Info("stash tabs: signature %s %s", e->name, sigscan::StateText(e->state));
+		}
+	}
+	sigscan::Resolve(GlowSigs, std::size(GlowSigs), context->exeBase, nullptr, 0);
+	g_glowOk = FetchPanel.state == sigscan::State::Ok && FindChild.state == sigscan::State::Ok;
+	for (const sigscan::Entry* e : GlowSigs) {
+		if (e->state != sigscan::State::Ok) {
+			g_glowOk = false;
+			plog::Info("stash tabs: signature %s %s: the Maps and Bossing tabs do not glow", e->name, sigscan::StateText(e->state));
 		}
 	}
 	InitNames();
@@ -830,6 +934,10 @@ auto Console(const char* args, char* reply, size_t size) noexcept -> bool {
 	g_request = what;
 	std::snprintf(reply, size, "core-ui stash: opening %s, see the log line 'stash tabs: console opened'", args);
 	return true;
+}
+
+auto HasPage(uint32_t page) noexcept -> bool {
+	return page < g_pages;
 }
 
 void Counters(char* out, size_t size) noexcept {

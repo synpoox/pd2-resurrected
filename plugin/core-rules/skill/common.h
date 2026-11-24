@@ -140,6 +140,41 @@ inline auto Leash(const Engine& engine, d2r::Game* game, d2r::Unit* pet, d2r::Un
 
 }  // namespace leash
 
+// --- PD2's to-hit chance (to_hit.cpp's server roll #2010, sheet_to_hit.cpp's character sheet #2048) ---
+// ProjectDiablo.dll 0x10304e70 (defense, AR, defender level, attacker level) -> 5-100, step by step (32-bit integer
+// math, each division truncated as idiv does)
+inline constexpr auto Pd2Chance(int32_t def, int32_t ar, int32_t dlvl, int32_t alvl) noexcept -> int32_t {
+	// a negative side moves onto the other one (D2R's inputs are already moved, so this is a no-op here)
+	if (def < 0) {
+		ar -= def;
+		def = 0;
+	}
+	if (ar < 0) {
+		def -= ar;
+		ar = 0;
+	}
+	const int32_t sum = ar + def;
+	const int32_t ratio = sum != 0 ? 111 * ar / sum : 100;
+	const int32_t levels = dlvl + alvl;
+	if (levels == 0) {
+		return 5;
+	}
+	const int32_t chance = ratio * alvl * 2 / levels;
+	if (chance < 5) {
+		return 5;
+	}
+	if (chance <= 95 || alvl == 0) {
+		return chance < 100 ? chance : 100;
+	}
+	// the ratio's part above the one that gives 95 is scaled by 90/111 (through sum, as PD2 does), then the level factor
+	int32_t over = ratio - 95 * levels / (2 * alvl);
+	if (sum != 0) {
+		over = sum * over / 111 * 90 / sum;
+	}
+	const int32_t soft = over * alvl * 2 / levels + 95;
+	return soft < 100 ? soft : 100;
+}
+
 // --- PD2's leech reductions (#2009, leech.cpp) ---
 // Missile and area hits halve life and mana leech; a Leap Attack hit divides life leech by 3.
 // Names the victim of the one Leap Attack hit about to run (skill_functions.cpp LeapHitOne); nullptrs after it.
@@ -160,3 +195,15 @@ struct SlowNodes {
 };
 auto SlowPrimeEvilBegin(d2r::Game* game, int32_t event, d2r::Unit* unit, d2r::Unit* target, SlowNodes& nodes) noexcept -> void;
 auto SlowPrimeEvilEnd(const SlowNodes& nodes) noexcept -> void;
+
+// --- Sacrifice's missile kills (#2043, sacrifice_missile.cpp) ---
+// The missile of the missile damage or AreaApply call running on this thread (D2R passes the deal its owner), or null.
+auto SacrificeKillMissile() noexcept -> d2r::Unit*;
+
+// --- D2R's corpse test without monstats2 `soft` (grim_ward_corpse.cpp #2019, hunger_corpse.cpp #2067) ---
+// 0x33a5c0, the corpse test without bit 12 (#10678); 0x33a510 differs only in its tail (call 0x34fa60, not mov eax,1)
+inline constexpr const char* CorpseSelPattern =
+    "40 57 48 83 ec 20 48 8b f9 48 85 c9 74 6e e8 ?? ?? ?? ?? 83 f8 01 75 64 48 8b cf e8 ?? ?? ?? ?? 83 f8 0c 75 57 "
+    "48 8b cf e8 ?? ?? ?? ?? 85 c0 75 4b 41 b8 cb 0e 00 00 48 89 5c 24 38 48 8d 15 ?? ?? ?? ?? 48 8b cf e8 ?? ?? ?? ?? "
+    "48 8b cf 8b d8 e8 ?? ?? ?? ?? 8b d3 0f b6 c8 e8 ?? ?? ?? ?? 48 8b 5c 24 38 48 85 c0 75 1b 48 8d 4c 24 30 88 44 "
+    "24 30 e8 ?? ?? ?? ?? 84 c0 74 01 cc 33 c0 48 83 c4 20 5f c3 0f b6 40 04 23 05 ?? ?? ?? ?? 74 ec b8 01 00 00 00";

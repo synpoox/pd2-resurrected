@@ -1,1 +1,0 @@
-- New HD models and mercenary portraits for the Dark and Light Ascendant, by RuffnecKk.

@@ -263,8 +263,6 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 	g_busy = false;
 	if (listed != D2RL::Inventory::Result::Success || back == 0) {
 		// Not found (dropped, merged into a stack not noted) or not split (a tome)
-		plog::Info("split: none, list %u, %d held, %d found in container %u", static_cast<uint32_t>(listed), held,
-		           found.quantity, static_cast<uint32_t>(placed.container));
 		return;
 	}
 	const bool shared = placed.container == C::SharedStash;
@@ -306,21 +304,38 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 		++g_splits;
 	} else {
 		++g_failed;
+		plog::Warn("split: splitStack failed (%u), %d stays whole", static_cast<uint32_t>(status), found.before);
 	}
 	if (shared) {
 		// What stays down goes home: the one item, or the whole stack when the split failed
 		const items::Result returned = Move(player, placed.handle, BackTo(home));
 		g_failed += returned == items::Result::Success ? 0 : 1;
-		plog::Info("split: shared stash page %u cell %d,%d via the inventory, back home %u%s", home.sharedStashPage, home.x,
-		           home.y, static_cast<uint32_t>(returned), returned == items::Result::Success ? "" : " (left in the inventory)");
+		if (returned != items::Result::Success) {
+			plog::Warn("split: shared stash page %u cell %d,%d: back home failed (%u), left in the inventory", home.sharedStashPage,
+			           home.x, home.y, static_cast<uint32_t>(returned));
+		}
 	}
 	if (isMap && saved.count > 0 && status == items::Result::Success) {
 		const auto applied = g_items->editNativeItem(g_context, result.cursorItem, ApplyNative, &saved);
-		plog::Info("split: set the forced event (%d entries) on the new map piece (%u)", saved.count, static_cast<uint32_t>(applied));
+		if (applied != items::Result::Success) {
+			plog::Warn("split: the forced event (%d entries) was not set on the new map piece (%u)", saved.count,
+			           static_cast<uint32_t>(applied));
+		}
 	}
-	plog::Info("split: code %08x container %u cell %d,%d, %d held onto %d: result %u, %u left down, %u on the cursor",
-	           placed.code, static_cast<uint32_t>(placed.container), placed.x, placed.y, held, found.before,
-	           static_cast<uint32_t>(status), result.remainingQuantity, back);
+	// #2097: on a shared stash page the move back home takes over the client's cursor (as a merge's move does, #1762), so
+	// the client held the rest undrawn until the next click put it down. An editItem of the cursor stack to its own count,
+	// after that move, sends it again (0x9d action 0x15: the client rebuilds it as its cursor item), as stash_affinity's
+	// ResendCursor does. An inventory, cube or personal stash split is drawn already.
+	auto resent = items::Result::Unsupported;
+	if (shared && status == items::Result::Success) {
+		const items::ItemEdit same {.structSize = items::ItemEditSize,
+		                            .fields = items::EditFieldBit(items::EditField::Quantity),
+		                            .quantity = back};
+		resent = g_items->editItem(g_context, player, result.cursorItem, &same);
+	}
+	if (shared && status == items::Result::Success && resent != items::Result::Success) {
+		plog::Warn("split: the cursor stack could not be sent again (%u)", static_cast<uint32_t>(resent));
+	}
 }
 
 // The pad legend ("LB + A Split Stack", #387, controller/playerinventoryexpansionlayouthd.json) shows while a splittable stack is held.

@@ -17,14 +17,17 @@ TOP = {".claude", ".github", ".gitignore", ".gitattributes", "AGENTS.md", "CHANG
 
 def offenders(paths: list[str]) -> list[str]:
     return [p for p in paths if p.startswith(DIRS) or Path(p).suffix.lower() in EXT or CASC.search(p)
-            or p.split("/")[0] not in TOP or (p.startswith("files/") and not p.startswith("files/data/"))]
+            or (p.split("/")[0] not in TOP and not re.fullmatch(r"release/notes/[^/]+\.md", p))
+            or (p.startswith("files/") and not p.startswith("files/data/"))]
 
 
 class NoGameFiles(unittest.TestCase):
     def test_rules(self):
         bad = ["pd2-data/x.txt", "generated/data/a.txt", "a/b.d2s", "x/data.012", "x/.build.info", "out/data/a.txt",
-               "import/a.txt", "dumps/D2R.DMP", "plugin/core.dll", "newtop/a.txt", "files/other/a.txt", "patches/010-a.json"]
-        good = ["files/data/global/excel/skills.txt", "files/data/hd/x.sprite", "merge/art/items/a.png", "tools/x.py"]
+               "import/a.txt", "dumps/D2R.DMP", "plugin/core.dll", "newtop/a.txt", "files/other/a.txt", "patches/010-a.json",
+               "release/notes/game.dll", "release/other.md", "release/notes/nested/file.md"]
+        good = ["files/data/global/excel/skills.txt", "files/data/hd/x.sprite", "merge/art/items/a.png", "tools/x.py",
+                "release/notes/0.2.5-alpha.md"]
         self.assertEqual(offenders(bad + good), bad)
 
     def test_tracked_tree(self):

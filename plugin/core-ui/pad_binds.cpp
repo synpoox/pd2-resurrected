@@ -71,8 +71,9 @@ void MoveNow(const D2RL::PluginContext*, void*) noexcept {
 		.structSize = items::ExistingItemTransactionSize, .player = job.player, .operationCount = 1, .operations = &op};
 	items::ExistingItemTransactionResult result {.structSize = items::ExistingItemTransactionResultSize};
 	const items::Result status = g_items->executeExistingItemTransaction(g_context, &transaction, &result);
-	plog::Info("padbinds: stack of %d to the Cube %s (%u)", job.quantity, status == items::Result::Success ? "moved" : "failed",
-	           static_cast<uint32_t>(status));
+	if (status != items::Result::Success) {
+		plog::Warn("padbinds: stack of %d to the Cube failed (%u)", job.quantity, static_cast<uint32_t>(status));
+	}
 }
 
 auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions::ItemInteractionEvent* event, void*) noexcept
@@ -82,8 +83,6 @@ auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions
 	if (event->inputSource != D2RL::ItemInteractions::InputSource::Controller || !controller_split::ModifierAndRbHeld()) {
 		return Decision::Continue;
 	}
-	plog::Info("padbinds: chord on container %u page %d cell %d,%d", static_cast<uint32_t>(event->container), event->inventoryPage,
-	           event->cellX, event->cellY);
 	if (g_items->getItemInfo(g_context, event->item, &info) != items::Result::Success || info.quantity < 2 || g_busy.exchange(true)) {
 		return Decision::Continue;
 	}
@@ -191,8 +190,6 @@ auto Merge(D2RL::PlayerHandle player, const items::ItemInfo& single, const items
 		                                 static_cast<uint32_t>(gone), back ? "is back to" : "COULD NOT be put back to", have);
 		return false;
 	}
-	plog::Info("padbinds: %08x x%d taken out of the stack tab topped up the inventory stack at %d,%d (%d -> %d)", single.code, add,
-	           stack.x, stack.y, have, have + add);
 	return true;
 }
 
@@ -217,7 +214,6 @@ void TopUpNow(const D2RL::PluginContext*, void*) noexcept {
 			}
 			if (!merged && g_topUp.count < MaxCarried) {
 				g_topUp.ids[g_topUp.count++] = single.runtimeId;  // a stack now, for the next single
-				plog::Info("padbinds: %08x taken out of the stack tab: no inventory stack of it takes it, it keeps its cell", single.code);
 			}
 		}
 	}
@@ -272,7 +268,6 @@ void OnActivateCell(void* widget, uint64_t focus) noexcept {
 			// A mouse click on a stack cell while RB is held also takes this path (shortcut: not told apart from the pad's A).
 			if (g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
 			    g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::NotFound) {
-				plog::Info("padbinds: stack tab %s", whole ? "whole stack to the Cube" : "5 to the inventory");
 				g_bulk(widget, nullptr, whole ? 3 : 0, whole ? 255 : 5);
 				return;
 			}

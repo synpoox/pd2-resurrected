@@ -21,7 +21,6 @@
 #include "merc_rules.h"
 
 #include "pd2_engine.h"
-#include "hot_log.h"
 #include "log.h"
 #include "sig.h"
 
@@ -79,9 +78,7 @@ auto AddTyraelHire() noexcept -> void {
 	++count;
 	strings[count - 1] = 0;  // Cancel, as npc.txt's records leave it
 	handlers[count - 1] = 0;
-	if (plog::Sample(g_hireAdded)) {
-		plog::Info("tyrael hire: menu has %d entries, %u so far", count, g_hireAdded.load());
-	}
+	++g_hireAdded;
 }
 
 auto MenuOpen(int32_t record, int32_t resurrect) noexcept -> uint64_t {
@@ -149,9 +146,7 @@ auto PetIcon(void* panel, int32_t petType, int32_t unitId, bool* flag, int32_t* 
 			if (slot != nullptr) {
 				*slot = lightSlot;
 			}
-			if (pd2::HotSample(g_lightIcons)) {
-				plog::Info("light ascendant icon: unit %d, %u so far", unitId, g_lightIcons.load());
-			}
+			++g_lightIcons;
 			return index;
 		}
 	}
