@@ -78,32 +78,29 @@ PD2R_RULE(InstallWhirlwind, 90)
 // map: the path step clips it. Its other patch (+0x28336 je -> jmp) skips the plain attack on a target in reach, which
 // with the target unit cleared is never reached anyway. D2R's srvst 38 (0x56a420) and the client's cltst 31 (0x230a10)
 // keep 1.13c's order: target point (SkillTargetXY / ClientSkillTargetXY), then the path's target unit, then the
-// in-range attack (0x56a4f7 / 0x22f1f0). So both target-point functions are hooked, acting only for those two call
-// sites (by return address), and do PD2's step with D2R's PathSetTargetXY (0x342a50, #10286's twin: +0x10/+0x12, clears
-// +0x70) and UnitSize (0x34b580, #10589's twin). Every srvst 38 skill takes it, as in PD2: Whirlwind, Blade Dance,
-// MonWhirlwind, UberTalicWhirlwind and Talic's Whirlwind.
+// in-range attack (0x56a4f7 / 0x22f1f0). PD2's step is done with D2R's PathSetTargetXY (0x342a50, #10286's twin:
+// +0x10/+0x12, clears +0x70) and UnitSize (0x34b580, #10589's twin). Every srvst 38 skill takes it, as in PD2: Whirlwind,
+// Blade Dance, MonWhirlwind, UberTalicWhirlwind and Talic's Whirlwind.
+// Server: srvst 38's table slot is wrapped, not SkillTargetXY's entry, which Bind and Summon (a bundled companion,
+// corpse-free skeletons) already hooks (#2110). Before srvst 38 runs, the wrap repeats its first steps (skill record,
+// unit skill, target point) and takes PD2's step; with the target unit cleared, srvst 38's own target-point call then
+// returns the stepped path point. Client: ClientSkillTargetXY is hooked, acting only at cltst 31's call (return address).
 namespace {
 
-// srvst 38: lea r9,[rbp-0x25] / mov rdx,r14 / lea r8,[rbp-0x29] / mov rcx,r15 / call SkillTargetXY / test eax,eax / jz /
-// mov edx,0xc
-constexpr const char* ServerStartCall =
-    "4c 8d 4d db 49 8b d6 4c 8d 45 d7 49 8b cf e8 ?? ?? ?? ?? 85 c0 0f 84 ?? ?? ?? ?? ba 0c 00 00 00";
-constexpr int ServerCallAt = 14;
+constexpr int SrvStSpinSlot = 38;
 // cltst 31: lea r8,[rbp-0x3c] / mov rcx,r14 / lea rdx,[rbp-0x40] / call ClientSkillTargetXY / test eax,eax / jz /
 // mov rcx,r14 / call
 constexpr const char* ClientStartCall = "4c 8d 45 c4 49 8b ce 48 8d 55 c0 e8 ?? ?? ?? ?? 85 c0 0f 84 ?? ?? ?? ?? 49 8b ce e8";
 constexpr int ClientCallAt = 11;
-// mov [rsp+8],rbx / mov [rsp+0x10],rsi / mov [rsp+0x18],rdi
-constexpr uint8_t ServerTargetEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x74,
-                                         0x24, 0x10, 0x48, 0x89, 0x7c, 0x24, 0x18};
 // push rbx / push rsi / push rdi / push r14 / push r15 / sub rsp,0x70
 constexpr uint8_t ClientTargetEntry[] = {0x40, 0x53, 0x56, 0x57, 0x41, 0x56, 0x41, 0x57, 0x48, 0x83, 0xec, 0x70};
 
 using ServerTargetFn = int32_t (*)(d2r::Game*, Unit*, int32_t*, int32_t*) noexcept;
 using ClientTargetFn = int32_t (*)(Unit*, int32_t*, int32_t*) noexcept;
-ServerTargetFn g_serverTarget = nullptr;
+using SrvStFn = int64_t (*)(d2r::Game*, Unit*, int32_t, int32_t) noexcept;
+SrvStFn g_srvSt38 = nullptr;
 ClientTargetFn g_clientTarget = nullptr;
-uint64_t g_serverReturn = 0, g_clientReturn = 0;
+uint64_t g_clientReturn = 0;
 
 auto Sign(int32_t v) noexcept -> int32_t {
 	return (v > 0) - (v < 0);
@@ -126,12 +123,16 @@ auto SpinPast(Unit* unit, int32_t* x, int32_t* y) noexcept -> void {
 	d2r::Engine<void (*)(void*, int32_t, int32_t) noexcept>(d2r::sig::PathSetTargetXY)(path, *x, *y);
 }
 
-auto ServerTarget(d2r::Game* game, Unit* unit, int32_t* x, int32_t* y) noexcept -> int32_t {
-	const int32_t ok = g_serverTarget(game, unit, x, y);
-	if (ok != 0 && reinterpret_cast<uint64_t>(_ReturnAddress()) == g_serverReturn) {
-		SpinPast(unit, x, y);
+// srvst 38 reaches its target-point call only with the skill's record and the unit's skill, as checked here
+auto SrvStSpin(d2r::Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
+	int32_t x = 0, y = 0;
+	if (game != nullptr && unit != nullptr &&
+	    d2r::api.getSkillRecord(d2r::api.unitDataFlag(unit), skillId) != nullptr &&
+	    d2r::Engine<void* (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::GetUnitSkill)(unit, skillId, 0) != nullptr &&
+	    d2r::Engine<ServerTargetFn>(d2r::sig::SkillTargetXY)(game, unit, &x, &y) != 0) {
+		SpinPast(unit, &x, &y);
 	}
-	return ok;
+	return g_srvSt38(game, unit, skillId, level);
 }
 
 auto ClientTarget(Unit* unit, int32_t* x, int32_t* y) noexcept -> int32_t {
@@ -157,19 +158,24 @@ auto CallReturn(const D2RL::PluginContext* context, const char* pattern, int cal
 
 auto InstallWhirlwindStart(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
 	using sigscan::State;
-	bool on = d2r::sig::SkillTargetXY.state == State::Ok && d2r::sig::ClientSkillTargetXY.state == State::Ok &&
+	bool on = d2r::api.getSkillRecord != nullptr && d2r::api.unitDataFlag != nullptr &&
+	          d2r::sig::SkillTargetXY.state == State::Ok && d2r::sig::ClientSkillTargetXY.state == State::Ok &&
+	          d2r::sig::GetUnitSkill.state == State::Ok && d2r::sig::SrvStTable.state == State::Ok &&
 	          d2r::sig::PathSetTargetXY.state == State::Ok && d2r::sig::UnitSize.state == State::Ok;
 	if (on) {
-		g_serverReturn = CallReturn(context, ServerStartCall, ServerCallAt, d2r::sig::SkillTargetXY.rva);
 		g_clientReturn = CallReturn(context, ClientStartCall, ClientCallAt, d2r::sig::ClientSkillTargetXY.rva);
-		// No SDK service sets a skill's target point, so the two target-point functions are hooked; only the
-		// Whirlwind-start call sites act. Both call sites are scanned first; if the client hook then fails, the server
-		// hook stays live while the line says FAILED.
-		on = g_serverReturn != 0 && g_clientReturn != 0 &&
-		     context->InstallInlineHook(d2r::sig::SkillTargetXY.rva, ServerTargetEntry, sizeof(ServerTargetEntry),
-		                                &ServerTarget, &g_serverTarget) &&
+		// No SDK service sets a skill's target point: the client's target-point function is hooked (only cltst 31's
+		// call acts) and srvst 38's slot is wrapped, keeping the slot's current function. If the slot write then
+		// fails, the client hook stays live while the line says FAILED.
+		const uint64_t slotRva = d2r::sig::SrvStTable.rva + uint64_t {SrvStSpinSlot} * 8;
+		uint64_t current = 0;
+		std::memcpy(&current, reinterpret_cast<const void*>(context->exeBase + slotRva), sizeof(current));
+		g_srvSt38 = reinterpret_cast<SrvStFn>(current);
+		on = g_clientReturn != 0 && current != 0 &&
 		     context->InstallInlineHook(d2r::sig::ClientSkillTargetXY.rva, ClientTargetEntry, sizeof(ClientTargetEntry),
-		                                &ClientTarget, &g_clientTarget);
+		                                &ClientTarget, &g_clientTarget) &&
+		     context->PatchWriteU64(slotRva, &current, sizeof(current),
+		                            reinterpret_cast<uint64_t>(static_cast<SrvStFn>(SrvStSpin)));
 	}
 	plog::Info("whirlwind: pd2 always spin %s", on ? "on" : "FAILED");
 	const size_t used = std::strlen(report);
