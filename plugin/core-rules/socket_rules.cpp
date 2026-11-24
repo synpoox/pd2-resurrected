@@ -305,6 +305,19 @@ constexpr int32_t CursorLocation[4] = {4, 0xff, 0, 0};  // what 0x382e30 builds 
 using HandlerFn = uint64_t (*)(void* game, Unit* player, uint8_t* packet, uint8_t direct, int64_t* a5, int64_t* a6) noexcept;
 using PlaceFn = uint8_t (*)(Unit* player, const int32_t* locations, const uint32_t* ids, int32_t count, uint8_t flag) noexcept;
 using FreeFn = void (*)(void* game, Unit* item) noexcept;
+// The handler's own item send (0x4fa533): SendItem 0x535f60 (game, player, item, flags, action, a, page, b, c) with its four
+// location values from 0x34ab60, ItemPage 0x36cfe0, 0x36ca10 and 0x34a110 (all (item)); the imbue sends its new unit with flags 1,
+// action 2 after clearing item flag 0x4000, and without a send the client never sees the rest (owner run: right after a rejoin)
+constexpr const char* SendSitePattern =
+	"49 8b ce e8 ?? ?? ?? ?? 49 8b ce 8b d8 e8 ?? ?? ?? ?? 49 8b ce 0f b6 f0 e8 ?? ?? ?? ?? 49 8b ce 0f b6 f8 e8 ?? ?? ?? ?? "
+	"48 8b 55 8f 45 8b cd 48 8b 4d 9f 4d 8b c6 89 5c 24 40 89 74 24 38 89 7c 24 30 89 44 24 28 44 89 7c 24 20 e8";
+constexpr uint32_t SendLocDAt = 3, SendLocCAt = 0xd, SendPageAt = 0x18, SendLocAAt = 0x23, SendCallAt = 0x4b;
+constexpr uint32_t ItemFlagUnsent = 0x4000;
+using SendFn = void (*)(void* game, Unit* player, Unit* item, uint32_t flags, uint32_t action, uint32_t a, uint32_t page, uint32_t b,
+                        uint32_t c) noexcept;
+using ItemValueFn = uint32_t (*)(Unit* item) noexcept;
+SendFn g_send = nullptr;
+ItemValueFn g_locA = nullptr, g_page = nullptr, g_locC = nullptr, g_locD = nullptr;
 using ReadyFn = void (*)(void* game, Unit* item, int32_t zero) noexcept;
 using ReadyItemFn = void (*)(Unit* item, int32_t zero) noexcept;
 ReadyFn g_readyA = nullptr, g_readyB = nullptr;
@@ -358,6 +371,8 @@ auto PlaceRest(void* game, Unit* player, Unit* filler, int32_t left) noexcept ->
 		g_free(game, rest);
 		return false;
 	}
+	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag)(rest, ItemFlagUnsent, 0);
+	g_send(game, player, rest, 1, 2, g_locA(rest), g_page(rest) & 0xff, g_locC(rest) & 0xff, g_locD(rest));
 	return true;
 }
 
@@ -420,22 +435,31 @@ auto Insert(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint
 
 // The handler hook and its two engine calls; false leaves the SDK rest (next game update, local player only)
 auto InstallNativeRest(const D2RL::PluginContext* context) noexcept -> bool {
-	uint64_t place = 0, free = 0;
+	uint64_t place = 0, free = 0, sendSite = 0;
 	if (d2r::sig::ItemSpawn.state != sigscan::State::Ok || d2r::sig::SetItemFlag.state != sigscan::State::Ok ||
 	    sigscan::ScanUnique(context->exeBase, PlacePattern, 0, &place) != 1 ||
-	    sigscan::ScanUnique(context->exeBase, FreeCallPattern, 0, &free) != 1) {
+	    sigscan::ScanUnique(context->exeBase, FreeCallPattern, 0, &free) != 1 ||
+	    sigscan::ScanUnique(context->exeBase, SendSitePattern, 0, &sendSite) != 1) {
 		return false;
 	}
-	const auto target = [&](uint32_t at) noexcept -> uint64_t {
-		const auto* call = reinterpret_cast<const uint8_t*>(context->exeBase + free + at);
+	const auto callAt = [&](uint64_t site, uint32_t at) noexcept -> uint64_t {
+		const auto* call = reinterpret_cast<const uint8_t*>(context->exeBase + site + at);
 		int32_t rel = 0;
 		std::memcpy(&rel, call + 1, sizeof(rel));
 		return call[0] == 0xe8 ? reinterpret_cast<uint64_t>(call + 5 + rel) : 0;
 	};
+	const auto target = [&](uint32_t at) noexcept { return callAt(free, at); };
 	const uint64_t freeFn = target(FreeCallAt), a = target(ReadyACallAt), b = target(ReadyBCallAt), c = target(ReadyCCallAt);
-	if (freeFn == 0 || a == 0 || b == 0 || c == 0) {
+	const uint64_t send = callAt(sendSite, SendCallAt), locA = callAt(sendSite, SendLocAAt), page = callAt(sendSite, SendPageAt),
+	               locC = callAt(sendSite, SendLocCAt), locD = callAt(sendSite, SendLocDAt);
+	if (freeFn == 0 || a == 0 || b == 0 || c == 0 || send == 0 || locA == 0 || page == 0 || locC == 0 || locD == 0) {
 		return false;
 	}
+	g_send = reinterpret_cast<SendFn>(send);
+	g_locA = reinterpret_cast<ItemValueFn>(locA);
+	g_page = reinterpret_cast<ItemValueFn>(page);
+	g_locC = reinterpret_cast<ItemValueFn>(locC);
+	g_locD = reinterpret_cast<ItemValueFn>(locD);
 	g_free = reinterpret_cast<FreeFn>(freeFn);
 	g_readyA = reinterpret_cast<ReadyFn>(a);
 	g_readyB = reinterpret_cast<ReadyFn>(b);
