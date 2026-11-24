@@ -11,18 +11,29 @@
 // when the item is not stackable or its own items.txt type (D2Common #11088, an exact compare) is one of six: 1.13c
 // 42, 43, 44, 87, 5, 6. That one call is redirected (RedirectCall) to StackableNoSockets: no SDK service reaches the
 // socket roll.
+//
+// A stacked gem or rune goes into a socket one at a time (#2119). D2R's insert (93847: 0x46eb00, ItemMode.cpp; (game,
+// player, filler id, parent id, flag)) puts the whole filler unit in the socket: D2R's gems and runes never stack, PD2's
+// do. The hook sets the filler's quantity (stat 70) to 1 before the insert and, when it went in, makes the rest again on
+// the cursor through the SDK (createItem; the inventory, then the ground, when that fails). No SDK service sees socketing.
 #include "socket_rules.h"
 
 #include "item_rules.h"
 #include "pd2_engine.h"
 #include "log.h"
+#include "sig_hook.h"
 
 #include <D2RLPlugin/data_tables.h>
+#include <D2RLPlugin/inventory.h>
+#include <D2RLPlugin/item.h>
+#include <D2RLPlugin/threads.h>
 
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <iterator>
+#include <mutex>
 
 namespace {
 
@@ -115,6 +126,149 @@ auto InstallStackableSockets(const D2RL::PluginContext* context) noexcept -> boo
 	                    reinterpret_cast<uint64_t*>(&g_stackable));
 }
 
+// push rbx..r14 / sub rsp,0x70 / cookie / mov r14,rdx / mov ebx,r9d / mov edx,4 / mov rbp,rcx / call FindUnit
+constexpr const char* InsertPattern =
+    "40 53 55 56 57 41 56 48 83 ec 70 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 44 24 50 4c 8b f2 41 8b d9 ba 04 00 00 00 48 8b e9 e8";
+constexpr uint8_t InsertEntry[] = {0x40, 0x53, 0x55, 0x56, 0x57, 0x41, 0x56};
+using InsertFn = void (*)(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint8_t flag) noexcept;
+InsertFn g_insert = nullptr;
+std::atomic<uint32_t> g_split {0}, g_refusedRemote {0};
+
+// The rest of a socketed stack, made again on the game thread. shortcut: the local player only (the SDK names the player
+// on the UI thread, as stash_stacks.cpp); a remote player's stacked insert is refused, so nothing is lost; upgrade for a
+// hosted game. Leaving the game before the queued job runs (one update) loses the rest.
+struct Rest {
+	uint32_t code, quantity, itemLevel;
+};
+constexpr int MaxRests = 16;
+Rest g_rests[MaxRests];
+int g_restCount = 0;
+std::mutex g_restLock;
+const D2RL::ItemService* g_items = nullptr;
+const D2RL::InventoryService* g_inventory = nullptr;
+const D2RL::ThreadService* g_threads = nullptr;
+
+// server and client unit ids match, in a local or a hosted game
+auto LocalPlayerId() noexcept -> uint32_t {
+	using namespace d2r::rva;
+	Unit* local = d2r::Engine<Unit* (*)(uint32_t) noexcept>(ClientPlayer)(d2r::Engine<uint32_t (*)() noexcept>(LocalPlayerSlot)());
+	return local != nullptr ? At<uint32_t>(local, UnitIdField) : 0xffffffffu;
+}
+
+// Game thread: each rest to the cursor, else the inventory, else the ground
+void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
+	namespace items = D2RL::Items;
+	const auto player = reinterpret_cast<D2RL::PlayerHandle>(user);
+	Rest rests[MaxRests];
+	int count = 0;
+	{
+		std::lock_guard<std::mutex> lock(g_restLock);
+		std::memcpy(rests, g_rests, sizeof(Rest) * g_restCount);
+		count = g_restCount;
+		g_restCount = 0;
+	}
+	for (int i = 0; i < count; ++i) {
+		items::Result made = items::Result::Success;
+		for (const auto container : {items::ItemContainer::Cursor, items::ItemContainer::Inventory, items::ItemContainer::Ground}) {
+			const items::ItemCreateSpec spec {.structSize = items::ItemCreateSpecSize,
+			                                  .code = rests[i].code,
+			                                  .quality = items::Quality::Normal,
+			                                  .itemLevel = rests[i].itemLevel,
+			                                  .seedMode = items::SeedMode::Random,
+			                                  .quantity = rests[i].quantity,
+			                                  .durability = items::DefaultValue,
+			                                  .stateFlags = items::ItemStateIdentified,
+			                                  .destination = {.structSize = items::ItemDestinationSize,
+			                                                  .container = container,
+			                                                  .placement = items::Placement::Automatic}};
+			D2RL::ItemHandle item = D2RL::InvalidItemHandle;
+			made = g_items->createItem(g_context, player, &spec, &item);
+			if (made == items::Result::Success) {
+				break;
+			}
+		}
+		if (made != items::Result::Success) {
+			plog::Warn("sockets: the rest of a stack, %.4s x%u, not made again: result %u",
+			           reinterpret_cast<const char*>(&rests[i].code), rests[i].quantity, static_cast<uint32_t>(made));
+		}
+	}
+}
+
+// UI thread: the SDK names the local player only here
+void PickPlayer(const D2RL::PluginContext*, void*) noexcept {
+	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+	if (g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success ||
+	    g_threads->runOnGameThread(g_context, MakeRests, reinterpret_cast<void*>(player)) != D2RL::Threads::Result::Success) {
+		plog::Warn("sockets: could not queue the rest of a stack; it is lost");
+		std::lock_guard<std::mutex> lock(g_restLock);
+		g_restCount = 0;
+	}
+}
+
+void QueueRest(Unit* filler, int32_t left) noexcept {
+	using namespace d2r::rva;
+	bool first = false;
+	{
+		std::lock_guard<std::mutex> lock(g_restLock);
+		if (g_restCount >= MaxRests) {
+			plog::Warn("sockets: too many rests queued; %d items lost", left);
+			return;
+		}
+		first = g_restCount == 0;
+		g_rests[g_restCount++] = {d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(filler), static_cast<uint32_t>(left),
+		                          d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemLevel)(filler)};
+	}
+	if (first && g_threads->runOnUiThread(g_context, PickPlayer, nullptr) != D2RL::Threads::Result::Success) {
+		plog::Warn("sockets: could not queue the rest of a stack; it is lost");
+		std::lock_guard<std::mutex> lock(g_restLock);
+		g_restCount = 0;
+	}
+}
+
+auto Quantity(Unit* item) noexcept -> int32_t {
+	return d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(item, d2r::rva::StatQuantity, 0);
+}
+
+void SetQuantity(Unit* item, int32_t value) noexcept {
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(d2r::rva::SetUnitStat)(item, d2r::rva::StatQuantity, value, 0);
+}
+
+void Insert(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint8_t flag) noexcept {
+	using namespace d2r::rva;
+	Unit* filler = d2r::Engine<Unit* (*)(void*, int32_t, uint32_t) noexcept>(FindUnit)(game, 4, fillerId);
+	const int32_t quantity = IsItem(filler) ? Quantity(filler) : 0;
+	if (quantity <= 1 || player == nullptr) {
+		g_insert(game, player, fillerId, parentId, flag);
+		return;
+	}
+	if (At<uint32_t>(player, UnitIdField) != LocalPlayerId()) {
+		g_refusedRemote.fetch_add(1);  // no rest can be made for a remote player, so its stack stays on the cursor
+		return;
+	}
+	SetQuantity(filler, 1);
+	g_insert(game, player, fillerId, parentId, flag);
+	// in a socket: the insert set its item page to 0xff (SetItemPage)
+	if ((d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemPage)(filler) & 0xff) == 0xff) {
+		g_split.fetch_add(1);
+		QueueRest(filler, quantity - 1);
+	} else {
+		SetQuantity(filler, quantity);  // refused: the stack stays whole
+	}
+}
+
+auto InstallStackInsert(const D2RL::PluginContext* context) noexcept -> bool {
+	if (context->QueryService(&g_items) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasItemServiceField(g_items, D2RL::ItemServiceRequiredSize) ||
+	    context->QueryService(&g_inventory) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasInventoryServiceField(g_inventory, D2RL::InventoryServiceRequiredSize) ||
+	    context->QueryService(&g_threads) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasThreadServiceField(g_threads, D2RL::ThreadServiceRequiredSize)) {
+		return false;
+	}
+	g_context = context;
+	return sigscan::HookBySignature(context, "SocketInsert", InsertPattern, 0, InsertEntry, sizeof(InsertEntry), &Insert, &g_insert);
+}
+
 }  // namespace
 
 auto MarkSocketedCompact(Unit* filler) noexcept -> bool {
@@ -144,16 +298,18 @@ auto InstallSocketRules(const D2RL::PluginContext* context, char* report, size_t
 	const bool hook = context->InstallInlineHook(SocketFillerMods, SocketFillerModsEntry, sizeof(SocketFillerModsEntry),
 	                                             SocketMods, &g_original);
 	const bool stackable = InstallStackableSockets(context);
-	std::snprintf(report, reportSize, "socket mods once%s; stackable sockets%s", hook ? "" : " FAILED (bytes differ)",
-	              stackable ? "" : " FAILED (signature, service or relay)");
-	return (hook ? 1 : 0) + (stackable ? 1 : 0);
+	const bool insert = InstallStackInsert(context);
+	std::snprintf(report, reportSize, "socket mods once%s; stackable sockets%s; stacks socket one%s",
+	              hook ? "" : " FAILED (bytes differ)", stackable ? "" : " FAILED (signature, service or relay)",
+	              insert ? "" : " FAILED (signature or service)");
+	return (hook ? 1 : 0) + (stackable ? 1 : 0) + (insert ? 1 : 0);
 }
 
 auto SocketRuleCount() noexcept -> int {
-	return 2;
+	return 3;
 }
 
 auto SocketRuleCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "socketed fillers marked compact %u, stackables let roll sockets %u", g_marked.load(),
-	              g_stackRolls.load());
+	std::snprintf(out, size, "socketed fillers marked compact %u, stackables let roll sockets %u, stacks socketed one %u (remote refused %u)",
+	              g_marked.load(), g_stackRolls.load(), g_split.load(), g_refusedRemote.load());
 }
