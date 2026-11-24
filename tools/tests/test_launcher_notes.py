@@ -41,6 +41,8 @@ class LauncherNotes(unittest.TestCase):
 
     def test_release_notes(self):
         for path in NOTES.glob("*.md"):
+            with self.subTest(path.name, check="issue numbers"):  # the launcher copy omits them; docs/release-notes keeps them
+                self.assertIsNone(re.search(r"#\d+", path.read_text("utf-8")))
             if path.name not in SHIPPED:
                 with self.subTest(path.name):
                     self.assertEqual(problems(path.read_text("utf-8")), [])
