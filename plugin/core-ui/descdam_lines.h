@@ -45,7 +45,7 @@ constexpr auto SrcDamScale(int32_t v, int32_t srcDam) noexcept -> int32_t {
 }
 
 // The shared signature entries the part calls (its own are resolved by Install)
-extern sigscan::Entry* const Uses[9];
+extern sigscan::Entry* const Uses[8];
 
 // Fills the table slots. Returns the report for the log ("pd2 lines on" or FAILED with the reason).
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept;

@@ -303,7 +303,7 @@ constexpr Handler Ours[std::size(Ids)] = {Vengeance, Throw, Kick, ChargeUp, Arro
 
 }  // namespace
 
-sigscan::Entry* const Uses[9] = {&d2r::sig::UnitStat,     &d2r::sig::UnitStateList, &d2r::sig::ListStatValue,
+sigscan::Entry* const Uses[8] = {&d2r::sig::UnitStat,     &d2r::sig::UnitStateList, &d2r::sig::ListStatValue,
                                   &d2r::sig::UnitHasState, &d2r::sig::EvalSkillCalc,
                                   &d2r::sig::RecordOffsets, &d2r::sig::UnitInventory, &d2r::sig::ItemIsType};
 
