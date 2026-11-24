@@ -487,6 +487,7 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 		return true;
 	}
 	items::Result moved = items::Result::Conflict;
+	bool full = false;  // the shown base's Maps view has no free cell (#2095)
 	if (home.category == aff::Category::Maps) {
 		const bool shown = g_shown != 0 && aff::Normal(item.code) == aff::Normal(g_shown);
 		// A stack of the same map below a full one takes it first (#1759); a full stack or a failed merge falls through
@@ -505,7 +506,15 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 			return true;
 		}
 		const aff::Cell cell = shown ? FreeMapCell() : aff::Cell {};
-		moved = cell.x >= 0 ? MoveTo(player, item, aff::MapsPage, cell.x, cell.y) : ToStorage(player, item);
+		// #2095: with the shown base's view full the map stays in the inventory (below); its storage row is not on screen, so it looked deleted
+		if (cell.x >= 0) {
+			moved = MoveTo(player, item, aff::MapsPage, cell.x, cell.y);
+		} else if (!shown) {
+			moved = ToStorage(player, item);
+		} else {
+			full = true;
+			moved = items::Result::Unsupported;  // no page problem: skips the add_shared_tabs hint below
+		}
 	} else {  // a fixed cell: Map Materials, Bossing
 		int32_t& on = At(home.page, home.row, home.column);
 		if (on == -1) {
@@ -527,6 +536,9 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 	                                   .placement = items::Placement::Automatic};
 	const items::Result returned = Move(player, item.handle, back);
 	(returned == items::Result::Success ? g_returned : g_failed)++;
+	if (full && returned == items::Result::Success) {  // once per move: a failed move back retries each tidy pass
+		plog::Info("affinity: the Maps tab is full: %08x stays in the inventory", item.code);
+	}
 	static std::atomic<bool> pageFailLogged {false};  // a stuck item retries about once a second
 	if (!pageFailLogged.exchange(true)) {
 		plog::Info("affinity: %08x could not go to page %u (result %u); back to the inventory: result %u", item.code, home.page,
