@@ -276,6 +276,110 @@ void SetQuantity(Unit* item, int32_t value) noexcept {
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(d2r::rva::SetUnitStat)(item, d2r::rva::StatQuantity, value, 0);
 }
 
+// Native rest (seamless, any player): the packet handler (0x4f9f40) is wrapped, and once it returns the rest is made with
+// ItemSpawn and put on the cursor with D2R's own placer, so the client gets "into the socket" and "on the cursor" in one
+// tick. Not inside the insert: for a runeword the handler then takes the filler back out to the cursor (0x389820, 0x471500)
+// and replays the insert later (0x4b1a29), so the filler id must stay the unit that goes in, and the cursor stays free.
+constexpr const char* HandlerPattern = "40 55 53 57 41 54 48 8d 6c 24 d1 48 81 ec f8 00 00 00";
+constexpr uint8_t HandlerEntry[] = {0x40, 0x55, 0x53, 0x57, 0x41, 0x54, 0x48, 0x8d, 0x6c, 0x24, 0xd1};
+// (player, locations, item ids, count, flag) -> placed: the handler's put-back to the cursor
+constexpr const char* PlacePattern = "48 89 5c 24 20 55 56 57 41 54 41 55 41 56 41 57 48 8d ac 24 f0 68 ff ff";
+// The imbue's free item call (0x43ec10 (game, item), `E8 rel32` at +10; loot_rules.cpp resolves it the same way)
+constexpr const char* FreeCallPattern =
+	"48 8b 54 24 60 48 8b 4c 24 58 e8 ?? ?? ?? ?? "
+	"48 8b 4c 24 58 48 8d 95 20 02 00 00 45 33 c0 e8 ?? ?? ?? ?? 48 89 44 24 60 48 85 c0 75 ?? 48 8d 4c 24 ?? 88 44 24 "
+	"?? e8 ?? ?? ?? ?? 84 c0 74 01 cc 48 8b 44 24 60 41 b8 08 19 00 00";
+constexpr uint32_t FreeCallAt = 10;
+// ItemSpawn's drop request (gheed_store.cpp): +0 unit, +0x10 game, +0x18 ilvl, +0x20 items row, +0x24 mode, +0x38 1,
+// +0x3a the game's u16 +0x128, +0x40 quality; mode 4 with no room gives a free unit (page 0xff), as the insert needs
+constexpr int ReqGame = 0x10, ReqItemLevel = 0x18, ReqRow = 0x20, ReqMode = 0x24, ReqOne = 0x38, ReqGameWord = 0x3a,
+              ReqQuality = 0x40, ReqSize = 0xc8, GameWord = 0x128;
+constexpr int32_t QualityNormal = 2;
+constexpr uint32_t ItemFlagIdentified = 0x10;
+constexpr int32_t CursorLocation[4] = {4, 0xff, 0, 0};  // what 0x382e30 builds for the handler
+
+using HandlerFn = uint64_t (*)(void* game, Unit* player, uint8_t* packet, uint8_t direct, int64_t* a5, int64_t* a6) noexcept;
+using PlaceFn = uint8_t (*)(Unit* player, const int32_t* locations, const uint32_t* ids, int32_t count, uint8_t flag) noexcept;
+using FreeFn = void (*)(void* game, Unit* item) noexcept;
+HandlerFn g_handler = nullptr;
+PlaceFn g_place = nullptr;
+FreeFn g_free = nullptr;
+std::atomic<uint32_t> g_native {0};
+
+// set by the insert inside the handler, read once it returns (game thread only)
+struct Pending {
+	uint32_t fillerId;
+	int32_t quantity;
+};
+thread_local bool g_inHandler = false;
+thread_local Pending g_pending {0, 0};
+
+void Fallback(Unit* player, Unit* filler, int32_t left) noexcept {
+	using namespace d2r::rva;
+	if (At<uint32_t>(player, UnitIdField) == LocalPlayerId()) {
+		QueueRest(filler, left);
+	} else {
+		plog::Warn("sockets: the rest of a remote player's stack, %d items, not made again", left);
+	}
+}
+
+// The rest straight onto the cursor; false when it could not be made or placed (nothing is left over)
+auto PlaceRest(void* game, Unit* player, Unit* filler, int32_t left) noexcept -> bool {
+	using namespace d2r::rva;
+	alignas(8) uint8_t req[ReqSize] {};
+	*reinterpret_cast<Unit**>(req) = player;
+	*reinterpret_cast<void**>(req + ReqGame) = game;
+	const auto level = static_cast<int32_t>(d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemLevel)(filler));
+	*reinterpret_cast<int32_t*>(req + ReqItemLevel) = level > 0 ? level : 1;
+	*reinterpret_cast<int32_t*>(req + ReqRow) = At<int32_t>(filler, UnitClassId);
+	*reinterpret_cast<int32_t*>(req + ReqMode) = ItemModeCursor;
+	*reinterpret_cast<uint16_t*>(req + ReqOne) = 1;
+	*reinterpret_cast<uint16_t*>(req + ReqGameWord) = At<uint16_t>(game, GameWord);
+	*reinterpret_cast<int32_t*>(req + ReqQuality) = QualityNormal;
+	Unit* rest = d2r::Engine<Unit* (*)(void*, void*, int32_t) noexcept>(d2r::sig::ItemSpawn)(game, req, 0);
+	if (rest == nullptr) {
+		return false;
+	}
+	d2r::Engine<void (*)(Unit*, uint32_t, int32_t) noexcept>(d2r::sig::SetItemFlag)(rest, ItemFlagIdentified, 1);
+	SetQuantity(rest, left);
+	const uint32_t id = At<uint32_t>(rest, UnitIdField);
+	if (g_place(player, CursorLocation, &id, 1, 0) == 0) {
+		g_free(game, rest);
+		return false;
+	}
+	return true;
+}
+
+auto Handler(void* game, Unit* player, uint8_t* packet, uint8_t direct, int64_t* a5, int64_t* a6) noexcept -> uint64_t {
+	using namespace d2r::rva;
+	g_pending = {0, 0};
+	g_inHandler = true;
+	const uint64_t result = g_handler(game, player, packet, direct, a5, a6);
+	g_inHandler = false;
+	const Pending pending = g_pending;
+	g_pending = {0, 0};
+	if (pending.quantity <= 1) {
+		return result;
+	}
+	Unit* filler = d2r::Engine<Unit* (*)(void*, int32_t, uint32_t) noexcept>(FindUnit)(game, 4, pending.fillerId);
+	if (filler == nullptr) {
+		return result;
+	}
+	if (At<int32_t>(filler, UnitMode) == ItemModeCursor) {
+		// a runeword: the handler took it back to the cursor and replays the insert, which splits it again.
+		// shortcut: the client shows the stack as 1 until that replay; resend it (0x535f60) if the replay can be skipped
+		SetQuantity(filler, pending.quantity);
+		return result;
+	}
+	g_split.fetch_add(1);
+	if (PlaceRest(game, player, filler, pending.quantity - 1)) {
+		g_native.fetch_add(1);
+	} else {
+		Fallback(player, filler, pending.quantity - 1);
+	}
+	return result;
+}
+
 auto Insert(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint8_t flag) noexcept -> int32_t {
 	using namespace d2r::rva;
 	Unit* filler = d2r::Engine<Unit* (*)(void*, int32_t, uint32_t) noexcept>(FindUnit)(game, 4, fillerId);
@@ -284,20 +388,47 @@ auto Insert(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint
 	if (quantity <= 1 || player == nullptr) {
 		return g_insert(game, player, fillerId, parentId, flag);
 	}
-	if (At<uint32_t>(player, UnitIdField) != LocalPlayerId()) {
+	const bool native = g_inHandler && g_handler != nullptr;
+	if (!native && At<uint32_t>(player, UnitIdField) != LocalPlayerId()) {
 		g_refusedRemote.fetch_add(1);  // no rest can be made for a remote player, so its stack stays on the cursor
 		return 0;
 	}
 	SetQuantity(filler, 1);
 	const int32_t placed = g_insert(game, player, fillerId, parentId, flag);
 	// in a socket: the insert set its mode to 6 (a cursor item already has page 0xff, so the page tells nothing)
-	if (At<int32_t>(filler, UnitMode) == ItemModeSocketed) {
+	if (At<int32_t>(filler, UnitMode) != ItemModeSocketed) {
+		SetQuantity(filler, quantity);  // refused: the stack stays whole
+	} else if (native) {
+		g_pending = {fillerId, quantity};
+	} else {
 		g_split.fetch_add(1);
 		QueueRest(filler, quantity - 1);
-	} else {
-		SetQuantity(filler, quantity);  // refused: the stack stays whole
 	}
 	return placed;
+}
+
+// The handler hook and its two engine calls; false leaves the SDK rest (next game update, local player only)
+auto InstallNativeRest(const D2RL::PluginContext* context) noexcept -> bool {
+	uint64_t place = 0, free = 0;
+	if (d2r::sig::ItemSpawn.state != sigscan::State::Ok || d2r::sig::SetItemFlag.state != sigscan::State::Ok ||
+	    sigscan::ScanUnique(context->exeBase, PlacePattern, 0, &place) != 1 ||
+	    sigscan::ScanUnique(context->exeBase, FreeCallPattern, 0, &free) != 1) {
+		return false;
+	}
+	const auto* call = reinterpret_cast<const uint8_t*>(context->exeBase + free + FreeCallAt);
+	if (call[0] != 0xe8) {
+		return false;
+	}
+	int32_t rel = 0;
+	std::memcpy(&rel, call + 1, sizeof(rel));
+	g_free = reinterpret_cast<FreeFn>(call + 5 + rel);
+	g_place = reinterpret_cast<PlaceFn>(context->exeBase + place);
+	HandlerFn original = nullptr;
+	if (!sigscan::HookBySignature(context, "SocketPacket", HandlerPattern, 0, HandlerEntry, sizeof(HandlerEntry), &Handler, &original)) {
+		return false;
+	}
+	g_handler = original;
+	return true;
 }
 
 auto InstallStackInsert(const D2RL::PluginContext* context) noexcept -> bool {
@@ -321,7 +452,12 @@ auto InstallStackInsert(const D2RL::PluginContext* context) noexcept -> bool {
 	    lifecycle->registerGameplayEventListener(context, &ready, &readyHandle) != D2RL::Lifecycle::Result::Success) {
 		plog::Warn("sockets: no LocalPlayerReady listener; the rest of a stack takes the UI-thread path");
 	}
-	return sigscan::HookBySignature(context, "SocketInsert", InsertPattern, 0, InsertEntry, sizeof(InsertEntry), &Insert, &g_insert);
+	if (!sigscan::HookBySignature(context, "SocketInsert", InsertPattern, 0, InsertEntry, sizeof(InsertEntry), &Insert, &g_insert)) {
+		return false;
+	}
+	plog::Info("sockets: the rest of a socketed stack is made %s", InstallNativeRest(context) ? "natively, on the cursor in the same tick"
+	                                                                                          : "through the SDK (native rest off)");
+	return true;
 }
 
 }  // namespace
@@ -365,6 +501,6 @@ auto SocketRuleCount() noexcept -> int {
 }
 
 auto SocketRuleCounters(char* out, size_t size) noexcept -> void {
-	std::snprintf(out, size, "socketed fillers marked compact %u, stackables let roll sockets %u, stacks socketed one %u (remote refused %u)",
-	              g_marked.load(), g_stackRolls.load(), g_split.load(), g_refusedRemote.load());
+	std::snprintf(out, size, "socketed fillers marked compact %u, stackables let roll sockets %u, stacks socketed one %u (native rest %u, remote refused %u)",
+	              g_marked.load(), g_stackRolls.load(), g_split.load(), g_native.load(), g_refusedRemote.load());
 }
