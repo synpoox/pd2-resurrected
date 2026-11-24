@@ -1,0 +1,1 @@
+- DPS Counter updated to 1.0.1: the counter shows again above the life globe. (#2144)
