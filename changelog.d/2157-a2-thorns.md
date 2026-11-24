@@ -1,0 +1,1 @@
+- Give the Act 2 Might mercenary Thorns at PD2 skill levels instead (#2157).
