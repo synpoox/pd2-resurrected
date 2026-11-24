@@ -127,7 +127,7 @@ auto SpinPast(Unit* unit, int32_t* x, int32_t* y) noexcept -> void {
 auto SrvStSpin(d2r::Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept -> int64_t {
 	int32_t x = 0, y = 0;
 	if (game != nullptr && unit != nullptr &&
-	    d2r::api.getSkillRecord(d2r::api.unitDataFlag(unit), skillId) != nullptr &&
+	    d2r::api.getSkillRecord(d2r::DataFlag(game), skillId) != nullptr &&
 	    d2r::Engine<void* (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::GetUnitSkill)(unit, skillId, 0) != nullptr &&
 	    d2r::Engine<ServerTargetFn>(d2r::sig::SkillTargetXY)(game, unit, &x, &y) != 0) {
 		SpinPast(unit, &x, &y);
@@ -158,24 +158,23 @@ auto CallReturn(const D2RL::PluginContext* context, const char* pattern, int cal
 
 auto InstallWhirlwindStart(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
 	using sigscan::State;
-	bool on = d2r::api.getSkillRecord != nullptr && d2r::api.unitDataFlag != nullptr &&
-	          d2r::sig::SkillTargetXY.state == State::Ok && d2r::sig::ClientSkillTargetXY.state == State::Ok &&
+	bool on = d2r::api.getSkillRecord != nullptr && d2r::sig::SkillTargetXY.state == State::Ok && d2r::sig::ClientSkillTargetXY.state == State::Ok &&
 	          d2r::sig::GetUnitSkill.state == State::Ok && d2r::sig::SrvStTable.state == State::Ok &&
 	          d2r::sig::PathSetTargetXY.state == State::Ok && d2r::sig::UnitSize.state == State::Ok;
 	if (on) {
 		g_clientReturn = CallReturn(context, ClientStartCall, ClientCallAt, d2r::sig::ClientSkillTargetXY.rva);
 		// No SDK service sets a skill's target point: the client's target-point function is hooked (only cltst 31's
-		// call acts) and srvst 38's slot is wrapped, keeping the slot's current function. If the slot write then
-		// fails, the client hook stays live while the line says FAILED.
+		// call acts) and srvst 38's slot is wrapped, keeping the slot's current function. The slot is written first, so
+		// a failed client hook leaves the server stepping alone (no shown attack) while the line says FAILED.
 		const uint64_t slotRva = d2r::sig::SrvStTable.rva + uint64_t {SrvStSpinSlot} * 8;
 		uint64_t current = 0;
 		std::memcpy(&current, reinterpret_cast<const void*>(context->exeBase + slotRva), sizeof(current));
 		g_srvSt38 = reinterpret_cast<SrvStFn>(current);
 		on = g_clientReturn != 0 && current != 0 &&
-		     context->InstallInlineHook(d2r::sig::ClientSkillTargetXY.rva, ClientTargetEntry, sizeof(ClientTargetEntry),
-		                                &ClientTarget, &g_clientTarget) &&
 		     context->PatchWriteU64(slotRva, &current, sizeof(current),
-		                            reinterpret_cast<uint64_t>(static_cast<SrvStFn>(SrvStSpin)));
+		                            reinterpret_cast<uint64_t>(static_cast<SrvStFn>(SrvStSpin))) &&
+		     context->InstallInlineHook(d2r::sig::ClientSkillTargetXY.rva, ClientTargetEntry, sizeof(ClientTargetEntry),
+		                                &ClientTarget, &g_clientTarget);
 	}
 	plog::Info("whirlwind: pd2 always spin %s", on ? "on" : "FAILED");
 	const size_t used = std::strlen(report);
