@@ -1010,7 +1010,11 @@
                 "tabSize": { "x": 195, "y": 72 },
                 "tabPadding": { "x": 4000, "y": 0 },
                 "onSwitchTabMessage": "BankPanelMessage:SelectTab",
-                "tabMessages": [ "PanelManager:OpenPanel:core-ui/StashHidden", "PanelManager:OpenPanel:core-ui/StashTabBossing" ]
+                "tabMessages": [ "PanelManager:OpenPanel:core-ui/StashHidden", "PanelManager:OpenPanel:core-ui/StashTabBossing" ],
+                // #2116: BankTabs' icon, faded by core-ui when a quick-moved item goes home here
+                "notificationIconTemplate": {
+                    "filename": "PANEL\\Stash\\AdditionalStash\\StashNotification"
+                }
             }
         },
         {
@@ -1047,7 +1051,11 @@
                 "tabSize": { "x": 195, "y": 72 },
                 "tabPadding": { "x": 4000, "y": 0 },
                 "onSwitchTabMessage": "BankPanelMessage:SelectTab",
-                "tabMessages": [ "PanelManager:OpenPanel:core-ui/StashHidden", "PanelManager:OpenPanel:core-ui/StashTabMaps" ]
+                "tabMessages": [ "PanelManager:OpenPanel:core-ui/StashHidden", "PanelManager:OpenPanel:core-ui/StashTabMaps" ],
+                // #2116: BankTabs' icon, faded by core-ui when a quick-moved item goes home here
+                "notificationIconTemplate": {
+                    "filename": "PANEL\\Stash\\AdditionalStash\\StashNotification"
+                }
             }
         },
         {
@@ -1066,23 +1074,6 @@
                 "text": "@StashTabMaps",
                 "visible": false,
                 "style": { "fontColor": "$TabsActiveTextColor", "pointSize": "$SmallPanelFontSize", "alignment": { "v": "center", "h": "center" } }
-            }
-        },
-        // #2116: the stash's tab notification over our tabs, blinked by core-ui when a quick-moved item goes home there
-        {
-            "type": "ImageWidget", "name": "pd2rMapsGlow",
-            "fields": {
-                "rect": { "x": 82, "y": 74 },
-                "filename": "PANEL\\Stash\\AdditionalStash\\StashNotification",
-                "visible": false
-            }
-        },
-        {
-            "type": "ImageWidget", "name": "pd2rBossingGlow",
-            "fields": {
-                "rect": { "x": 277, "y": 74 },
-                "filename": "PANEL\\Stash\\AdditionalStash\\StashNotification",
-                "visible": false
             }
         },
         {

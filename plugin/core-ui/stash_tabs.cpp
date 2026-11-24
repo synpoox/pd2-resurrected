@@ -41,6 +41,7 @@
 #include <windows.h>
 
 #include <atomic>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -105,6 +106,42 @@ sigscan::Entry MarkHandled {"MessageMarkHandled", "stash", sigscan::Kind::Code, 
                             "48 8b 05 ?? ?? ?? ?? 48 85 c0 74 07 c6 80 b8 00 00 00 01 c3"};
 sigscan::Entry* const Sigs[] = {&FetchPanel, &FindChild, &SelectTab, &MessageHandled, &MarkHandled};
 bool g_select = false;
+// #2116: our Maps and Bossing tabs glow with their tab bar's own notification icon (notificationIconTemplate), faded as
+// the stash fades Gems/Materials/Runes (93847 0x23de70: alpha 0 to 1 and back, tabNotificationFadeOccurrences 3 times
+// of 2 x tabNotificationDurationSeconds 0.33), which it does for BankTabs' tabs 2-4 only. No SDK service reaches a tab's icon.
+// 93847: 0x879470, void (tab bar, tab, on): shows the tab's icon at alpha 1, or hides it
+sigscan::Entry TabNotify {"TabBarNotify", "stash", sigscan::Kind::Code, 0, 0,
+                          "40 57 48 83 ec 20 48 63 c2 44 88 84 08 ?? ?? 00 00 48 8b bc c1 ?? ?? 00 00 48 85 ff"};
+// 93847: 0x879d20, void (tab bar, tab, alpha): the tab's icon alpha, clamped to 0-1
+sigscan::Entry TabNotifyAlpha {"TabBarNotifyAlpha", "stash", sigscan::Kind::Code, 0, 0,
+                               "48 63 c2 f3 0f 11 54 24 18 48 8b 94 c1 ?? ?? 00 00 48 85 d2 74 ?? 0f 57 c0 c7 44 24 10 00 00 80 3f"};
+sigscan::Entry* const GlowSigs[] = {&TabNotify, &TabNotifyAlpha};
+bool g_glowOk = false;
+float g_glowLeft[2] = {0.0f, 0.0f};  // UI thread: seconds of the Maps (0) and Bossing (1) glow left
+constexpr float GlowStep = 0.33f, GlowTotal = GlowStep * 2 * 3;
+
+// Our tab `i`'s icon: on or off (alpha < 0), else its alpha. The mouse layout's own bar (tab 1), else the pad's BankTabs (tab 5 or 6)
+void Glow(int i, bool on, float alpha = -1.0f) noexcept {
+	void* panel = g_glowOk ? reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(Panel) : nullptr;
+	if (panel == nullptr) {
+		return;
+	}
+	const auto find = reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address);
+	int32_t tab = 1;
+	void* bar = find(panel, i == 0 ? "pd2rMapsTabs" : "pd2rBossingTabs");
+	if (bar == nullptr) {
+		bar = find(panel, "BankTabs");
+		tab = 5 + i;
+	}
+	if (bar == nullptr) {
+		return;
+	}
+	if (alpha < 0.0f) {
+		reinterpret_cast<void (*)(void*, int32_t, bool) noexcept>(TabNotify.address)(bar, tab, on);
+	} else {
+		reinterpret_cast<void (*)(void*, int32_t, float) noexcept>(TabNotifyAlpha.address)(bar, tab, alpha);
+	}
+}
 // UI thread: the shared page on show (0-based), counted from the arrows; a new game starts on page 0.
 // A tab's page is published to stash_affinity (ViewPage) only once every arrow was sent (g_pending); until then, and after
 // MaxSendFails failed frames, it is unknown (0: no drop filter). Our tab is refused when the stash has too few pages (g_pages).
@@ -356,12 +393,6 @@ void ShowButton(Named& w, bool visible) noexcept {
 Named g_background {"pd2rMapsBackground"}, g_bossingBackground {"pd2rBossingBackground"}, g_navigation {"StashNavigation"}, g_cube {"advancedstash_horadriccube"},
 	g_cubeWithdraw {"withdraw_button"}, g_sharedOff {"pd2rSharedOff"}, g_mapsOn {"pd2rMapsTabsOn"}, g_mapsOnText {"pd2rMapsTabsOnText"},
 	g_bossingOn {"pd2rBossingTabsOn"}, g_bossingOnText {"pd2rBossingTabsOnText"}, g_padTabs {"pd2rPadTabs"}, g_mapsBar {"pd2rMapsTabs"}, g_bossingBar {"pd2rBossingTabs"}, g_mapsLegend {"pd2rMapsLegend"};
-// #2116: StashNotification over our Maps and Bossing tabs, as the stash's notificationIconTemplate over Gems/Materials/Runes
-Named g_glow[2] = {{"pd2rMapsGlow"}, {"pd2rBossingGlow"}};
-float g_glowLeft[2] = {0.0f, 0.0f};  // UI thread: seconds of blinking left
-// The stock bar's tabNotificationDurationSeconds and tabNotificationFadeOccurrences (bankexpansionlayouthd.json)
-// shortcut: shown and hidden, not faded (the widget service has no alpha); fade it if the SDK gains one
-constexpr float GlowStep = 0.33f, GlowTotal = GlowStep * 2 * 3;
 Named g_tiers[3][2] = {{{"pd2rTier1"}, {"pd2rTier1On"}}, {{"pd2rTier2"}, {"pd2rTier2On"}}, {{"pd2rTier3"}, {"pd2rTier3On"}}};
 struct BaseWidgets {
 	char names[3][24];
@@ -668,7 +699,11 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 		g_head = g_tail = g_page = g_sendFails = 0;
 		g_pending = false;
 		g_tab = g_padTab = 0;  // a new game opens the stash on Personal
-		g_glowLeft[0] = g_glowLeft[1] = 0.0f;
+		for (int i = 0; i < 2; ++i) {
+			if (std::exchange(g_glowLeft[i], 0.0f) > 0.0f) {
+				Glow(i, false);
+			}
+		}
 		stash_affinity::TakeGlow();  // drops a glow routed as the last game ended
 		g_stashOpen = false;
 		g_cycleHeld = false;
@@ -705,14 +740,21 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 	const uint32_t glow = stash_affinity::TakeGlow();
 	for (int i = 0; i < 2; ++i) {
 		const bool open = g_view == (i == 0 ? View::Maps : View::Bossing);  // an item onto the open tab is seen there
-		if (open) {
-			g_glowLeft[i] = 0.0f;
-		} else if ((glow & (i == 0 ? stash_affinity::GlowMaps : stash_affinity::GlowBossing)) != 0) {
+		if (!open && (glow & (i == 0 ? stash_affinity::GlowMaps : stash_affinity::GlowBossing)) != 0) {
 			g_glowLeft[i] = GlowTotal;
+			Glow(i, true);
 		}
-		const float left = g_glowLeft[i];
-		g_glowLeft[i] = left > frame->deltaTimeSeconds ? left - frame->deltaTimeSeconds : 0.0f;
-		Show(g_glow[i], left > 0.0f && static_cast<int>((GlowTotal - left) / GlowStep) % 2 == 0);
+		if (g_glowLeft[i] <= 0.0f) {
+			continue;
+		}
+		g_glowLeft[i] = open ? 0.0f : g_glowLeft[i] - frame->deltaTimeSeconds;
+		if (g_glowLeft[i] <= 0.0f) {
+			g_glowLeft[i] = 0.0f;
+			Glow(i, false);
+			continue;
+		}
+		const float t = std::fmod(GlowTotal - g_glowLeft[i], 2 * GlowStep) / GlowStep;
+		Glow(i, true, t < 1.0f ? t : 2.0f - t);
 	}
 	const bool ours = g_view != View::None, maps = g_view == View::Maps;
 	Show(g_mapsOn, maps);
@@ -772,6 +814,14 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		if (e->state != sigscan::State::Ok) {
 			g_select = false;
 			plog::Info("stash tabs: signature %s %s", e->name, sigscan::StateText(e->state));
+		}
+	}
+	sigscan::Resolve(GlowSigs, std::size(GlowSigs), context->exeBase, nullptr, 0);
+	g_glowOk = FetchPanel.state == sigscan::State::Ok && FindChild.state == sigscan::State::Ok;
+	for (const sigscan::Entry* e : GlowSigs) {
+		if (e->state != sigscan::State::Ok) {
+			g_glowOk = false;
+			plog::Info("stash tabs: signature %s %s: the Maps and Bossing tabs do not glow", e->name, sigscan::StateText(e->state));
 		}
 	}
 	InitNames();
