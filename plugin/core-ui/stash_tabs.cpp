@@ -669,6 +669,7 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 		g_pending = false;
 		g_tab = g_padTab = 0;  // a new game opens the stash on Personal
 		g_glowLeft[0] = g_glowLeft[1] = 0.0f;
+		stash_affinity::TakeGlow();  // drops a glow routed as the last game ended
 		g_stashOpen = false;
 		g_cycleHeld = false;
 		stash_affinity::ShowBase(0);
