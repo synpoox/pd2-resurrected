@@ -132,6 +132,7 @@ constexpr const char* InsertPattern =
 constexpr uint8_t InsertEntry[] = {0x40, 0x53, 0x55, 0x56, 0x57, 0x41, 0x56};
 using InsertFn = void (*)(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint8_t flag) noexcept;
 InsertFn g_insert = nullptr;
+constexpr int32_t ItemModeCursor = 4, ItemModeSocketed = 6;
 std::atomic<uint32_t> g_split {0}, g_refusedRemote {0};
 
 // The rest of a socketed stack, made again on the game thread. shortcut: the local player only (the SDK names the player
@@ -236,7 +237,8 @@ void SetQuantity(Unit* item, int32_t value) noexcept {
 void Insert(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint8_t flag) noexcept {
 	using namespace d2r::rva;
 	Unit* filler = d2r::Engine<Unit* (*)(void*, int32_t, uint32_t) noexcept>(FindUnit)(game, 4, fillerId);
-	const int32_t quantity = IsItem(filler) ? Quantity(filler) : 0;
+	// only a filler held on the cursor (mode 4): the save loaders (PlrSave.cpp) call the insert for socketed children too
+	const int32_t quantity = IsItem(filler) && At<int32_t>(filler, UnitMode) == ItemModeCursor ? Quantity(filler) : 0;
 	if (quantity <= 1 || player == nullptr) {
 		g_insert(game, player, fillerId, parentId, flag);
 		return;
@@ -247,8 +249,8 @@ void Insert(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint
 	}
 	SetQuantity(filler, 1);
 	g_insert(game, player, fillerId, parentId, flag);
-	// in a socket: the insert set its item page to 0xff (SetItemPage)
-	if ((d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemPage)(filler) & 0xff) == 0xff) {
+	// in a socket: the insert set its mode to 6 (a cursor item already has page 0xff, so the page tells nothing)
+	if (At<int32_t>(filler, UnitMode) == ItemModeSocketed) {
 		g_split.fetch_add(1);
 		QueueRest(filler, quantity - 1);
 	} else {
