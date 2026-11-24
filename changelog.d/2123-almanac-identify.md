@@ -1,0 +1,1 @@
+- Fixed Shift+Click with an Almanac to identify all inventory and Cube items (#2123).

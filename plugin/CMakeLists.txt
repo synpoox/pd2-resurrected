@@ -252,3 +252,9 @@ add_executable(parts_uses_check EXCLUDE_FROM_ALL tests/parts_uses_check.cpp core
 target_include_directories(parts_uses_check PRIVATE core-events)
 target_link_libraries(parts_uses_check PRIVATE core_common)
 core_options(parts_uses_check)
+
+# Almanac hotkeys identify inventory and Cube targets (#2123).
+add_executable(almanac_identify_check EXCLUDE_FROM_ALL tests/almanac_identify_check.cpp)
+target_include_directories(almanac_identify_check PRIVATE core-ui)
+target_link_libraries(almanac_identify_check PRIVATE core_common)
+core_options(almanac_identify_check)
