@@ -15,6 +15,7 @@
 // map currency and bossing items to their reserved shared page (stash affinity).
 // shortcut: identify never spends a tome's last charge (SDK limit); other items go to the personal stash (no tab pick).
 #include "hotkeys.h"
+#include "almanac_identify.h"
 
 #include "inventory_lock.h"
 
@@ -214,6 +215,7 @@ void Run(const Job& job) noexcept {
 	items::ExistingItemOperation ops[2] {};
 	uint32_t count = 1;
 	bool wasHomed = false;
+	bool almanac = false;
 	D2RL::ItemHandle spentScroll = D2RL::InvalidItemHandle;
 	if (job.act == Act::Identify) {
 		// What identifies is in books.txt / misc.txt: Tome of Identify (ibk, pSpell 1, spends a charge), Scroll of Identify (isc,
@@ -238,6 +240,7 @@ void Run(const Job& job) noexcept {
 		ops[0].kind = items::ExistingItemOperationKind::Edit;
 		ops[0].item = find.found;
 		ops[0].edit = {.fields = items::EditFieldBit(items::EditField::Identified), .stateFlags = items::ItemStateIdentified};
+		almanac = !spends;
 		if (spends && source.info.quantity >= 2) {
 			ops[1].structSize = items::ExistingItemOperationSize;
 			ops[1].kind = items::ExistingItemOperationKind::Debit;
@@ -272,8 +275,19 @@ void Run(const Job& job) noexcept {
 			wasHomed = true;
 		}
 	}
+	std::vector<items::ExistingItemOperation> all;
+	if (almanac) {
+		all.push_back(ops[0]);
+		const D2RL::Inventory::ItemFilter filter {.structSize = D2RL::Inventory::ItemFilterSize,
+		    .containerMask = items::ContainerBit(items::ItemContainer::Inventory) | items::ContainerBit(items::ItemContainer::Cube)};
+		if (g_inventory->forEachInventoryItem(g_context, job.player, &filter, CollectAlmanacTarget, &all) != D2RL::Inventory::Result::Success) {
+			plog::Warn("hotkeys: Almanac identify failed: inventory lookup failed");
+			return;
+		}
+		count = static_cast<uint32_t>(all.size());
+	}
 	const items::ExistingItemTransaction transaction {
-		.structSize = items::ExistingItemTransactionSize, .player = job.player, .operationCount = count, .operations = ops};
+		.structSize = items::ExistingItemTransactionSize, .player = job.player, .operationCount = count, .operations = almanac ? all.data() : ops};
 	items::ExistingItemTransactionResult result {.structSize = items::ExistingItemTransactionResultSize};
 	items::Result status = g_items->executeExistingItemTransaction(g_context, &transaction, &result);
 	if (wasHomed && status != items::Result::Success) {  // its page is full or missing (add_shared_tabs): the personal stash; the watch then fails to route it there and sends it back to the inventory, as a quick-move ends
@@ -288,6 +302,7 @@ void Run(const Job& job) noexcept {
 	if (status != items::Result::Success) {
 		plog::Warn("hotkeys: %s failed (%u)", ActName[static_cast<int>(job.act)], static_cast<uint32_t>(status));
 	}
+	if (almanac && status == items::Result::Success) plog::Info("hotkeys: Almanac identified %u items", count);
 	// D2R's sound player belongs on the UI thread, not this authoritative game update
 	if (status == items::Result::Success && job.sound > 0) {
 		g_threads->runOnUiThread(g_context, [](const D2RL::PluginContext*, void* sound) noexcept { PlayUi(static_cast<int>(reinterpret_cast<intptr_t>(sound))); },
