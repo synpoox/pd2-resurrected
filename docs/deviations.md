@@ -14,6 +14,10 @@ Contents: [Features and data](#features-and-data), [Engine rules](#engine-rules)
 
 ## Features and data
 
+| Deviation | Status | Why | Work item |
+|---|---|---|---|
+| Unlimited books use D2R's scroll skill path | approximated | Navigator and Almanac keep their primary `ubru` type and gain secondary `scro`; `books.txt` links their existing unlimited skills through `ScrollSkill`. D2R only grants item skills to scroll/book types, and its book path rejects these nonstacking items' zero quantity. | [#2124](https://github.com/synpoox/pd2-resurrected/issues/2124) |
+
 ### Cut
 
 | Deviation | Status | Why | Work item |
@@ -370,6 +374,10 @@ Hook-list rows that need no plugin. Checked in [W3](https://github.com/synpoox/p
     0-4, 6-9 and 20. Merged with the strings written for it ([#67](https://github.com/synpoox/pd2-resurrected/issues/67)): see the stat display row.
 
 ## Gate patterns
+
+| Deviation | Gate |
+|---|---|
+| Unlimited books use D2R's scroll skill path | `misc.rtp.type2` `misc.rid.type2` |
 
 `tools/pd2_diff.py` reads the **Status** of every row above, and here the **Gate** patterns each row covers: each
 backticked `table.row.column` pattern (fnmatch, any case; `*` also spans dots) covers the table-diff gate's deviations

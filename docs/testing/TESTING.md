@@ -1,4 +1,4 @@
-# Regression checks
+# Unlimited book regression checks
 
 | Change | Setup and action | Expected |
 |---|---|---|
