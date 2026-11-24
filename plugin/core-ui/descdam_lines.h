@@ -1,4 +1,4 @@
-// PD2's skill tooltip damage lines (skilldesc descdam, #2005): PD2 rewrites D2Client's descdam table (ProjectDiablo.dll
+// PD2's character screen skill damage lines (skilldesc descdam, #2005): PD2 rewrites D2Client's descdam table (ProjectDiablo.dll
 // 0x103ae5d0, PD2.gpr) for ids 11, 13, 15, 16 and adds 25-28. D2R's own 25, 26 and 28 print other skills' lines, and
 // its 11, 13 and 15 read other columns. Data moves 28 onto D2R's 24 (the same line); this part puts PD2's lines into
 // D2R's descdam table for 11, 13, 15, 25 and 26. Client-only display.

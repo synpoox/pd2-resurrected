@@ -1,4 +1,4 @@
-"""PD2's skill tooltip damage lines (#2005): which skilldesc rows use which descdam id, and the ids core-ui's descdam part
+"""PD2's character screen skill damage lines (#2005): which skilldesc rows use which descdam id, and the ids core-ui's descdam part
 fills. 28 moves to D2R's 24 (the same line) as data; 11, 13, 15, 25 and 26 keep PD2's id and core-ui prints PD2's line."""
 import re
 import unittest

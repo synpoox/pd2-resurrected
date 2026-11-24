@@ -1,3 +1,3 @@
 #### Skills
 
-- Skill tooltips for Vengeance, throws, kicks, charge-ups, arrows and Blade Fury show PD2's damage (#2005)
+- The character screen's skill Damage for Vengeance, throws, kicks, charge-ups, arrows and Blade Fury is PD2's (#2005)
