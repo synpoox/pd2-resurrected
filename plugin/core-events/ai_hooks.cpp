@@ -3,7 +3,6 @@
 #include "ai_hooks.h"
 
 #include "ai_registry.h"
-#include "hot_log.h"
 #include "log.h"
 
 #include <algorithm>
@@ -70,7 +69,6 @@ constexpr int32_t IdleWindowTicks = 15;
 std::atomic<d2r::Unit*> g_alone[16] {};
 std::atomic<uint32_t> g_aloneNext {0};
 std::atomic<uint32_t> g_windows {0};
-std::atomic<uint32_t> g_phaseLogs {0};  // the idle window lines, sampled
 
 }  // namespace
 
@@ -92,19 +90,12 @@ auto IdleWindow(Game* game, Unit* boss, bool playerInLevel) noexcept -> bool {
 		if (boss != nullptr && slot.compare_exchange_strong(marked, nullptr) && window == 0) {
 			window = IdleWindowTicks;
 			++g_windows;
-			if (pd2::HotSample(g_phaseLogs)) {
-				plog::Info("ai hooks: boss %d left alone: idle window of %d ticks (%u so far)",
-				           At<int32_t>(boss, d2r::rva::UnitClassId), window, g_windows.load());
-			}
 		}
 	}
 	if (window <= 0) {
 		return false;
 	}
 	if (boss != nullptr && playerInLevel && --window == 0) {
-		if (pd2::HotSample(g_phaseLogs)) {
-			plog::Info("ai hooks: boss %d idle window over", At<int32_t>(boss, d2r::rva::UnitClassId));
-		}
 	}
 	return true;
 }

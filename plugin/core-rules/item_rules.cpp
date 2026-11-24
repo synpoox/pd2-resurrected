@@ -31,7 +31,6 @@
 #include "rathma_pair.h"
 #include "rathma_split.h"
 #include "log.h"
-#include "hot_log.h"
 
 #include <D2RLPlugin/data_tables.h>
 #include <D2RLPlugin/mutations.h>
@@ -115,7 +114,6 @@ auto PropSorcSkillRandCtc(uint8_t dataFlag, uint32_t a1, uint64_t a2, Unit* item
 	setStat(dataFlag, a1, a2, item, property, set, StatSkillOnCast, static_cast<uint16_t>(layer),
 	        static_cast<uint32_t>(chance), a8, a9, a10);
 	const uint32_t n = ++g_rolls;
-	plog::Info("ormus: rolled skill %d +%d, cast on cast %d%% level %d (%u so far)", skill, bonus, chance, level, n);
 	return result;
 }
 
@@ -172,19 +170,13 @@ auto RollStrike(Unit* unit, Unit* weapon) noexcept -> Strike {
 	return s;
 }
 
-// A sample of every unit's rolls, players' too: Multiple Shot rolls once per arrow (#1609)
-auto LogStrike(const char* where, Unit* unit, const Strike& s, uint32_t before, uint32_t after, int32_t multiplier) noexcept
-	-> void {
-	const uint32_t n = ++g_strikeRolls;
+// Counts every unit's rolls, players' too: Multiple Shot rolls once per arrow (#1609)
+auto CountStrike(const Strike& s) noexcept -> void {
+	++g_strikeRolls;
 	if (s.kind == 1) {
 		++g_crits;
 	} else if (s.kind == 2) {
 		++g_deadlyStrikes;
-	}
-	const int32_t type = At<int32_t>(unit, d2r::rva::UnitType);
-	if (pd2::HotSample(n)) {  // players too: Multiple Shot rolls per arrow (#1609)
-		plog::Info("strike: %s unit type %d kind %d, crit %d roll %d, deadly %d (cap %d) roll %d, physical %u -> %u (x%d%%), %u so far",
-		           where, type, s.kind, s.critChance, s.critRoll, s.dsChance, s.dsCap, s.dsRoll, before, after, multiplier, n);
 	}
 }
 
@@ -208,7 +200,7 @@ auto WeaponStrike(Unit* attacker, uint8_t* damage, int32_t a5) noexcept -> void 
 		*reinterpret_cast<uint32_t*>(damage + 0x18) = static_cast<uint32_t>(raised < 0x7fffffff ? raised : 0x7fffffff);
 		*reinterpret_cast<uint16_t*>(damage + 4) |= 0x2000;
 	}
-	LogStrike("weapon", attacker, s, before, At<uint32_t>(damage, 0x18), multiplier);
+	CountStrike(s);
 }
 
 // D2R's missile roll (MissileCritRoll) with PD2's chances; the hit doubles, as in PD2, whose live missile fill
@@ -219,7 +211,7 @@ auto MissileStrike(Unit* unit, Unit* weapon) noexcept -> uint64_t {
 		return 0;
 	}
 	const Strike s = RollStrike(unit, weapon);
-	LogStrike("missile", unit, s, 0, 0, s.kind == 0 ? 100 : 200);
+	CountStrike(s);
 	return s.kind != 0 ? 1 : 0;
 }
 
@@ -422,16 +414,8 @@ auto RefreshOpBase(Unit* unit, uint32_t stat) noexcept -> void {
 	}
 	if (stat == StatEquippedEth) {
 		const uint32_t n = ++g_ethReads;
-		if (pd2::HotSample(n)) {
-			plog::Info("equipped_eth: unit type %d wears %d ethereal, %d op lists recomputed, item_maxdamage_percent %d "
-			           "-> %d, %u changes so far", type, value, lists, edBefore, edAfter, n);
-		}
 	} else if (lists != 0 && type == 0) {
 		const uint32_t n = ++g_missingHpRefreshes;
-		if (pd2::HotSample(n)) {
-			plog::Info("missing_hp: player at %d%%, %d op lists recomputed, item_maxdamage_percent %d -> %d, %u so far",
-			           value, lists, edBefore, edAfter, n);
-		}
 	}
 }
 
@@ -459,11 +443,6 @@ auto CappedAddLife(Unit* unit, int32_t amount) noexcept -> int32_t {
 	const bool allowed = static_cast<double>(after) / maxLife < limit || static_cast<double>(life) / maxLife < limit;
 	const uint32_t n = ++g_capChecks;
 	g_capBlocks += allowed ? 0 : 1;
-	if (pd2::HotSample(n)) {
-		plog::Info("life steal cap: unit type %d cap %d%%, life %lld -> %lld of %lld (1/256): %s, %u blocked of %u",
-		           At<int32_t>(unit, d2r::rva::UnitType), cap, static_cast<long long>(life), static_cast<long long>(after),
-		           static_cast<long long>(maxLife), allowed ? "added" : "blocked", g_capBlocks.load(), n);
-	}
 	return allowed ? g_addLifeOriginal(unit, amount) : 0;
 }
 
@@ -551,12 +530,6 @@ auto CrushingBlow(Game* game, Unit* unit, Unit* target, d2r::CrushingBlowArgs* a
 		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(SetOverlay)(target, OverlayCrushingBlow, 0);
 	}
 	const uint32_t n = ++g_blows;
-	if (pd2::HotSample(n)) {
-		plog::Info("crushing blow: unit type %d on unit type %d class %d%s: divisor %.2f, efficiency %d, "
-		           "effectiveness %.2f, resist %d, life %.0f -> %d (1/256), %u so far", At<int32_t>(unit, UnitType),
-		           At<int32_t>(target, UnitType), At<int32_t>(target, UnitClassId), args->missile != 0 ? " (missile)" : "",
-		           divisor, efficiency, effectiveness, resist, life, after, n);
-	}
 	return 1;
 }
 
@@ -650,11 +623,7 @@ auto HitEvent(Game* game, int32_t event, Unit* unit, Unit* target, void* damage)
 		return result;
 	}
 	const int32_t roll = static_cast<int32_t>(d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(unit), 100));
-	const uint32_t n = ++g_blowRolls;
-	if (pd2::HotSample(n)) {  // players too (#1609)
-		plog::Info("crushing blow roll: unit type %d event %d, chance %d roll %d, %d item nodes hidden, %u so far",
-		           At<int32_t>(unit, UnitType), event, chance, roll, count, n);
-	}
+	++g_blowRolls;
 	if (roll < chance) {
 		d2r::CrushingBlowArgs args {damage, {4, 10, 10}, static_cast<uint8_t>(event == EventMissileDamage ? 1 : 0)};
 		CrushingBlow(game, unit, target, &args);
@@ -779,7 +748,6 @@ constexpr int32_t MaxWoundStacks = 3;
 constexpr int32_t PlayerWoundPercent[] = {8, 6, 4};  // on a player, by difficulty (doubles 0x1044fbc0 / b8 / a8)
 
 std::atomic<uint32_t> g_wounds {0};
-std::atomic<uint32_t> g_splits {0};
 constexpr int32_t StateResistAll = 8;
 
 // PD2's 0x1037c4c0 with 100: value * percent / 100 in doubles, truncated, saturated at INT32_MAX
@@ -909,7 +877,7 @@ auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept ->
 		damage = pd2::rathma::Half(damage);
 	}
 	int32_t stacks = 0;
-	void* list = ApplyWounds(game, unit, target, damage, &stacks);
+	ApplyWounds(game, unit, target, damage, &stacks);
 	if (other != nullptr) {
 		const int32_t mode = At<int32_t>(other, UnitMode);
 		const bool otherList = mode != 0 && mode != 12 &&
@@ -918,20 +886,8 @@ auto OpenWounds(Game* game, Unit* unit, Unit* target, uint32_t stat) noexcept ->
 		if (otherList) {
 			ApplyWounds(game, unit, other, damage, &otherStacks);
 		}
-		if (const uint32_t m = ++g_splits; pd2::HotSample(m)) {
-			plog::Info("open wounds split: class %d takes %d/256 per frame (halved), class %d list %s, stack %d (%u so far)",
-			           At<int32_t>(target, UnitClassId), damage, At<int32_t>(other, UnitClassId), otherList ? "yes" : "no",
-			           otherStacks, m);
-		}
 	}
-	const uint32_t n = ++g_wounds;
-	if (pd2::HotSample(n)) {  // players too (#1609)
-		plog::Info("open wounds: unit type %d on unit type %d class %d, chance %d roll %d, level part %d, deep %d, "
-		           "resist %d, %d/256 per frame, stack %d%s, %u so far", At<int32_t>(unit, UnitType),
-		           At<int32_t>(target, UnitType), At<int32_t>(target, UnitClassId), chance, roll, base, deep, r,
-		           list != nullptr ? -listStat(dataFlag, list, StatHpRegen, 0) : damage, stacks,
-		           list != nullptr ? "" : " (refused)", n);
-	}
+	++g_wounds;
 }
 
 // --- Curses: curse resistance and max curses (docs/research/items/ir4-curses.md) ---------------------------------------
@@ -1006,10 +962,6 @@ auto MakeRoom(uint32_t dataFlag, Unit* caster, Unit* target, int32_t state, uint
 		}
 	}
 	const uint32_t n = ++g_curses;
-	if (pd2::HotSample(n)) {
-		plog::Info("curse: state %d, %d curse(s) on the target, %d slot(s) (caster %d), %s, %u so far", state, count,
-		           slots, own, same != nullptr ? "same state" : seen != nullptr ? "replaces the oldest" : "added", n);
-	}
 	return own;
 }
 
@@ -1039,15 +991,7 @@ auto ResistCurse(uint32_t dataFlag, Unit* target, const d2r::CurseParams* params
 		const int32_t resisted = Resisted(base, used);
 		setStat(dataFlag, list, stat, resisted, 0);
 		const uint32_t n = ++g_curseResisted;
-		if (pd2::HotSample(n)) {
-			plog::Info("curse resistance %d (used %d) on %s: aurastat%d stat %d %d -> %d, %u so far", resistance, used,
-			           player ? "player" : "monster", i + 1, stat, base, resisted, n);
-		}
 	}
-}
-
-auto GateLog(uint32_t n) noexcept -> bool {
-	return pd2::HotSample(n);
 }
 
 // PD2's curse gate (0x1036d7d0) ahead of D2R's: a curse whose aurastat1 resists to 0 is cancelled, and stat 109 cuts
@@ -1061,11 +1005,7 @@ auto CurseGate(const d2r::CurseParams* params, Unit* target, int32_t& frames, in
 		const int32_t base = d2r::Engine<int32_t (*)(Game*, Unit*, int32_t, int32_t) noexcept>(d2r::rva::CurseStatValue)(
 			params->game, target, params->stats[0], params->values[0]);
 		if (base != 0 && Resisted(base, capped(resistance)) == 0) {
-			if (const uint32_t n = ++g_curseGate; GateLog(n)) {
-				plog::Info("curse gate: state %d cancelled on %s, aurastat1 stat %d %d resists to 0 at %d (used %d), "
-				           "%u so far", params->state, player ? "player" : "monster", params->stats[0], base, resistance,
-				           capped(resistance), n);
-			}
+			++g_curseGate;
 			return false;
 		}
 	}
@@ -1075,11 +1015,7 @@ auto CurseGate(const d2r::CurseParams* params, Unit* target, int32_t& frames, in
 		return true;
 	}
 	frames = Resisted(params->frames, capped(duration));
-	if (const uint32_t n = ++g_curseGate; GateLog(n)) {
-		plog::Info("curse gate: state %d on %s, curse_resistance %d (used %d): %d -> %d frames%s, %u so far",
-		           params->state, player ? "player" : "monster", duration, capped(duration), params->frames, frames,
-		           frames <= 0 ? ", cancelled" : "", n);
-	}
+	++g_curseGate;
 	return frames > 0;
 }
 
@@ -1104,9 +1040,7 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 		zeroed = StatOf(target, StatCurseDuration) == 0;
 		if (!zeroed) {  // stat 109 not where it was looked for: D2R's own rule applies, on the uncut duration
 			setStat(target, StatCurseDuration, base, 0);
-			if (pd2::HotSample(++g_gateFallbacks)) {
-				plog::Info("curse gate: stat 109 %d did not clear (base %d), D2R's duration rule applies", duration, base);
-			}
+			++g_gateFallbacks;
 		}
 	}
 	// The bit UnitHasState reads (SetStateGfxFlag writes another array)
@@ -1118,8 +1052,8 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 	const bool attracted = word != nullptr && hasState(target, StateAttract) != 0;
 	if (attracted) {
 		*word &= ~bit;
-		if (hasState(target, StateAttract) != 0 && pd2::HotSample(++g_gateFallbacks)) {
-			plog::Info("curse gate: the attract bit did not clear");
+		if (hasState(target, StateAttract) != 0) {
+			++g_gateFallbacks;
 		}
 	}
 	const int32_t asked = params->frames;
@@ -1128,8 +1062,8 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 	params->frames = asked;
 	if (zeroed) {
 		setStat(target, StatCurseDuration, base, 0);
-		if (const int32_t back = StatOf(target, StatCurseDuration); back != duration && pd2::HotSample(++g_gateFallbacks)) {
-			plog::Info("curse gate: stat 109 came back %d, not %d (base %d)", back, duration, base);
+		if (StatOf(target, StatCurseDuration) != duration) {
+			++g_gateFallbacks;
 		}
 	}
 	// A full target may have lost the attract curse itself to this one: then its bit stays off
@@ -1137,10 +1071,7 @@ auto ApplyUngated(Unit* target, d2r::CurseParams* params, uint32_t dataFlag, int
 		*word |= bit;
 	}
 	if (attracted) {
-		if (const uint32_t n = ++g_curseGate; GateLog(n)) {
-			plog::Info("curse gate: state %d on an attracted %s, %s, %u so far", params->state,
-			           At<int32_t>(target, UnitType) == 0 ? "player" : "monster", applied != 0 ? "landed" : "refused", n);
-		}
+		++g_curseGate;
 	}
 	return applied;
 }
@@ -1224,10 +1155,7 @@ auto ApplyDarkPact(Unit* target, d2r::CurseParams* params, uint32_t dataFlag) no
 		return 0;
 	}
 	if (StateRefused(dataFlag, target)) {
-		if (const uint32_t n = ++g_darkPacts; pd2::HotSample(n)) {
-			plog::Info("dark pact: monster class %d refused (npc or not revivable), nothing happens, %u so far",
-			           At<int32_t>(target, UnitClassId), n);
-		}
+		++g_darkPacts;
 		return 0;
 	}
 	const auto listStat = d2r::Engine<int32_t (*)(uint32_t, void*, int32_t, int32_t) noexcept>(ListStatValue);
@@ -1268,31 +1196,23 @@ auto ApplyDarkPact(Unit* target, d2r::CurseParams* params, uint32_t dataFlag) no
 			break;
 		}
 	}
-	const uint32_t n = ++g_darkPacts;
-	const bool log = pd2::HotSample(n);
+	++g_darkPacts;
 	if (count < 1) {
-		if (log) {
-			plog::Info("dark pact: no curse on the target, nothing happens, %u so far", n);
-		}
 		return 0;
 	}
 	// The follow-up: the skill's magic roll, scaled, around the target
 	const uint8_t* skill = d2r::api.getSkillRecord(dataFlag, params->skill);
 	int32_t x = 0, y = 0;
-	int32_t radius = 0, base = 0, scaled = 0;
-	int64_t victims = 0;
 	if (skill != nullptr && caster != nullptr && d2r::UnitXY(target, &x, &y)) {
-		radius = d2r::EvalCalc(game, caster, skill, SkCalc1, params->skill, params->level) + count - 1;
+		const int32_t radius = d2r::EvalCalc(game, caster, skill, SkCalc1, params->skill, params->level) + count - 1;
 		d2r::LeapKnockback rolled;
 		d2r::Engine<void (*)(Unit*, void*, int32_t, int32_t) noexcept>(ElementalDamage)(caster, &rolled, params->skill,
 		                                                                                params->level);
 		auto& magic = *reinterpret_cast<int32_t*>(reinterpret_cast<uint8_t*>(&rolled) + DmgMagic);
-		base = magic;
-		magic = scaled = DarkPactDamage(magic, count);
+		magic = DarkPactDamage(magic, count);
 		DarkPactHit hit {&rolled, 0};
 		d2r::AreaCenter center {d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(target), x, y};
 		d2r::Engine<AreaFn>(AreaUnits)(game, caster, &center, radius, AreaUnitMask, DarkPactOne, &hit, 0);
-		victims = hit.victims;
 		d2r::ReleaseDamage(rolled);
 	}
 	// dark_pact itself, past the max-curses rule: NewStateList sees only an older dark_pact list, if any
@@ -1315,12 +1235,6 @@ auto ApplyDarkPact(Unit* target, d2r::CurseParams* params, uint32_t dataFlag) no
 	uint8_t* list = applied != 0 ? stateList(target, StateDarkPact) : nullptr;
 	if (list != nullptr && list != same && own > StatOf(target, StatCurseSlots)) {
 		setListStat(dataFlag, list, StatCurseSlots, own, 0);
-	}
-	if (log) {
-		plog::Info("dark pact: skill %d level %d, %d curse(s) on the target, consumed state %d; follow-up radius %d, "
-		           "magic %d -> %d (1/256), %lld unit(s) hit; dark_pact %s, %u so far",
-		           params->skill, params->level, count, consumed, radius, base, scaled,
-		           static_cast<long long>(victims), list != nullptr ? "on" : "refused", n);
 	}
 	return applied;
 }
@@ -1361,18 +1275,6 @@ auto CurseApply(Unit* target, d2r::CurseParams* params) noexcept -> int64_t {
 		                                                                                      StatCurseSlots, slots, 0);
 	}
 	ResistCurse(dataFlag, target, params, list, fresh);
-	const uint32_t n = g_curses.load();
-	if (pd2::HotSample(n)) {
-		int held = 0;  // read back from the target, so the game check sees what D2R kept
-		const uint8_t* owner = At<const uint8_t*>(target, UnitListOwner);
-		int guard = 0;
-		for (const uint8_t* l = owner != nullptr ? At<const uint8_t*>(owner, ListOwnerFirst) : nullptr;
-		     l != nullptr && guard < MaxCurseLists; l = At<const uint8_t*>(l, ListNext), ++guard) {
-			held += (At<uint32_t>(l, ListFlags) & ListFlagCurse) != 0 ? 1 : 0;
-		}
-		plog::Info("curse: state %d landed for %d frames (skill %d sent %d), the target holds %d curse(s)", state, frames,
-		           params->skill, params->frames, held);
-	}
 	return applied;
 }
 
@@ -1405,7 +1307,6 @@ static_assert(offsetof(BossCurseParams, sendA) == 0x60 && offsetof(BossCursePara
 using BossCurseFn = void (*)(Game*, Unit*, Unit*, int32_t) noexcept;
 BossCurseFn g_bossCurseOriginal = nullptr;  // never called: the replacement does the whole job
 int32_t (*g_bossCurseHostile)(Game*, Unit*, Unit*) noexcept = nullptr;
-std::atomic<uint32_t> g_bossCurses {0};
 
 auto BossCurse(Game* game, Unit* caster, Unit* target, int32_t level) noexcept -> void {
 	using namespace d2r::rva;
@@ -1433,11 +1334,6 @@ auto BossCurse(Game* game, Unit* caster, Unit* target, int32_t level) noexcept -
 	p.sendA = At<uint64_t>(skill, SkSendStateA);
 	p.sendB = At<uint64_t>(skill, SkSendStateB);
 	const int64_t applied = CurseApply(target, &c);
-	if (const uint32_t n = ++g_bossCurses; pd2::HotSample(n)) {
-		plog::Info("boss curse: state %d (skill %d level %d, %d frames) on %s through the curse rules, %s, %u so far",
-		           c.state, c.skill, level, c.frames, At<int32_t>(target, UnitType) == 0 ? "player" : "monster",
-		           applied != 0 ? "landed" : "refused", n);
-	}
 }
 
 // --- Skill while equipped and phasing (docs/research/items/ir7-equipped-items.md) -------------------------------------
@@ -1472,10 +1368,7 @@ auto SetPhasing(Unit* unit, bool on) noexcept -> void {
 		return;
 	}
 	d2r::Engine<void (*)(uint8_t*, uint32_t) noexcept>(PathSetCollisionMask)(path, want);
-	if (const uint32_t n = ++g_phasing; pd2::HotSample(n)) {
-		plog::Info("phasing: %s, unit type %d, collision mask 0x%x -> 0x%x, %u so far", on ? "on" : "off", type, mask,
-		           want, n);
-	}
+	++g_phasing;
 }
 
 // The game the last durability callback came from; a session change discards the queued recounts with it
@@ -1518,10 +1411,9 @@ using ItemSkillFn = void* (*)(Unit*, uint32_t, int32_t, int32_t, int32_t, int32_
 ItemSkillFn g_itemSkill = nullptr;
 Unit* (*g_statOwner)(Unit*, void*) noexcept = nullptr;
 uint64_t g_clientStatCallback = 0;  // its address, 0 until FindZeroChargeSkills finds all three
-std::atomic<uint32_t> g_zeroChargeKeeps {0};
 
 // True when it kept the skill: 0 charges on the unit's own item, which D2R would remove
-auto KeepZeroChargeSkill(Unit* unit, Unit* item, uint32_t layer, bool client) noexcept -> bool {
+auto KeepZeroChargeSkill(Unit* unit, Unit* item, uint32_t layer) noexcept -> bool {
 	using namespace d2r::rva;
 	if (g_itemSkill == nullptr || unit == nullptr || item == nullptr ||
 	    (StatOf(item, StatChargedSkill, static_cast<int32_t>(layer)) & 0xff) != 0 ||
@@ -1535,16 +1427,12 @@ auto KeepZeroChargeSkill(Unit* unit, Unit* item, uint32_t layer, bool client) no
 	const int32_t skill = static_cast<int32_t>(layer >> LayerShift(dataFlag));
 	const int32_t level = static_cast<int32_t>(layer & LayerMask(dataFlag));
 	g_itemSkill(unit, At<uint32_t>(item, UnitIdField), skill, level, 0, 0);
-	if (pd2::HotSample(g_zeroChargeKeeps)) {
-		plog::Info("charges: %s keeps skill %d level %d with 0 charges (%u so far)", client ? "client" : "server", skill,
-		           level, g_zeroChargeKeeps.load());
-	}
 	return true;
 }
 
 auto ClientStatCallback(void* a1, Unit* unit, Unit* item, uint64_t statLayer, int32_t oldValue, int32_t newValue) noexcept
 	-> uint64_t {
-	if (statLayer >> 32 == StatChargedSkill && KeepZeroChargeSkill(unit, item, static_cast<uint32_t>(statLayer), true)) {
+	if (statLayer >> 32 == StatChargedSkill && KeepZeroChargeSkill(unit, item, static_cast<uint32_t>(statLayer))) {
 		return 0;
 	}
 	using Fn = uint64_t (*)(void*, Unit*, Unit*, uint64_t, int32_t, int32_t) noexcept;
@@ -1576,7 +1464,7 @@ auto EquipStatCallback(Game* game, Unit* unit, Unit* item, uint64_t statLayer, i
 		RefreshOpBase(unit, StatMissingHp);
 		return 0;
 	}
-	if (stat == StatChargedSkill && KeepZeroChargeSkill(unit, item, static_cast<uint32_t>(statLayer), false)) {
+	if (stat == StatChargedSkill && KeepZeroChargeSkill(unit, item, static_cast<uint32_t>(statLayer))) {
 		return 0;
 	}
 	if (stat != static_cast<uint64_t>(StatSkillOnEquip)) {
@@ -1594,11 +1482,6 @@ auto EquipStatCallback(Game* game, Unit* unit, Unit* item, uint64_t statLayer, i
 			SetPhasing(unit, newValue > 0);  // item_aura's case starts the aura at newValue (0x4705f6)
 		}
 		const uint32_t n = ++g_equipCallbacks;
-		if (pd2::HotSample(n)) {
-			plog::Info("skill on equip: unit type %d, skill %u, %d -> %d, level now %d, %u so far",
-			           At<int32_t>(unit, d2r::rva::UnitType), layer, oldValue, newValue,
-			           StatOf(unit, StatSkillOnEquip, static_cast<int32_t>(layer)), n);
-		}
 	}
 	return result;
 }
@@ -1701,10 +1584,6 @@ auto EquipAuraTick(Game* game, Unit* unit, int32_t key, int32_t skill, int32_t s
 		SetPhasing(unit, true);
 	}
 	const uint32_t n = ++g_equipTicks;
-	if (pd2::HotSample(n)) {
-		plog::Info("skill on equip tick: skill %d level %d, state %d, next frame %d, %s, %u so far", skill, level, state,
-		           next, cast ? "cast" : "held", n);
-	}
 }
 
 // --- Replenish charges (IR5) ---------------------------------------------------------------------------------------
@@ -1777,10 +1656,6 @@ void AddCharge(Game* game, Unit* item) noexcept {
 	d2r::Engine<void (*)(uint32_t, void*, uint32_t, int32_t, uint32_t, Unit*) noexcept>(SetListStatOf)(
 		dataFlag, list, StatChargedSkill, value + 1, layer, item);
 	const uint32_t n = ++g_chargesReplenished;
-	if (pd2::HotSample(n)) {
-		plog::Info("replenish charges: skill %d level %d, %d -> %d of %d, %u so far", skill, level, value & 0xff,
-		           (value & 0xff) + 1, value >> 8, n);
-	}
 	const int32_t ownerId = d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemOwnerId)(item);
 	Unit* owner = ownerId != -1 ? d2r::Engine<Unit* (*)(Game*, int32_t, int32_t) noexcept>(FindUnit)(game, 0, ownerId)
 	                            : nullptr;
@@ -2052,8 +1927,6 @@ static_assert(Pd2StunLength(100, 0, 1, true) == 100);              // any other 
 
 using StunFn = void (*)(Unit* attacker, Unit* target, int32_t frames) noexcept;
 StunFn g_stunApply = nullptr;
-std::atomic<uint32_t> g_stunChanged {0};
-std::atomic<uint32_t> g_stunKept {0};
 
 // --- Stun refresh between players (#1947) ---
 // PD2's stun apply, on a target already in state 21 (stunned; PD2 raw 21 = our 21), resolves 0x103749f0(attacker, 1)
@@ -2102,9 +1975,6 @@ auto KeepsStun(Unit* attacker, Unit* target) noexcept -> bool {
 
 void StunLength(Unit* attacker, Unit* target, int32_t frames) noexcept {
 	if (attacker != nullptr && target != nullptr && KeepsStun(attacker, target)) {
-		if (pd2::HotSample(g_stunKept)) {
-			plog::Info("stun: kept a player's stun (player-owned attacker)");
-		}
 		return;
 	}
 	void* skill = attacker != nullptr && target != nullptr ? d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::CurrentSkill)(attacker)
@@ -2117,9 +1987,6 @@ void StunLength(Unit* attacker, Unit* target, int32_t frames) noexcept {
 		                         : 0;
 		const bool pvp = At<int32_t>(attacker, d2r::rva::UnitType) == 0 && At<int32_t>(target, d2r::rva::UnitType) == 0;
 		if (const int32_t pd2 = Pd2StunLength(frames, id, hard, pvp); pd2 != frames) {
-			if (pd2::HotSample(g_stunChanged)) {
-				plog::Info("stun: skill %d hard %d, %d -> %d frames", id, hard, frames, pd2);
-			}
 			frames = pd2;
 		}
 	}
@@ -2355,7 +2222,6 @@ using PierceRollFn = void (*)(Game*, Unit*, Unit*) noexcept;
 using ClientPierceRollFn = void (*)(Unit*, Unit*) noexcept;
 static PierceRollFn g_pierceRollOriginal = nullptr;  // not called: PD2's roll replaces D2R's
 static ClientPierceRollFn g_clientPierceRollOriginal = nullptr;  // not called either
-static std::atomic<uint32_t> g_pierceRolls {0};
 
 // The part both halves share: the owner and missile types, the Pierce flag, then the roll into pierce_idx.
 // `server` adds PD2's server-only HandStatSum term.
@@ -2393,10 +2259,6 @@ static void RollPierce(uint32_t dataFlag, Unit* missile, Unit* owner, bool serve
 		++count;
 	}
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(missile, StatPierceIdx, count, 0);
-	if (pd2::HotSample(g_pierceRolls)) {
-		plog::Info("pierce roll (%s): skill %d chance %d cap %d -> %d", server ? "server" : "client", skill, chance, cap,
-		           count);
-	}
 }
 
 static void PierceRoll(Game* game, Unit* missile, Unit* owner) noexcept {
@@ -2524,12 +2386,9 @@ auto CharmActiveInRow(Unit* item, Unit* player) noexcept -> int32_t {
 		unlinked += UnlinkIfAttached(item, player) ? 1 : 0;
 		off = true;
 	}
-	const uint32_t n = off ? ++g_charmOffChecks : ++g_charmChecks;  // own cap, so a top-row charm cannot hide kept lines or flood
-	if (pd2::HotLogsOn() && (n <= 40 || n % 500 == 0 || (twin && ++g_charmTwinLogs <= CharmTwinLogCap))) {  // a twin answer is the #1288 case
-		plog::Info("charm rows: item %p at x %u y %u, page %u, quality %d, unique row+1 %d, same-name twin in rows 5-8 %s, %u stat lists unlinked, active in D2R, %s, %u so far",
-		           static_cast<void*>(item), xy & 0xffff, row, page,
-		           d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemQuality)(item),
-		           d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemUniqueRow)(item), twin ? "yes" : "no", unlinked, off ? "switched off" : "kept", n);
+	++(off ? g_charmOffChecks : g_charmChecks);
+	if (twin) {
+		++g_charmTwinLogs;
 	}
 	return off ? 0 : active;
 }
@@ -2609,8 +2468,6 @@ PaletteShiftFn g_paletteShift = nullptr;
 ItemDrawFn g_itemDrawOriginal = nullptr;
 SpriteDrawFn g_spriteDrawOriginal = nullptr;
 thread_local int32_t g_drawDye = -1;  // the dye of the item whose HD draw is running, -1 none
-std::atomic<uint32_t> g_dyeColors {0};
-std::atomic<uint32_t> g_dyeDraws {0};
 
 // RGB multiplier per colors.txt row, in its order (the test checks the codes).
 constexpr float DyeRgb[21][3] = {
@@ -2654,10 +2511,6 @@ auto DyedItemColor(Unit* player, Unit* item, uint8_t* index, int32_t inventory) 
 	const uint8_t type = inventory != 0 ? row[0x152] : row[0x151];
 	const uint8_t packed = row[0x151] != 0 ? row[0x151] : type;
 	*index = packed >= 1 && packed <= 8 ? static_cast<uint8_t>(packed << 5 | color) : 0;
-	if (pd2::HotSample(g_dyeColors)) {
-		plog::Info("dye tint: item %p colour %d, %s, type %u (%u so far)", static_cast<void*>(item), color,
-		           inventory != 0 ? "inventory" : "body", type, g_dyeColors.load());
-	}
 	return g_paletteShift(type, color);
 }
 
@@ -2678,10 +2531,6 @@ auto DyedSpriteDraw(void* sprite, int32_t* xy, float* record, float scale) noexc
 	std::memcpy(copy, DyeRgb[color], sizeof(DyeRgb[color]));
 	copy[3] = 1.0f;
 	reinterpret_cast<uint8_t*>(copy)[0x1d] = 0;
-	if (pd2::HotSample(g_dyeDraws)) {
-		plog::Info("dye tint: HD sprite colour %d, rgb %.2f %.2f %.2f (%u so far)", color, copy[0], copy[1], copy[2],
-		           g_dyeDraws.load());
-	}
 	g_spriteDrawOriginal(sprite, xy, copy, scale);
 }
 
@@ -2809,9 +2658,7 @@ auto IsMapUnit(Unit* item) noexcept -> bool {
 
 auto MapMagicMaker(Unit** item, void* request) noexcept -> uint64_t {
 	if (item != nullptr && IsMapUnit(*item)) {
-		if (pd2::HotSample(g_mapMagicRefused)) {
-			plog::Info("map quality: a map was going to be magic, refused (%u so far)", g_mapMagicRefused.load());
-		}
+		++g_mapMagicRefused;
 		return 0;
 	}
 	return g_magicMakerOriginal(item, request);
@@ -2822,9 +2669,6 @@ auto MapItemMaker(void* game, Unit** item, void* request) noexcept -> uint64_t {
 	if (made != 0 && item != nullptr && IsMapUnit(*item)) {
 		const int32_t quality = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::ItemQuality)(*item);
 		const uint32_t n = ++g_mapMade[quality >= 0 && quality < 10 ? quality : 0];
-		if (pd2::HotSample(n)) {
-			plog::Info("map quality: item maker made a map, quality %d (%u of that quality)", quality, n);
-		}
 	}
 	return made;
 }
@@ -2871,33 +2715,6 @@ auto MapStackEqual(Unit* a, Unit* b) noexcept -> int32_t {
 	const bool merge = reason[0] == 'e';
 	if (!merge) {
 		++g_mapStackRefused;
-	}
-	// Each (a, b, caller) logs its first verdict only (#1340): the inventory scans call this once per map held, and the
-	// server's call (caller image +0x4f2b3a) must not hide behind the client's
-	static struct { Unit* a; Unit* b; uint64_t caller; uint32_t n; } seen[32];
-	static uint32_t next = 0;
-	const uint64_t caller = reinterpret_cast<uint64_t>(_ReturnAddress()) - d2r::imageBase;
-	auto* slot = &seen[0];
-	for (auto& s : seen) {
-		if (s.a == a && s.b == b && s.caller == caller) {
-			slot = &s;
-			break;
-		}
-		slot = &seen[next % 32];
-	}
-	if (slot->a != a || slot->b != b || slot->caller != caller) {
-		*slot = {a, b, caller, 0};
-		++next;
-	}
-	// Outer cap: at most one line a second, so a full inventory scanned by two callers stays quiet whatever the ring holds
-	static std::atomic<uint64_t> lastTick {0};
-	const uint64_t now = GetTickCount64();
-	if (++slot->n <= 1 && pd2::HotLogsOn() && now - lastTick.load() >= 1000) {
-		lastTick = now;
-		const auto unitStat = d2r::Engine<int32_t (*)(Unit*, uint32_t, uint32_t) noexcept>(UnitStat);
-		plog::Info("map stack: caller +0x%llx %08x q%d/%d quality %d/%d -> %s (%s %d)", static_cast<unsigned long long>(caller),
-		           d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(a), unitStat(a, StatQuantity, 0),
-		           unitStat(b, StatQuantity, 0), quality(a), quality(b), merge ? "merge" : "refused", reason, stat);
 	}
 	return merge ? 1 : 0;
 }

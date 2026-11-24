@@ -18,7 +18,6 @@
 #include "skill/common.h"
 
 #include "pd2_engine.h"
-#include "hot_log.h"
 #include "log.h"
 #include "sig.h"
 
@@ -112,8 +111,8 @@ void PickUpNearGold(Unit* player) noexcept {
 		    d2r::Engine<int32_t (*)(Unit*, const char*, int32_t) noexcept>(d2r::sig::UnitId)(unit, __FILE__, __LINE__));
 		// One a frame, as PD2's scan sends one message: the pickup changes the room's unit list. D2R's pickup refuses
 		// while an item is on the player's cursor; the scan then tries again each frame.
-		if (g_pickup(player, id, false, 0x7fffffff, false, false) && pd2::HotSample(g_taken)) {
-			plog::Info("gold pickup: took gold %u near the player (%u so far)", id, g_taken.load());
+		if (g_pickup(player, id, false, 0x7fffffff, false, false)) {
+			++g_taken;
 		}
 		return;
 	}

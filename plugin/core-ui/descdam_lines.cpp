@@ -1,6 +1,8 @@
-// PD2's skill tooltip damage lines (#2005). D2R's descdam dispatcher (93847 0x28a100, D2Client UI/SkillDesc.cpp) calls
+// PD2's character screen skill damage lines (#2005). D2R's descdam dispatcher (93847 0x28a100, D2Client UI/SkillDesc.cpp) calls
 // table[descdam] (ids 1-28, 0x2368fe0) with (dataFlag, unit, skill, skills record, level, &line, &offhand line,
-// &colour, &offhand colour); a function writes the damage text ("min-max") and its colour. Each function below is
+// &colour, &offhand colour); a function writes the damage text ("min-max") and its colour. Its one caller is the
+// character screen's left and right skill damage box (0x14e60e0, LeftSkillStats / RightSkillStats), never the skill
+// tree hover (#2105); PD2's is the same (D2Client +0x2fd30, called only by the character panel +0xbcea0). Each function below is
 // PD2's (ProjectDiablo.dll, PD2.gpr; read byte by byte, docs/features/core-rules.md descdam row) built from D2R's own pieces: its
 // weapon fill (0x28dcb0 + 0x28d5f0, which ids 7 and 24 call), skill calcs, elemental and physical damage and its
 // "min-max" formatter, so only the numbers PD2 changed differ from D2R's lines.
@@ -18,7 +20,6 @@
 #include "descdam_lines.h"
 
 #include "kick_base.h"
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 
@@ -152,9 +153,6 @@ void Write(Line* line, int32_t min, int32_t max, bool show) noexcept {
 	line->length = n;
 }
 void Logged(int slot, int32_t skill, int32_t level, int32_t min, int32_t max, int32_t color) noexcept {
-	if (pd2::HotSample(g_lines[slot])) {
-		plog::Info("descdam %d: skill %d level %d -> %d-%d colour %d", Ids[slot], skill, level, min, max, color);
-	}
 }
 
 // --- 11: Vengeance (0x103ad2e0) --------------------------------------------------------------------------------
@@ -207,10 +205,7 @@ void Throw(uint8_t flag, void* unit, void* skill, const uint8_t* rec, int32_t le
 	const int32_t v1 = DescValue(flag, unit, rec, desc, SdCalc1, level), v2 = DescValue(flag, unit, rec, desc, SdCalc2, level);
 	Call<TwoHandFn>(TwoHandLine)(flag, unit, skill, rec, level, reinterpret_cast<void*>(ThrowFill.address), v1, v2, line,
 	                             line2, color, color2, true);
-	if (pd2::HotSample(g_lines[1])) {
-		plog::Info("descdam 13: skill %d level %d, ddam calc1 %d calc2 %d -> %s / %s", SkillId(rec), level, v1, v2,
-		           line->text != nullptr ? line->text : "", line2->text != nullptr ? line2->text : "");
-	}
+	++g_lines[1];
 }
 
 // --- 15: Dragon Talon, Dragon Flight (D2R's 0x284b40 with PD2's damage%; PD2's base, the server kick's, #2051) ---

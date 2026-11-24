@@ -17,7 +17,6 @@
 // two functions' entries in its RVA table; both sites are mid-function. No SDK service reaches either test.
 #include "common.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "sig.h"
 
@@ -37,7 +36,6 @@ constexpr uint8_t RecordStock[] = {0x8d, 0x41, 0xc5, 0x83, 0xf8, 0x01, 0x76, 0x1
 constexpr const char* FreeTest = "41 8d 46 c5 83 f8 01 0f 86 9c 00 00 00 0f b6 8f 06 01 00 00 41 8b d6 e8";
 constexpr uint8_t FreeStock[] = {0x41, 0x8d, 0x46, 0xc5, 0x83, 0xf8, 0x01, 0x0f, 0x86, 0x9c, 0x00, 0x00, 0x00};
 
-std::atomic<uint32_t> g_kept {0};
 
 auto IsPortalClass(int32_t id) noexcept -> bool {
 	return id == 59 || id == 60 || id == 100 || (id >= 587 && id <= 590) || (id >= 598 && id <= 602);
@@ -46,9 +44,6 @@ static_assert(sizeof(RecordStock) == 13 && sizeof(FreeStock) == 13);
 
 auto KeepAsPortal(int32_t id) noexcept -> bool {
 	const bool portal = IsPortalClass(id);
-	if (portal && id > 100 && pd2::HotSample(g_kept)) {
-		plog::Info("portal-rooms: object %d kept as a portal", id);
-	}
 	return portal;
 }
 

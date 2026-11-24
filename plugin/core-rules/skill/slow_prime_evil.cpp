@@ -9,7 +9,6 @@
 // the call and not rerun. No SDK service reaches an item event node.
 #include "common.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 
@@ -24,7 +23,6 @@ using d2r::Unit;
 constexpr int32_t StatSlow = 150;     // item_slow
 constexpr uint16_t NoEvent = 0xffff;  // no event raises it
 thread_local int32_t t_slowHidden = -1;  // the event whose slow nodes an outer HitEvent on this thread hid
-std::atomic<uint32_t> g_slowSkips {0}, g_slowKeeps {0};
 
 auto IsPrimeEvil(Game* game, Unit* target) noexcept -> bool {
 	using namespace d2r::rva;
@@ -46,17 +44,6 @@ auto SlowPrimeEvilBegin(Game* game, int32_t event, Unit* unit, Unit* target, Slo
 	// A splash hit inside an outer dispatch that hid the nodes: a non-prime-evil target gets them back for its call
 	const bool reshow = !prime && t_slowHidden == event;
 	if (!prime && !reshow) {
-		if (pd2::HotLogsOn()) {  // the game check's proof that other targets keep the slow
-			int kept = 0;
-			for (auto* node = At<uint8_t*>(unit, UnitEventNodes); node != nullptr && kept < SlowNodes::Max;
-			     node = At<uint8_t*>(node, EventNodeNext)) {
-				kept += At<int32_t>(node, EventNodeStat) == StatSlow && At<uint16_t>(node, EventNodeEvent) == event;
-			}
-			if (kept != 0 && pd2::HotSample(g_slowKeeps)) {
-				plog::Info("slow: kept on unit type %d row %d, event %d, %d slow nodes", At<int32_t>(target, UnitType),
-				           At<int32_t>(target, UnitClassId), event, kept);
-			}
-		}
 		return;
 	}
 	for (auto* node = At<uint8_t*>(unit, UnitEventNodes); node != nullptr && nodes.count < SlowNodes::Max;
@@ -74,10 +61,6 @@ auto SlowPrimeEvilBegin(Game* game, int32_t event, Unit* unit, Unit* target, Slo
 		*slot = prime ? NoEvent : static_cast<uint16_t>(event);
 	}
 	t_slowHidden = prime ? event : -1;
-	if (prime && nodes.count != 0 && pd2::HotSample(g_slowSkips)) {
-		plog::Info("slow: skipped prime evil, monstats row %d, event %d, %d slow nodes hidden", At<int32_t>(target, UnitClassId),
-		           event, nodes.count);
-	}
 }
 
 auto SlowPrimeEvilEnd(const SlowNodes& nodes) noexcept -> void {

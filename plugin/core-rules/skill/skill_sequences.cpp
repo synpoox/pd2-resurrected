@@ -22,7 +22,6 @@
 #include "../item_rules.h"
 #include "registry.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"
@@ -88,9 +87,6 @@ constexpr uint8_t LookupEntry[] = {0x40, 0x55, 0x56, 0x48, 0x83, 0xec, 0x38, 0x4
 // D2R's lookup, player branch: lea r15,[imagebase] / mov rcx,rsi / mov r14,[r15+rbp*8+table] / mov rax,[r14] / movzx ebx,byte [rax+2]
 constexpr const char* TablePattern = "4c 8d 3d ?? ?? ?? ?? 48 8b ce 4d 8b b4 ef ?? ?? ?? ?? 49 8b 06 0f b6 58 02";
 constexpr uint32_t TableDispAt = 14;
-// SetSeq (0x34d900): its frames call after `mov [rbx+0x40],rax` (the records); `mov [rbx+0x48],eax` stores them
-constexpr const char* FramesCallPattern = "48 83 7b 40 00 74 3a 48 8b cb e8 ?? ?? ?? ?? 89 43 48 48 8b cb 33 c0 c7 43 54 00 01 00 00";
-constexpr uint32_t FramesCallAt = 10;
 // srvst 11's state step: lea r8d,[rbp+8] / mov rdx,rdi / mov rcx,rsi / call 0x4914e0 / mov eax,r12d / jmp +2 / xor eax,eax
 constexpr const char* RetimeCallPattern = "44 8d 45 08 48 8b d7 48 8b ce e8 ?? ?? ?? ?? 41 8b c4 eb 02 33 c0";
 constexpr uint32_t RetimeCallAt = 10;
@@ -100,16 +96,11 @@ constexpr uint32_t ClientFrameCallAt = 5;
 constexpr int32_t Pd2ClientFrame = 2;  // PD2's seqinput 3 (Inferno, Arctic Blast) - 1, as 1.13c's cltst 15 reads it
 
 using LookupFn = const uint8_t* (*)(Unit*) noexcept;
-using FramesFn = int32_t (*)(Unit*) noexcept;
 using RetimeFn = void (*)(Game*, Unit*, int32_t) noexcept;
 using SetFrameFn = void (*)(Unit*, int32_t) noexcept;
 LookupFn g_lookup = nullptr;
-FramesFn g_frames = nullptr;
 RetimeFn g_retime = nullptr;
 SetFrameFn g_setFrame = nullptr;
-std::atomic<uint32_t> g_starts {0};
-std::atomic<uint32_t> g_jumps {0};
-std::atomic<uint32_t> g_kept {0};
 
 struct PlayerRow {
 	const uint8_t* records;
@@ -134,34 +125,17 @@ auto Pd2Sequence(const Unit* unit) noexcept -> const Sequence* {
 	return nullptr;
 }
 
-auto SequenceFrames(Unit* unit) noexcept -> int32_t {
-	const int32_t frames = g_frames(unit);
-	const Sequence* seq = Pd2Sequence(unit);
-	if (seq != nullptr && pd2::HotSample(g_starts)) {
-		plog::Info("skill-sequences: unit type %d %s sequence %d frames, %u so far", d2r::At<int32_t>(unit, d2r::rva::UnitType),
-		           seq->name, frames >> 8, g_starts.load());
-	}
-	return frames;
-}
-
 auto ChannelRetime(Game* game, Unit* unit, int32_t frame) noexcept -> void {
 	const Sequence* seq = Pd2Sequence(unit);
 	if (seq == nullptr || !seq->channel) {
 		g_retime(game, unit, frame);
 		return;
 	}
-	if (pd2::HotSample(g_jumps)) {
-		plog::Info("skill-sequences: server %s next start: no jump to frame %d, %u so far", seq->name, frame, g_jumps.load());
-	}
 }
 
 auto ClientChannelFrame(Unit* unit, int32_t frame) noexcept -> void {
 	const Sequence* seq = Pd2Sequence(unit);
 	const bool pd2 = seq != nullptr && seq->channel;
-	if (pd2 && pd2::HotSample(g_jumps)) {
-		plog::Info("skill-sequences: client %s next start: frame %d, not %d, %u so far", seq->name, Pd2ClientFrame, frame,
-		           g_jumps.load());
-	}
 	g_setFrame(unit, pd2 ? Pd2ClientFrame : frame);
 }
 
@@ -188,10 +162,6 @@ auto Lookup(Unit* unit) noexcept -> const uint8_t* {
 		const int32_t srvDo = CurrentSrvDo(unit, &id);
 		if (srvDo == seq.srvDo) {
 			return reinterpret_cast<const uint8_t*>(&g_pd2Rows[i]);
-		}
-		if (pd2::HotSample(g_kept)) {
-			plog::Info("skill-sequences: skill %d (srvdo %d) keeps D2R's sequence %u, %u frames, %u so far", id, srvDo,
-			           seq.seqnum, seq.oldFrames, g_kept.load());
 		}
 		return row;
 	}
@@ -265,10 +235,8 @@ auto InstallSkillSequences(const D2RL::PluginContext* context, char* report, siz
 	                d2r::sig::UnitSkillId.state == sigscan::State::Ok &&
 	                sigscan::HookBySignature(context, "SequenceLookup", LookupPattern, 0, LookupEntry, sizeof(LookupEntry),
 	                                         &Lookup, &g_lookup);
-	const bool logs = RedirectCall(context, FramesCallPattern, FramesCallAt, reinterpret_cast<uint64_t>(&SequenceFrames),
-	                               reinterpret_cast<uint64_t*>(&g_frames));
-	plog::Info("skill-sequences: PD2's Jab, Inferno, Arctic Blast, Blade Fury frames %s, channel start frames %s, frames log %s",
-	           on ? "on" : "FAILED", jumps ? "on" : "FAILED", logs ? "on" : "FAILED");
+	plog::Info("skill-sequences: PD2's Jab, Inferno, Arctic Blast, Blade Fury frames %s, channel start frames %s",
+	           on ? "on" : "FAILED", jumps ? "on" : "FAILED");
 	const size_t used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; skill-sequences: PD2 frames %s, channel start frames %s",

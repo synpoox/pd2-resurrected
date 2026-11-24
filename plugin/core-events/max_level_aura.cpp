@@ -60,7 +60,6 @@ void __cdecl Apply(const D2RL::PluginContext*, void*) noexcept {
 				break;
 			}
 		}
-		plog::Info("max level: state %d set on %s", MaxLevelState, name);
 	}
 }
 

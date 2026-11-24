@@ -28,7 +28,6 @@
 // shortcut: single player and the host only.
 #include "monsters_remaining.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "monster_count.h"  // common/: the ledger read and its text
 #include "sig.h"
@@ -60,7 +59,7 @@ const D2RL::ThreadService* g_threads = nullptr;
 const D2RL::DataTableService* g_tables = nullptr;
 std::atomic<const uint8_t* const*> g_regions {nullptr};  // *(game + 0x1d0): MonsterRegion*[level id]
 std::atomic<int32_t> g_level {-1};
-std::atomic<uint32_t> g_spawns {0}, g_changes {0}, g_builds {0}, g_appended {0};
+std::atomic<uint32_t> g_spawns {0}, g_builds {0}, g_appended {0};
 std::atomic<uint64_t> g_text {0};  // published: see Pack
 std::atomic<uint64_t> g_lastQueued {0};  // the builder (UI thread) and spawns (game thread)
 
@@ -114,10 +113,6 @@ void __cdecl Refresh(const D2RL::PluginContext* context, void*) noexcept {
 		rooms = read ? mc::ReadRooms(regions[level], RegionRoomsMade, RegionRooms) : mc::Rooms {};
 	} __except (EXCEPTION_EXECUTE_HANDLER) {
 	}
-	if (level != g_lastLevel && pd2::HotSample(g_changes)) {
-		plog::Info("monsters remaining: level %d region %p town %d spawned %d killed %d", level, read ? regions[level] : nullptr,
-		           mc::IsTown(level) ? 1 : 0, ledger.spawned, ledger.killed);
-	}
 	g_lastLevel = level;
 	if (!read || mc::IsTown(level) || !mc::Shown(ledger)) {
 		g_text.store(0);
@@ -127,11 +122,6 @@ void __cdecl Refresh(const D2RL::PluginContext* context, void*) noexcept {
 	const int32_t remaining = mc::Remaining(ledger);
 	const bool explored = mc::Explored(rooms);
 	g_text.store(Pack(level, remaining, explored));
-	if ((g_lastRemaining != remaining || g_lastMade != rooms.made) && pd2::HotLogsOn()) {
-		plog::Info("monsters remaining: level %d spawned %d killed %d, rooms %d of %d made (%d%%) -> %d%s", level, ledger.spawned,
-		           ledger.killed, rooms.made, rooms.total, rooms.total > 0 ? rooms.made * 100 / rooms.total : 0, remaining,
-		           explored ? "" : ", not explored: 50+");
-	}
 	g_lastRemaining = remaining;
 	g_lastMade = rooms.made;
 }

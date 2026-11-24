@@ -1,4 +1,4 @@
-// PD2's kick base (#2051), shared by the server kick (core-rules skill/kick_base.cpp) and the skill tooltip's kick line
+// PD2's kick base (#2051), shared by the server kick (core-rules skill/kick_base.cpp) and the character screen skill Damage kick line
 // (core-ui descdam_lines.cpp, descdam 15): one formula, one set of engine signatures.
 #pragma once
 

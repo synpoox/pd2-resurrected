@@ -24,7 +24,6 @@
 #include "kick_base.h"
 #include "registry.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"
@@ -69,7 +68,6 @@ UsableFn g_usable = nullptr;
 // The PD2 fill in progress on this thread (its block and target); srvdo 178's fill has none
 thread_local uint8_t* t_block = nullptr;
 thread_local Unit* t_target = nullptr;
-std::atomic<uint32_t> g_kicks {0};
 
 auto Stat(Unit* unit, int32_t stat) noexcept -> int32_t {
 	return d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::UnitStat)(unit, stat, 0);
@@ -128,12 +126,6 @@ auto Elemental(Unit* unit, uint8_t* block, int32_t skill, int32_t level) noexcep
 		int32_t& phys = *reinterpret_cast<int32_t*>(block + DmgPhys);
 		const int32_t d2rPhys = phys;
 		phys = r.min + static_cast<int32_t>(d2r::RandomBelow(d2r::api.unitSeed(unit), span));
-		if (pd2::HotSample(g_kicks)) {
-			plog::Info("kick-base: skill %d lvl %d phys %d -> %d (/256), min %d max %d: dam %d-%d weapon %d-%d normal %d "
-			           "dex %d boots %d-%d pct %d",
-			           skill, level, d2rPhys, phys, r.min, r.max, s.minDam, s.maxDam, s.weapMin, s.weapMax, s.normal,
-			           s.dex, s.bootsMin, s.bootsMax, s.pct);
-		}
 	}
 	g_elemental(unit, block, skill, level);
 }

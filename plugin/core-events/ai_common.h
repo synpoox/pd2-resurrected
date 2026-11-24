@@ -3,7 +3,6 @@
 #pragma once
 
 #include "log.h"
-#include "hot_log.h"
 #include "pd2_engine.h"
 
 #include <atomic>
@@ -46,10 +45,7 @@ inline auto Cast(Game* game, Unit* unit, int32_t skill, int32_t mode, Unit* targ
           int32_t frames) noexcept -> int32_t {
 	const int32_t ok = d2r::Engine<int32_t (*)(Game*, Unit*, uint8_t, int32_t, Unit*, int32_t, int32_t, uint8_t) noexcept>(
 		d2r::rva::AiUseSkill)(game, unit, static_cast<uint8_t>(mode), skill, target, x, y, 0);
-	if (pd2::HotSample(g_casts)) {
-		plog::Info("dclone ai: cast skill %d mode %d at (%d, %d)%s -> %d (%u so far)", skill, mode, x, y,
-		           target != nullptr ? " on target" : "", ok, g_casts.load());
-	}
+	++g_casts;
 	if (frames > 0) {  // 0: PD2 casts without 0x103a1910
 		d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(d2r::rva::AiSetDelay)(game, unit, frames);
 	}

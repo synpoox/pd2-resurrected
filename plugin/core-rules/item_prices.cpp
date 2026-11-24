@@ -206,8 +206,6 @@ auto TypeRow(uint8_t bank, size_t i) noexcept -> int32_t {
 		}
 		if (result == D2RL::DataTables::Result::Success) {
 			row = static_cast<int32_t>(view.rowIndex) + 1;
-			plog::Info("vendor sell refusals: itemtypes %.4s is row %d in bank %u", reinterpret_cast<const char*>(&TypeCodes[i]),
-			           row - 1, static_cast<unsigned>(bank));
 		} else {
 			row = -1;
 			plog::Warn("vendor sell refusals: itemtypes %.4s not in bank %u (result %u), rule off",

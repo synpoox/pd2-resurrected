@@ -23,7 +23,6 @@
 #include "gheed_store.h"
 
 #include "ai_registry.h"
-#include "hot_log.h"
 #include "log.h"
 #include "map_events.h"
 #include "pd2_engine.h"
@@ -369,9 +368,7 @@ auto Buy(Game* game, Unit* player, Unit* npc, uint32_t itemId, uint32_t x, uint3
 		return result;  // the buy failed: it is still in his store
 	}
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t) noexcept>(d2r::sig::IdentifyItem)(game, player, item, 0);
-	if (pd2::HotSample(g_identified)) {
-		plog::Info("gheed store: bought item %u identified (price %u)", itemId, price);
-	}
+	++g_identified;
 	return result;
 }
 
@@ -490,12 +487,10 @@ auto BuildStock(Game* game, Unit* npc) noexcept -> bool {
 		return false;
 	}
 	SetMapEventSpawns(game, StockBuilt);
-	char rows[MaxUniques * 12] = "";
 	int32_t made = 0;
 	// PD2 rolls the Heirloom first; placed, it is one of the 5 (0x103846d0 starts its count at 1)
 	if (d2r::sig::ApplyCubeMod.state == sigscan::State::Ok && Rand() % HeirloomOdds == 0 && MakeHeirloom(game, npc, view) != nullptr) {
 		made = 1;
-		std::snprintf(rows, sizeof(rows), "heirloom");
 	}
 	int32_t row = Pick(view, tables, bank);
 	for (int32_t tries = MakeTries; row >= 0 && tries > 0 && made < MaxUniques; --tries) {
@@ -505,15 +500,10 @@ auto BuildStock(Game* game, Unit* npc) noexcept -> bool {
 			continue;  // PD2 tries the same row again
 		}
 		++made;
-		const size_t used = std::strlen(rows);
-		std::snprintf(rows + used, sizeof(rows) - used, "%s%d(q%d)", made > 1 ? "," : "", row,
-		              d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::sig::ItemQuality)(item));
 		row = Pick(view, tables, bank);
 	}
 	g_stocks.fetch_add(1, std::memory_order_relaxed);
 	g_uniques.fetch_add(static_cast<uint32_t>(made), std::memory_order_relaxed);
-	plog::Info("gheed store: stock for Gheed in level %d (bank %u): %d unique(s), rows %s", LevelOf(npc),
-	           static_cast<uint32_t>(bank), made, made != 0 ? rows : "none");
 	return true;
 }
 

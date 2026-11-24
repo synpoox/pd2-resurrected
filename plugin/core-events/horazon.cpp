@@ -84,9 +84,6 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	    (event->monster.classId != SummonerMap && event->monster.classId != AltarGuardian) || event->gameId > 0xffff) {
 		return;
 	}
-	if (event->monster.classId == AltarGuardian) {
-		plog::Info("map events: guardian death heard in level %d, game %u", static_cast<int>(event->levelId), static_cast<unsigned>(event->gameId));
-	}
 	const auto id = static_cast<uint16_t>(event->gameId);
 	const uint64_t key = d2r::Engine<uint64_t (*)(uint16_t) noexcept>(GameKey)(id);
 	Game* game = key != 0 ? d2r::Engine<Game* (*)(uint64_t) noexcept>(GameById)(key) : nullptr;
@@ -110,7 +107,6 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 		return;
 	}
 	if (MapEvent(game) != HorazonEvent) {  // PD2 runs it only while the event is Horazon's (game +0x1df4 == 12)
-		plog::Info("horazon: died in level %d outside a Horazon event (event %d)", event->levelId, MapEvent(game));
 		return;
 	}
 	const auto opened = [game]() noexcept {  // fetched each time: a counter call may insert and move the others
@@ -129,15 +125,12 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	} else {
 		carto::OpenExtraResultV1 result {};
 		result.structSize = sizeof(result);
-		if (service->openExtra(game, killer, monster, static_cast<int32_t>(event->levelId), &result)) {
-			plog::Info("horazon: portal to level %d (monster level %d)", result.level, result.monsterLevel);
-		} else {
+		if (!service->openExtra(game, killer, monster, static_cast<int32_t>(event->levelId), &result)) {
 			plog::Info("horazon: no portal: %s", result.why);
 		}
 	}
 	const int32_t dropped = DropMaps(game, monster, killer);
 	g_drops += static_cast<uint32_t>(dropped);
-	plog::Info("horazon: %d map picks dropped", dropped);
 }
 
 }  // namespace

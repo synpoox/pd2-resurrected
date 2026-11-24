@@ -15,7 +15,6 @@
 
 #include "item_rules.h"
 #include "pd2_engine.h"
-#include "hot_log.h"
 #include "log.h"
 
 #include <D2RLPlugin/data_tables.h>
@@ -98,9 +97,7 @@ auto StackableNoSockets(Unit* item) noexcept -> int32_t {
 	const int16_t type = At<int16_t>(record, d2r::rva::ItType);
 	for (size_t i = 0; i < std::size(SocketTypes); ++i) {
 		if (TypeRow(bank, i) == type) {
-			if (pd2::HotSample(g_stackRolls)) {
-				plog::Info("stackable sockets: bank %u item type row %d rolls sockets, %u so far", bank, type, g_stackRolls.load());
-			}
+			++g_stackRolls;
 			return 0;
 		}
 	}

@@ -14,7 +14,7 @@
 //   monsters  PD2 Monsters Remaining: the level hostile monsters left, in the zone info (#1534)
 //   corrupt   corruption markers: the lines a corruption added or changed are red (#2070)
 //   hotkeys   PD2 inventory hotkeys: Ctrl, Shift and Ctrl+Shift right click drop, stash and Cube, Shift+left click identifies; configurable (#1567)
-//   descdam   PD2 skill tooltip damage lines: descdam 11, 13, 15, 25 and 26 print PD2's line (#2005)
+//   descdam   PD2 character screen skill damage lines: descdam 11, 13, 15, 25 and 26 print PD2's line (#2005)
 #include <D2RLPlugin/api.h>
 
 #include "corruption_marks.h"
