@@ -24,6 +24,7 @@
 #include "stash_affinity.h"
 
 #include "log.h"
+#include "hot_log.h"
 #include "log_once.h"
 #include "map_stack.h"
 #include "pd2_engine.h"
@@ -183,7 +184,8 @@ auto MoveTo(D2RL::PlayerHandle player, items::ItemInfo& item, uint32_t page, int
 	if (x >= 0) {
 		Use(page, x, y, true);
 	}
-	if (g_moveLogged.First(pd2::Key(item.runtimeId, page * 256 + static_cast<uint32_t>(y + 1) * 16 + static_cast<uint32_t>(x + 1)))) {
+	// a tab or base switch moves every stored map (20 lines a click, #2094) and a moved item may get a new id: hot-gated
+	if (pd2::HotLogsOn() && g_moveLogged.First(pd2::Key(item.runtimeId, page * 256 + static_cast<uint32_t>(y + 1) * 16 + static_cast<uint32_t>(x + 1)))) {
 		plog::Info("affinity: %08x from container %u page %u to page %u cell %d,%d", item.code,
 		           static_cast<uint32_t>(item.container), item.sharedStashPage, page, x, y);
 	}
@@ -282,7 +284,8 @@ auto MapRefusal(const items::ItemInfo& a, const items::ItemInfo& b, uint32_t sta
 	} else {
 		reason = MapStatsRefusal(a, b, same);
 	}
-	if (g_refusalLogged.First(pd2::Key(a.runtimeId, b.runtimeId))) {  // every candidate, every pass: once per pair
+	// a refusal is one line per stored stack for every item, every pass (290 lines for 25 maps, #2094): hot-gated
+	if ((reason == nullptr || pd2::HotLogsOn()) && g_refusalLogged.First(pd2::Key(a.runtimeId, b.runtimeId))) {
 		plog::Info("affinity: map %08x (quality %u) onto the stack at page %u cell %d,%d (quality %u): stats equal %d, %s%s", a.code,
 		           static_cast<uint32_t>(a.quality), b.sharedStashPage, b.x, b.y, static_cast<uint32_t>(b.quality), same,
 		           reason == nullptr ? "merge" : "refused: ", reason == nullptr ? "" : reason);
