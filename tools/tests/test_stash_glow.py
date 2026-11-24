@@ -13,12 +13,26 @@ WIDGET = re.compile(r'"type": "(\w+)", "name": "(pd2r(?:Tier|TierGlow|Base|BaseB
 RECT = re.compile(r'"x": (-?\d+), "y": (-?\d+)')
 
 
+def parent(text, at):
+    """Where the children list holding the widget at `at` opens"""
+    depth = 0
+    for i in range(at, -1, -1):
+        if text[i] in "]}":
+            depth += 1
+        elif text[i] in "[{":
+            if depth:
+                depth -= 1
+            elif text[i] == "[":
+                return i
+    return -1
+
+
 def widgets(text):
-    """name -> (type, x, y, position in the file)"""
+    """name -> (type, x, y, position in the file, its children list's position)"""
     out = {}
     for m in WIDGET.finditer(text):
         r = RECT.search(text, m.end())
-        out[m.group(2)] = (m.group(1), int(r.group(1)), int(r.group(2)), m.start())
+        out[m.group(2)] = (m.group(1), int(r.group(1)), int(r.group(2)), m.start(), parent(text, m.start()))
     return out
 
 
@@ -26,7 +40,14 @@ class StashGlow(unittest.TestCase):
     def test_tiers_match_the_lists(self):
         text = HOME.read_text("utf-8")
         tiers = int(re.search(r"constexpr int32_t Tiers = (\d+);", text).group(1))
-        self.assertEqual(tiers, len(re.findall(r"const char\* Tier\d+\[\]", text)))
+        lists = re.findall(r"const char\* Tier(\d+)\[\] = \{([^}]*)\}", text)
+        self.assertEqual(sorted(int(n) for n, _ in lists), list(range(1, tiers + 1)))
+        for layout in LAYOUTS:  # every tier and base has its buttons
+            w = widgets(layout.read_text("utf-8"))
+            for n, body in lists:
+                names = [f"pd2rTier{n}"] + [f"pd2rBase{n}_{i}" for i in range(len(re.findall(r'"\w+"', body)))]
+                for name in names:
+                    self.assertIn(name, w, layout.name)
 
     def test_every_button_has_its_glow(self):
         for layout in LAYOUTS:
@@ -39,6 +60,7 @@ class StashGlow(unittest.TestCase):
                 with self.subTest(layout=layout.name, glow=glow):
                     self.assertIn(glow, w)
                     self.assertEqual(w[glow][0], "ImageWidget")
+                    self.assertEqual(w[glow][4], w[spot][4])  # same parent, so the same coordinates
                     self.assertEqual(w[glow][1:3], w[spot][1:3])
                     self.assertGreater(w[glow][3], w[button][3])  # drawn over the button
 
