@@ -832,6 +832,10 @@ auto Console(const char* args, char* reply, size_t size) noexcept -> bool {
 	return true;
 }
 
+auto HasPage(uint32_t page) noexcept -> bool {
+	return page < g_pages;
+}
+
 void Counters(char* out, size_t size) noexcept {
 	std::snprintf(out, size, "stash tabs: view %u, tier %d, %u clicks", static_cast<uint32_t>(g_view), g_tier + 1,
 	              g_clicks.load());

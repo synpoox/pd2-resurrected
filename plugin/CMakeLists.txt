@@ -213,6 +213,12 @@ target_include_directories(stash_stack_check PRIVATE common)
 target_compile_features(stash_stack_check PRIVATE cxx_std_20)
 core_options(stash_stack_check)
 
+# Log-once guard (#2094): plugin/common/log_once.h has no engine types.
+add_executable(log_once_check EXCLUDE_FROM_ALL tests/log_once_check.cpp)
+target_include_directories(log_once_check PRIVATE common)
+target_compile_features(log_once_check PRIVATE cxx_std_20)
+core_options(log_once_check)
+
 # Corruption markers (#2070): plugin/common/corruption_lines.h has no engine types.
 add_executable(corruption_lines_check EXCLUDE_FROM_ALL tests/corruption_lines_check.cpp)
 target_include_directories(corruption_lines_check PRIVATE common)
