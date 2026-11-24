@@ -2,6 +2,21 @@
 
 Player-facing changes, newest first. Entries follow PD2 unless noted. Until multiplayer, a build may break characters (ADR 0003).
 
+### 0.2.6-alpha (2026-11-23)
+
+
+#### Features
+
+- Maps and Bossing tabs, and Maps tier and base buttons, glow when a quick-moved item lands there (#2116).
+
+#### Items
+
+- Socketing a stacked gem or rune now uses one and keeps the rest on the cursor (#2119).
+
+#### Fixes
+
+- Fixed the DPS Counter not showing above the life globe (#2144).
+
 ### 0.2.5-alpha (2026-11-23)
 
 
