@@ -175,6 +175,7 @@ void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
 			const items::ItemCreateSpec spec {.structSize = items::ItemCreateSpecSize,
 			                                  .code = rests[i].code,
 			                                  .quality = items::Quality::Normal,
+			                                  .qualityRecordId = items::RandomQualityRecord,  // 0 is refused (InvalidArgument)
 			                                  .itemLevel = rests[i].itemLevel > 0 ? rests[i].itemLevel : 1,
 			                                  .seedMode = items::SeedMode::Random,
 			                                  // a single keeps the native default (the stat may be absent on one)
