@@ -12,16 +12,14 @@
 //                    is Split Throw's missile count); PD2's Split Throw one-hand branch is what the two-hand line
 //                    prints with one weapon (SrcDam 128, no skill damage)
 //   15 Dragon Talon  0x103ad7b0: PD2's damage% (ddam calc1, as the kick deals it: core-rules, #1862; D2R's is
-//                    Param1 + (lvl-1) x Param2) on D2R's base, the skill's + the boots' damage, which our
-//                    server kick (D2R's fill 0x573af0) deals. PD2's server kick deals PD2's base (stat 21/22 less
-//                    the weapon's, + 111 + boots) through its own fill (0x103022c0, patched over D2Game +0x92c82);
-//                    the port's server does not yet (#2051), so the tooltip keeps D2R's base to match the damage
-//                    dealt (deviations.md)
+//                    Param1 + (lvl-1) x Param2) on PD2's kick base (common/kick_base.h, #2051: stat 21/22 less the
+//                    weapon's, + 111 + boots + dexterity), which our server kick deals too, + the elemental damage
 //   25 charge-ups    0x103ade80: weapon at calc1 x (charges + 1) % + the p<charges+1>dm line, coloured by its element
 //   26 arrows        0x103ae000: (weapon + the skill's elemental) x SrcDam / 128, coloured by EType
 // Slots are written with PatchWriteU64, each expecting the pointer it holds at install (D2R's function).
 #include "descdam_lines.h"
 
+#include "kick_base.h"
 #include "log.h"
 #include "pd2_engine.h"
 
@@ -121,6 +119,10 @@ auto Call(const sigscan::Entry& e) noexcept -> Fn {
 }
 
 uint64_t g_tableRva = 0;
+using WeaponFn = void* (*)(void* inventory) noexcept;
+using UsableFn = int32_t (*)(void* item) noexcept;
+WeaponFn g_weapon = nullptr;  // the wielded weapon and its usable test, the server kick's (kick_base.h)
+UsableFn g_usable = nullptr;
 Handler g_d2r[std::size(Ids)] = {};
 std::atomic<uint32_t> g_lines[std::size(Ids)] = {};
 
@@ -150,7 +152,8 @@ void Write(Line* line, int32_t min, int32_t max, bool show) noexcept {
 	line->text[n] = '\0';
 	line->length = n;
 }
-void Logged(int slot, int32_t skill, int32_t level, int32_t min, int32_t max, int32_t color) noexcept {
+void Logged(int slot, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept {
+	++g_lines[slot];
 }
 
 // --- 11: Vengeance (0x103ad2e0) --------------------------------------------------------------------------------
@@ -206,7 +209,7 @@ void Throw(uint8_t flag, void* unit, void* skill, const uint8_t* rec, int32_t le
 	++g_lines[1];
 }
 
-// --- 15: Dragon Talon, Dragon Flight (D2R's 0x284b40 with PD2's damage%; D2R's base, the server kick's) ----------
+// --- 15: Dragon Talon, Dragon Flight (D2R's 0x284b40 with PD2's damage%; PD2's base, the server kick's, #2051) ---
 void Kick(uint8_t flag, void* unit, void* skill, const uint8_t* rec, int32_t level, Line* line, Line*, int32_t* color,
           int32_t*) noexcept {
 	*color = 0;
@@ -215,17 +218,28 @@ void Kick(uint8_t flag, void* unit, void* skill, const uint8_t* rec, int32_t lev
 		return;
 	}
 	const int32_t id = SkillId(rec);
-	const int32_t baseMin = Call<DamageFn>(d2r::sig::SkillPhysMin)(flag, unit, id, level, 1) >> 8;
-	const int32_t baseMax = Call<DamageFn>(d2r::sig::SkillPhysMax)(flag, unit, id, level, 1) >> 8;
-	int32_t pct = Call<KickPercentFn>(KickPercent)() + DescValue(flag, unit, rec, desc, SdCalc1, level);
-	if (pct != 0) {
+	kick_base::KickStats s {};
+	s.pct = Call<KickPercentFn>(KickPercent)() + DescValue(flag, unit, rec, desc, SdCalc1, level);
+	if (s.pct != 0) {
 		*color = Blue;
 	}
-	const int32_t upMin = Percent(baseMin, pct), upMax = Percent(baseMax, pct);
-	int32_t bootsMin = 0, bootsMax = 0;
-	Call<KickPartFn>(KickItemDamage)(unit, &bootsMin, &bootsMax, &pct);
-	int32_t min = Percent(bootsMin, pct) + bootsMin + baseMin + upMin;
-	int32_t max = Percent(bootsMax, pct) + bootsMax + baseMax + upMax;
+	Call<KickPartFn>(KickItemDamage)(unit, &s.bootsMin, &s.bootsMax, &s.pct);
+	s.pct += 100;
+	const auto stat = Call<UnitStatFn>(d2r::sig::UnitStat);
+	void* inventory = d2r::Engine<void* (*)(void*, const char*, int32_t) noexcept>(d2r::sig::UnitInventory)(unit, __FILE__, __LINE__);
+	void* weapon = inventory != nullptr ? g_weapon(inventory) : nullptr;
+	if (weapon != nullptr && d2r::Engine<int32_t (*)(void*, int32_t) noexcept>(d2r::sig::ItemIsType)(weapon, kick_base::TypeWeapon) != 0 &&
+	    g_usable(weapon) != 0) {
+		s.weapMin = stat(weapon, kick_base::StatMin, 0);
+		s.weapMax = stat(weapon, kick_base::StatMax, 0);
+	}
+	s.minDam = stat(unit, kick_base::StatMin, 0);
+	s.maxDam = stat(unit, kick_base::StatMax, 0);
+	s.normal = stat(unit, kick_base::StatNormal, 0);
+	s.dex = stat(unit, kick_base::StatDex, 0);
+	const kick_base::KickRange base = kick_base::Pd2Base(s);
+	int32_t min = base.min >> 8;
+	int32_t max = base.max >> 8;
 	int32_t elemMin = 0, elemMax = 0;
 	Call<KickPartFn>(KickElemDamage)(unit, &elemMin, &elemMax, color);
 	min += elemMin;
@@ -286,8 +300,8 @@ constexpr Handler Ours[std::size(Ids)] = {Vengeance, Throw, Kick, ChargeUp, Arro
 }  // namespace
 
 sigscan::Entry* const Uses[8] = {&d2r::sig::UnitStat,     &d2r::sig::UnitStateList, &d2r::sig::ListStatValue,
-                                 &d2r::sig::UnitHasState, &d2r::sig::SkillPhysMin,  &d2r::sig::SkillPhysMax,
-                                 &d2r::sig::EvalSkillCalc, &d2r::sig::RecordOffsets};
+                                  &d2r::sig::UnitHasState, &d2r::sig::EvalSkillCalc,
+                                  &d2r::sig::RecordOffsets, &d2r::sig::UnitInventory, &d2r::sig::ItemIsType};
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	sigscan::Resolve(Own, std::size(Own), context->exeBase, nullptr, 0);
@@ -296,6 +310,12 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 			std::snprintf(report, size, "FAILED (%s: %s)", e->name, sigscan::StateText(e->state));
 			return;
 		}
+	}
+	g_weapon = reinterpret_cast<WeaponFn>(kick_base::CallTarget(context->exeBase, kick_base::WeaponBlock, kick_base::WeaponCallAt));
+	g_usable = reinterpret_cast<UsableFn>(kick_base::CallTarget(context->exeBase, kick_base::WeaponBlock, kick_base::UsableCallAt));
+	if (g_weapon == nullptr || g_usable == nullptr) {
+		std::snprintf(report, size, "FAILED (kick weapon getter signature)");
+		return;
 	}
 	g_tableRva = DescDamTable.rva;
 	const auto* table = reinterpret_cast<const uint64_t*>(context->exeBase + g_tableRva);
