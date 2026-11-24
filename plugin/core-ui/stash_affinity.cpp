@@ -505,7 +505,15 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 			return true;
 		}
 		const aff::Cell cell = shown ? FreeMapCell() : aff::Cell {};
-		moved = cell.x >= 0 ? MoveTo(player, item, aff::MapsPage, cell.x, cell.y) : ToStorage(player, item);
+		// #2095: with the shown base's view full the map stays in the inventory (below); its storage row is not on screen, so it looked deleted
+		if (cell.x >= 0) {
+			moved = MoveTo(player, item, aff::MapsPage, cell.x, cell.y);
+		} else if (!shown) {
+			moved = ToStorage(player, item);
+		} else {
+			plog::Info("affinity: the Maps tab is full: %08x stays in the inventory", item.code);
+			moved = items::Result::Unsupported;  // no page problem: skips the add_shared_tabs hint below
+		}
 	} else {  // a fixed cell: Map Materials, Bossing
 		int32_t& on = At(home.page, home.row, home.column);
 		if (on == -1) {
