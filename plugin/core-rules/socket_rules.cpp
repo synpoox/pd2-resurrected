@@ -26,6 +26,7 @@
 #include <D2RLPlugin/data_tables.h>
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
+#include <D2RLPlugin/lifecycle_events.h>
 #include <D2RLPlugin/threads.h>
 
 #include <atomic>
@@ -149,6 +150,14 @@ std::mutex g_restLock;
 const D2RL::ItemService* g_items = nullptr;
 const D2RL::InventoryService* g_inventory = nullptr;
 const D2RL::ThreadService* g_threads = nullptr;
+// kept from LocalPlayerReady, so the rest is made on the next game update with no UI-thread hop first
+std::atomic<D2RL::PlayerHandle> g_localPlayer {D2RL::InvalidPlayerHandle};
+
+void KeepLocalPlayer(const D2RL::PluginContext* context, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {
+	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+	g_localPlayer = g_inventory->getLocalPlayer(context, &player) == D2RL::Inventory::Result::Success ? player
+	                                                                                                   : D2RL::InvalidPlayerHandle;
+}
 
 // server and client unit ids match, in a local or a hosted game
 auto LocalPlayerId() noexcept -> uint32_t {
@@ -156,6 +165,8 @@ auto LocalPlayerId() noexcept -> uint32_t {
 	Unit* local = d2r::Engine<Unit* (*)(uint32_t) noexcept>(ClientPlayer)(d2r::Engine<uint32_t (*)() noexcept>(LocalPlayerSlot)());
 	return local != nullptr ? At<uint32_t>(local, UnitIdField) : 0xffffffffu;
 }
+
+void PickPlayer(const D2RL::PluginContext*, void*) noexcept;
 
 // Game thread: each rest to the cursor, else the inventory, else the ground
 void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
@@ -187,9 +198,27 @@ void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
 			                                                  .placement = items::Placement::Automatic}};
 			D2RL::ItemHandle item = D2RL::InvalidItemHandle;
 			made = g_items->createItem(g_context, player, &spec, &item);
-			if (made == items::Result::Success) {
+			if (made == items::Result::Success || made == items::Result::StaleHandle) {
 				break;
 			}
+		}
+		if (made == items::Result::StaleHandle && player == g_localPlayer.exchange(D2RL::InvalidPlayerHandle)) {
+			// the kept handle is from an earlier game: these rests go back through the UI thread for a fresh one
+			bool queued = false;
+			{
+				std::lock_guard<std::mutex> lock(g_restLock);
+				for (int k = i; k < count && g_restCount < MaxRests; ++k) {
+					g_rests[g_restCount++] = rests[k];
+				}
+				queued = g_threads->runOnUiThread(g_context, PickPlayer, nullptr) == D2RL::Threads::Result::Success;
+				if (!queued) {
+					g_restCount = 0;
+				}
+			}
+			if (!queued) {
+				plog::Warn("sockets: could not queue the rest of a stack; it is lost");
+			}
+			return;
 		}
 		if (made != items::Result::Success) {
 			plog::Warn("sockets: the rest of a stack, %.4s x%u (ilvl %u), not made again: result %u",
@@ -201,8 +230,11 @@ void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
 // UI thread: the SDK names the local player only here
 void PickPlayer(const D2RL::PluginContext*, void*) noexcept {
 	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
-	if (g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success ||
-	    g_threads->runOnGameThread(g_context, MakeRests, reinterpret_cast<void*>(player)) != D2RL::Threads::Result::Success) {
+	const bool named = g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success;
+	if (named) {
+		g_localPlayer = player;
+	}
+	if (!named || g_threads->runOnGameThread(g_context, MakeRests, reinterpret_cast<void*>(player)) != D2RL::Threads::Result::Success) {
 		plog::Warn("sockets: could not queue the rest of a stack; it is lost");
 		std::lock_guard<std::mutex> lock(g_restLock);
 		g_restCount = 0;
@@ -222,7 +254,14 @@ void QueueRest(Unit* filler, int32_t left) noexcept {
 		g_rests[g_restCount++] = {d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(filler), static_cast<uint32_t>(left),
 		                          d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemLevel)(filler)};
 	}
-	if (first && g_threads->runOnUiThread(g_context, PickPlayer, nullptr) != D2RL::Threads::Result::Success) {
+	if (!first) {
+		return;
+	}
+	const D2RL::PlayerHandle kept = g_localPlayer;
+	const bool queued = kept != D2RL::InvalidPlayerHandle
+	                        ? g_threads->runOnGameThread(g_context, MakeRests, reinterpret_cast<void*>(kept)) == D2RL::Threads::Result::Success
+	                        : g_threads->runOnUiThread(g_context, PickPlayer, nullptr) == D2RL::Threads::Result::Success;
+	if (!queued) {
 		plog::Warn("sockets: could not queue the rest of a stack; it is lost");
 		std::lock_guard<std::mutex> lock(g_restLock);
 		g_restCount = 0;
@@ -271,6 +310,17 @@ auto InstallStackInsert(const D2RL::PluginContext* context) noexcept -> bool {
 		return false;
 	}
 	g_context = context;
+	// without it every rest takes the UI-thread path (PickPlayer)
+	const D2RL::LifecycleService* lifecycle = nullptr;
+	const D2RL::Lifecycle::GameplayEventListener ready {.structSize = D2RL::Lifecycle::GameplayEventListenerSize,
+	                                                    .kind = D2RL::Lifecycle::GameplayEventKind::LocalPlayerReady,
+	                                                    .callback = KeepLocalPlayer};
+	D2RL::Lifecycle::ListenerHandle readyHandle = D2RL::Lifecycle::InvalidHandle;
+	if (context->QueryService(&lifecycle) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasLifecycleServiceField(lifecycle, D2RL::LifecycleServiceRequiredSize) ||
+	    lifecycle->registerGameplayEventListener(context, &ready, &readyHandle) != D2RL::Lifecycle::Result::Success) {
+		plog::Warn("sockets: no LocalPlayerReady listener; the rest of a stack takes the UI-thread path");
+	}
 	return sigscan::HookBySignature(context, "SocketInsert", InsertPattern, 0, InsertEntry, sizeof(InsertEntry), &Insert, &g_insert);
 }
 
