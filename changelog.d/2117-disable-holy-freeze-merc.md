@@ -1,0 +1,1 @@
+- Remove the Holy Freeze mercenary from Greiz's hire list (#2117).
