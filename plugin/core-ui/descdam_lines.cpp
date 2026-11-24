@@ -213,7 +213,7 @@ void Throw(uint8_t flag, void* unit, void* skill, const uint8_t* rec, int32_t le
 	}
 }
 
-// --- 15: Dragon Talon, Dragon Flight (D2R's 0x284b40 with PD2's damage%; D2R's base, the server kick's) ----------
+// --- 15: Dragon Talon, Dragon Flight (D2R's 0x284b40 with PD2's damage%; PD2's base, the server kick's, #2051) ---
 void Kick(uint8_t flag, void* unit, void* skill, const uint8_t* rec, int32_t level, Line* line, Line*, int32_t* color,
           int32_t*) noexcept {
 	*color = 0;
