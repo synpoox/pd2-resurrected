@@ -14,10 +14,12 @@
 //   monsters  PD2 Monsters Remaining: the level hostile monsters left, in the zone info (#1534)
 //   corrupt   corruption markers: the lines a corruption added or changed are red (#2070)
 //   hotkeys   PD2 inventory hotkeys: Ctrl, Shift and Ctrl+Shift right click drop, stash and Cube, Shift+left click identifies; configurable (#1567)
+//   descdam   PD2 skill tooltip damage lines: descdam 11, 13, 15, 25 and 26 print PD2's line (#2005)
 #include <D2RLPlugin/api.h>
 
 #include "corruption_marks.h"
 #include "crash_guard.h"
+#include "descdam_lines.h"
 #include "inventory_lock.h"
 #include "pd2_engine.h"
 #include "item_pictures.h"
@@ -67,6 +69,7 @@ parts::Part g_parts[] = {
 	{"tabs", false, stash_tabs::Install},
 	{"monsters", false, monsters_remaining::Install},
 	{"corrupt", true, corruption_marks::Install},
+	{"descdam", true, descdam_lines::Install, nullptr, descdam_lines::Uses},
 };
 
 constexpr D2RL::PluginInfo Info {
@@ -134,6 +137,9 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	corruption_marks::Counters(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("%s", line);
+	descdam_lines::Counters(line, sizeof(line));
 	command->plugin->WriteConsoleMessage(line);
 	plog::Info("%s", line);
 	return D2RL::ConsoleCommandResult::Handled;
