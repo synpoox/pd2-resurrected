@@ -1,3 +1,3 @@
 #### Features
 
-- The Maps and Bossing stash tabs glow when a quick-moved item lands in them, like Gems, Materials and Runes (#2116).
+- The Maps and Bossing stash tabs, and the Maps tab's tier and base buttons, glow when a quick-moved map or item lands there (#2116).

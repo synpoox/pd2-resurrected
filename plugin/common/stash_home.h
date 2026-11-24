@@ -38,6 +38,9 @@ inline constexpr int32_t PageWidth = 10;  // inventory.txt Big Bank Page: 10 x 1
 inline constexpr const char* Tier1[] = {"m01", "m04", "m05", "m06", "m12", "m20", "m23", "m24"};
 inline constexpr const char* Tier2[] = {"m02", "m03", "m08", "m10", "m13", "m15", "m16", "m21"};
 inline constexpr const char* Tier3[] = {"m07", "m09", "m11", "m14", "m17", "m18", "m19", "m22", "m25"};
+// The tiers: a new one adds its list here, in BaseOf and BaseCode, a storage page, its tier button and its base buttons
+// (pd2rTier<n>, pd2rBase<n>_<i>, each with its pd2rTierGlow/pd2rBaseGlow, tools/tests/test_stash_glow.py); core-ui sizes from it
+inline constexpr int32_t Tiers = 3;
 
 // PD2's map crafting and modification items: orbs, ready orbs, Fortify, Dungeon Scarab, Force Mapevent Shard and the
 // invader ears the map + ear recipes take. Each plain orb is followed by its ready orb, so the two share a row (#1776)
@@ -244,6 +247,7 @@ static_assert(HomeOf(Code("m24")).page == 16 && HomeOf(Code("m24")).row == 7);
 static_assert(HomeOf(Code("m02")).page == 17 && HomeOf(Code("m21")).row == 7);
 static_assert(HomeOf(Code("m25")).page == 18 && HomeOf(Code("m25")).row == 8);
 static_assert(HomeOf('m' | ('0' << 8) | ('7' << 16)).page == 18);  // zero-padded code
+static_assert(BaseCode(Tiers - 1, 0) != 0 && BaseCode(Tiers, 0) == 0 && FirstStoragePage + Tiers <= BossingPage);
 static_assert(BaseCode(2, 8) == Code("m25") && BaseCode(0, 8) == 0 && BaseCode(3, 0) == 0);
 static_assert(HomeOf(Code("imma")).page == 15 && HomeOf(Code("imma")).column == 0 && HomeOf(Code("imma")).row == 4);
 static_assert(HomeOf(Code("ivea")).category == Category::MapMaterials);  // ear: Map Materials before Bossing

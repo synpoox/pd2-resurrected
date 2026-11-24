@@ -92,6 +92,8 @@ uintptr_t g_seen = 0;  // the watch generation g_noted belongs to (game thread o
 uint32_t g_shown = 0;  // the base whose maps are on the Maps page (game thread only)
 std::atomic<uint32_t> g_want {0};
 std::atomic<uint32_t> g_glow {0};  // TakeGlow's bits: the reserved tabs quick-moved items went home to (#2116)
+std::atomic<uint32_t> g_mapGlow[aff::Tiers] = {};  // TakeMapGlow's bits: per tier, the base of each quick-moved map gone home
+static_assert(aff::PageWidth <= 32);
 std::atomic<bool> g_open {false};
 std::atomic<uint32_t> g_viewPage {0};
 std::atomic<bool> g_tidyFailed {false};
@@ -799,6 +801,9 @@ void Update(const D2RL::PluginContext*, void* user) noexcept {
 	for (uint32_t i = 0; i < g_pass.foundCount; ++i) {
 		if (Route(player, g_pass.found[i])) {
 			g_glow.fetch_or(aff::HomeOf(g_pass.found[i].code).category == aff::Category::Bossing ? GlowBossing : GlowMaps);
+			if (const aff::Base b = aff::BaseOf(g_pass.found[i].code); b.tier >= 0) {
+				g_mapGlow[b.tier].fetch_or(1u << b.index);
+			}
 		}
 	}
 	for (uint32_t i = 0; i < big.count; ++i) {
@@ -904,6 +909,10 @@ auto TakeOut(uint32_t itemId) noexcept -> bool {
 
 auto TakeGlow() noexcept -> uint32_t {
 	return g_glow.exchange(0);
+}
+
+auto TakeMapGlow(int32_t tier) noexcept -> uint32_t {
+	return tier >= 0 && tier < aff::Tiers ? g_mapGlow[tier].exchange(0) : 0;
 }
 
 auto WantedBase() noexcept -> uint32_t {

@@ -246,6 +246,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rTierGlow1",
+                    "fields": {
+                        "rect": { "x": 504, "y": 144, "scale": 0.936 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ButtonWidget", "name": "pd2rTier2",
                     "fields": {
                         "rect": { "x": 602, "y": 144 },
@@ -277,6 +285,14 @@
                         "pointSize": "$MediumFontSize",
                         "textColor": "$TabsActiveTextColor",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashTier2"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rTierGlow2",
+                    "fields": {
+                        "rect": { "x": 602, "y": 144, "scale": 0.936 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -314,6 +330,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rTierGlow3",
+                    "fields": {
+                        "rect": { "x": 700, "y": 144, "scale": 0.936 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox1_0",
                     "fields": {
                         "rect": { "x": 235, "y": 239 },
@@ -342,6 +366,14 @@
                         "navigation": { "up": { "name": "pd2rTier1On" }, "down": { "name": "grid" }, "right": { "name": "pd2rBase1_1" } },
                         "tooltipString": "@m01",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase1_0"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow1_0",
+                    "fields": {
+                        "rect": { "x": 235, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -376,6 +408,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow1_1",
+                    "fields": {
+                        "rect": { "x": 339, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox1_2",
                     "fields": {
                         "rect": { "x": 443, "y": 239 },
@@ -404,6 +444,14 @@
                         "navigation": { "up": { "name": "pd2rTier1On" }, "down": { "name": "grid" }, "left": { "name": "pd2rBase1_1" }, "right": { "name": "pd2rBase1_3" } },
                         "tooltipString": "@m05",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase1_2"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow1_2",
+                    "fields": {
+                        "rect": { "x": 443, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -438,6 +486,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow1_3",
+                    "fields": {
+                        "rect": { "x": 547, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox1_4",
                     "fields": {
                         "rect": { "x": 651, "y": 239 },
@@ -466,6 +522,14 @@
                         "navigation": { "up": { "name": "pd2rTier1On" }, "down": { "name": "grid" }, "left": { "name": "pd2rBase1_3" }, "right": { "name": "pd2rBase1_5" } },
                         "tooltipString": "@m12",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase1_4"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow1_4",
+                    "fields": {
+                        "rect": { "x": 651, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -500,6 +564,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow1_5",
+                    "fields": {
+                        "rect": { "x": 755, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox1_6",
                     "fields": {
                         "rect": { "x": 859, "y": 239 },
@@ -528,6 +600,14 @@
                         "navigation": { "up": { "name": "pd2rTier1On" }, "down": { "name": "grid" }, "left": { "name": "pd2rBase1_5" }, "right": { "name": "pd2rBase1_7" } },
                         "tooltipString": "@m23",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase1_6"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow1_6",
+                    "fields": {
+                        "rect": { "x": 859, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -562,6 +642,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow1_7",
+                    "fields": {
+                        "rect": { "x": 963, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox2_0",
                     "fields": {
                         "rect": { "x": 235, "y": 239 },
@@ -590,6 +678,14 @@
                         "navigation": { "up": { "name": "pd2rTier2On" }, "down": { "name": "grid" }, "right": { "name": "pd2rBase2_1" } },
                         "tooltipString": "@m02",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase2_0"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow2_0",
+                    "fields": {
+                        "rect": { "x": 235, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -624,6 +720,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow2_1",
+                    "fields": {
+                        "rect": { "x": 339, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox2_2",
                     "fields": {
                         "rect": { "x": 443, "y": 239 },
@@ -652,6 +756,14 @@
                         "navigation": { "up": { "name": "pd2rTier2On" }, "down": { "name": "grid" }, "left": { "name": "pd2rBase2_1" }, "right": { "name": "pd2rBase2_3" } },
                         "tooltipString": "@m08",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase2_2"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow2_2",
+                    "fields": {
+                        "rect": { "x": 443, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -686,6 +798,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow2_3",
+                    "fields": {
+                        "rect": { "x": 547, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox2_4",
                     "fields": {
                         "rect": { "x": 651, "y": 239 },
@@ -714,6 +834,14 @@
                         "navigation": { "up": { "name": "pd2rTier2On" }, "down": { "name": "grid" }, "left": { "name": "pd2rBase2_3" }, "right": { "name": "pd2rBase2_5" } },
                         "tooltipString": "@m13",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase2_4"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow2_4",
+                    "fields": {
+                        "rect": { "x": 651, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -748,6 +876,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow2_5",
+                    "fields": {
+                        "rect": { "x": 755, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox2_6",
                     "fields": {
                         "rect": { "x": 859, "y": 239 },
@@ -776,6 +912,14 @@
                         "navigation": { "up": { "name": "pd2rTier2On" }, "down": { "name": "grid" }, "left": { "name": "pd2rBase2_5" }, "right": { "name": "pd2rBase2_7" } },
                         "tooltipString": "@m16",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase2_6"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow2_6",
+                    "fields": {
+                        "rect": { "x": 859, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -810,6 +954,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow2_7",
+                    "fields": {
+                        "rect": { "x": 963, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox3_0",
                     "fields": {
                         "rect": { "x": 183, "y": 239 },
@@ -838,6 +990,14 @@
                         "navigation": { "up": { "name": "pd2rTier3On" }, "down": { "name": "grid" }, "right": { "name": "pd2rBase3_1" } },
                         "tooltipString": "@m07",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_0"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow3_0",
+                    "fields": {
+                        "rect": { "x": 183, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -872,6 +1032,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow3_1",
+                    "fields": {
+                        "rect": { "x": 287, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox3_2",
                     "fields": {
                         "rect": { "x": 391, "y": 239 },
@@ -900,6 +1068,14 @@
                         "navigation": { "up": { "name": "pd2rTier3On" }, "down": { "name": "grid" }, "left": { "name": "pd2rBase3_1" }, "right": { "name": "pd2rBase3_3" } },
                         "tooltipString": "@m11",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_2"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow3_2",
+                    "fields": {
+                        "rect": { "x": 391, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -934,6 +1110,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow3_3",
+                    "fields": {
+                        "rect": { "x": 495, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox3_4",
                     "fields": {
                         "rect": { "x": 599, "y": 239 },
@@ -962,6 +1146,14 @@
                         "navigation": { "up": { "name": "pd2rTier3On" }, "down": { "name": "grid" }, "left": { "name": "pd2rBase3_3" }, "right": { "name": "pd2rBase3_5" } },
                         "tooltipString": "@m17",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_4"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow3_4",
+                    "fields": {
+                        "rect": { "x": 599, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -996,6 +1188,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow3_5",
+                    "fields": {
+                        "rect": { "x": 703, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox3_6",
                     "fields": {
                         "rect": { "x": 807, "y": 239 },
@@ -1024,6 +1224,14 @@
                         "navigation": { "up": { "name": "pd2rTier3On" }, "down": { "name": "grid" }, "left": { "name": "pd2rBase3_5" }, "right": { "name": "pd2rBase3_7" } },
                         "tooltipString": "@m19",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_6"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow3_6",
+                    "fields": {
+                        "rect": { "x": 807, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
@@ -1058,6 +1266,14 @@
                     }
                 },
                 {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow3_7",
+                    "fields": {
+                        "rect": { "x": 911, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
+                    }
+                },
+                {
                     "type": "ImageWidget", "name": "pd2rBaseBox3_8",
                     "fields": {
                         "rect": { "x": 1015, "y": 239 },
@@ -1086,6 +1302,14 @@
                         "navigation": { "up": { "name": "pd2rTier3On" }, "down": { "name": "grid" }, "left": { "name": "pd2rBase3_7" } },
                         "tooltipString": "@m25",
                         "onClickMessage": "PanelManager:OpenPanel:core-ui/StashBase3_8"
+                    }
+                },
+                {
+                    "type": "ImageWidget", "name": "pd2rBaseGlow3_8",
+                    "fields": {
+                        "rect": { "x": 1015, "y": 239 },
+                        "filename": "PANEL\\pd2r\\stash_glow",
+                        "visible": false
                     }
                 },
                 {
