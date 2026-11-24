@@ -5,11 +5,15 @@ import re
 import unittest
 
 NOTES = Path(__file__).resolve().parents[2] / "release" / "notes"
+# Published before this test; a published release's manifest never changes (the launcher refuses a changed one).
+SHIPPED = {"0.2.5-alpha.md"}
 
 
 class LauncherNotes(unittest.TestCase):
     def test_summary_then_category_sections(self):
         for path in NOTES.glob("*.md"):
+            if path.name in SHIPPED:
+                continue
             text = path.read_text("utf-8").strip()
             levels = [len(m.group(1)) for m in re.finditer(r"^(#{1,6})\s", text, re.M)]
             with self.subTest(path.name):
