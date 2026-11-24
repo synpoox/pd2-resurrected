@@ -1,0 +1,1 @@
+- Restore gold names for Anya's map orbs without stray color markers (#2163).
