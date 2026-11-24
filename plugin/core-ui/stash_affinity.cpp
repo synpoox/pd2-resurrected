@@ -493,14 +493,16 @@ void SyncReserved(const items::ItemInfo& item) noexcept {
 // A fixed cell's stack tops up to its cap and the rest stays on the item, in the inventory (Withdraw #1763, quick-move #1771)
 auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 	const aff::Home home = aff::HomeOf(item.code);
-	if (aff::AtHome(home, item.code, g_shown, item.container == C::SharedStash, item.sharedStashPage, item.x, item.y)) {
+	const bool atHome = aff::AtHome(home, item.code, g_shown, item.container == C::SharedStash, item.sharedStashPage, item.x, item.y);
+	if (atHome && home.category != aff::Category::Maps) {
 		return true;
 	}
 	items::Result moved = items::Result::Conflict;
 	bool full = false;  // the shown base's Maps view has no free cell (#2095)
 	if (home.category == aff::Category::Maps) {
 		const bool shown = g_shown != 0 && aff::Normal(item.code) == aff::Normal(g_shown);
-		// A stack of the same map below a full one takes it first (#1759); a full stack or a failed merge falls through
+		// A stack of the same map below a full one takes it first (#1759), also a map quick-moved onto a free cell of its
+		// own page, which AtHome already calls home (#2096); a full stack or a failed merge falls through
 		const uint32_t stackPage = shown ? aff::MapsPage : home.page;
 		for (uint32_t i = 0; i < g_pass.reservedCount && moved != items::Result::Success; ++i) {
 			items::ItemInfo& stack = g_pass.reserved[i];
@@ -513,6 +515,9 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 		if (moved == items::Result::Success) {
 			SyncReserved(item);
 			++g_routed;
+			return true;
+		}
+		if (atHome && item.container == C::SharedStash) {  // a merge that failed after its take step left it in the inventory
 			return true;
 		}
 		const aff::Cell cell = shown ? FreeMapCell() : aff::Cell {};
