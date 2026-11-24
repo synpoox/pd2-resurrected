@@ -130,7 +130,8 @@ auto InstallStackableSockets(const D2RL::PluginContext* context) noexcept -> boo
 constexpr const char* InsertPattern =
     "40 53 55 56 57 41 56 48 83 ec 70 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 44 24 50 4c 8b f2 41 8b d9 ba 04 00 00 00 48 8b e9 e8";
 constexpr uint8_t InsertEntry[] = {0x40, 0x53, 0x55, 0x56, 0x57, 0x41, 0x56};
-using InsertFn = void (*)(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint8_t flag) noexcept;
+// returns 1 when placed, 0 when refused: the packet handler (0x4fa29c) tests it and runs its put-back path on 0
+using InsertFn = int32_t (*)(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint8_t flag) noexcept;
 InsertFn g_insert = nullptr;
 constexpr int32_t ItemModeCursor = 4, ItemModeSocketed = 6;
 std::atomic<uint32_t> g_split {0}, g_refusedRemote {0};
@@ -174,9 +175,10 @@ void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
 			const items::ItemCreateSpec spec {.structSize = items::ItemCreateSpecSize,
 			                                  .code = rests[i].code,
 			                                  .quality = items::Quality::Normal,
-			                                  .itemLevel = rests[i].itemLevel,
+			                                  .itemLevel = rests[i].itemLevel > 0 ? rests[i].itemLevel : 1,
 			                                  .seedMode = items::SeedMode::Random,
-			                                  .quantity = rests[i].quantity,
+			                                  // a single keeps the native default (the stat may be absent on one)
+			                                  .quantity = rests[i].quantity > 1 ? rests[i].quantity : items::DefaultValue,
 			                                  .durability = items::DefaultValue,
 			                                  .stateFlags = items::ItemStateIdentified,
 			                                  .destination = {.structSize = items::ItemDestinationSize,
@@ -189,8 +191,8 @@ void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
 			}
 		}
 		if (made != items::Result::Success) {
-			plog::Warn("sockets: the rest of a stack, %.4s x%u, not made again: result %u",
-			           reinterpret_cast<const char*>(&rests[i].code), rests[i].quantity, static_cast<uint32_t>(made));
+			plog::Warn("sockets: the rest of a stack, %.4s x%u (ilvl %u), not made again: result %u",
+			           reinterpret_cast<const char*>(&rests[i].code), rests[i].quantity, rests[i].itemLevel, static_cast<uint32_t>(made));
 		}
 	}
 }
@@ -234,21 +236,20 @@ void SetQuantity(Unit* item, int32_t value) noexcept {
 	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(d2r::rva::SetUnitStat)(item, d2r::rva::StatQuantity, value, 0);
 }
 
-void Insert(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint8_t flag) noexcept {
+auto Insert(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint8_t flag) noexcept -> int32_t {
 	using namespace d2r::rva;
 	Unit* filler = d2r::Engine<Unit* (*)(void*, int32_t, uint32_t) noexcept>(FindUnit)(game, 4, fillerId);
 	// only a filler held on the cursor (mode 4): the save loaders (PlrSave.cpp) call the insert for socketed children too
 	const int32_t quantity = IsItem(filler) && At<int32_t>(filler, UnitMode) == ItemModeCursor ? Quantity(filler) : 0;
 	if (quantity <= 1 || player == nullptr) {
-		g_insert(game, player, fillerId, parentId, flag);
-		return;
+		return g_insert(game, player, fillerId, parentId, flag);
 	}
 	if (At<uint32_t>(player, UnitIdField) != LocalPlayerId()) {
 		g_refusedRemote.fetch_add(1);  // no rest can be made for a remote player, so its stack stays on the cursor
-		return;
+		return 0;
 	}
 	SetQuantity(filler, 1);
-	g_insert(game, player, fillerId, parentId, flag);
+	const int32_t placed = g_insert(game, player, fillerId, parentId, flag);
 	// in a socket: the insert set its mode to 6 (a cursor item already has page 0xff, so the page tells nothing)
 	if (At<int32_t>(filler, UnitMode) == ItemModeSocketed) {
 		g_split.fetch_add(1);
@@ -256,6 +257,7 @@ void Insert(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint
 	} else {
 		SetQuantity(filler, quantity);  // refused: the stack stays whole
 	}
+	return placed;
 }
 
 auto InstallStackInsert(const D2RL::PluginContext* context) noexcept -> bool {
