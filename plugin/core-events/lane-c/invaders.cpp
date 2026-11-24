@@ -78,9 +78,6 @@ std::atomic<uint32_t> g_closed {0};
 std::atomic<uint32_t> g_deaths {0};
 std::atomic<uint32_t> g_drops {0};
 std::atomic<uint32_t> g_noTc {0};
-std::atomic<uint32_t> g_noTcLogs {0};
-std::atomic<uint32_t> g_noPortalSpot {0};
-std::atomic<uint32_t> g_spawnLogs {0}, g_dressLogs {0}, g_dropLogs {0}, g_deathLogs {0};  // sampled lines
 std::atomic<uint32_t> g_held {0};      // items rolled at spawn and held
 std::atomic<uint32_t> g_released {0};  // held items put on the floor at death
 std::atomic<uint32_t> g_lost {0};      // held items with no unit or no floor spot at death
@@ -201,7 +198,6 @@ void RemoveClosedPortal(const D2RL::PluginContext*, void* user) noexcept {
 	d2r::Engine<void (*)(void*, int32_t, int32_t) noexcept>(d2r::sig::RoomUnitRemoved)(
 		d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::UnitRoom)(unit), UnitMonster, static_cast<int32_t>(unitId));
 	d2r::Engine<void (*)(Game*, Unit*) noexcept>(d2r::sig::RemoveUnit)(game, unit);
-	plog::Info("invaders: portal %u removed after its close", unitId);
 }
 
 void ClosePortal(Game* game, Unit* unit) noexcept {
@@ -234,8 +230,6 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	}
 	const int32_t spawns = MapEventSpawns(game);
 	if (Counter(game, InvadersKey) > MaxInvaders || Counter(game, FinishedKey) > MaxFinished || spawns > MaxSpawns) {
-		plog::Info("invaders: portal %u closes at once (%d invaders, %d closed, %d spawns)", At<uint32_t>(unit, UnitIdField),
-		           Counter(game, InvadersKey), Counter(game, FinishedKey), spawns);
 		ClosePortal(game, unit);
 		return;
 	}
@@ -252,9 +246,7 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 		return;
 	}
 	int32_t which = RollRand() % InvaderCount, forcedSet = -1;
-	if (ForcedInvader(g_spawned.load(), &which, &forcedSet)) {
-		plog::Info("invaders: PD2R_INVADERS picks %s, weapon set %d", ClassNames[which], forcedSet);
-	}
+	ForcedInvader(g_spawned.load(), &which, &forcedSet);
 	int32_t x = 0, y = 0;
 	d2r::UnitXY(unit, &x, &y);
 	void* room = d2r::Engine<void* (*)(Unit*) noexcept>(UnitRoom)(unit);
@@ -271,9 +263,6 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 		usedX = x + step[0], usedY = y + step[1];
 	}
 	if (invader == nullptr) {
-		if (pd2::HotSample(g_noPortalSpot)) {
-			plog::Warn("invaders: no %s at the portal (%d, %d)", ClassNames[which], x, y);
-		}
 		Idle(game, unit, aidel);
 		return;
 	}
@@ -286,16 +275,10 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	const int32_t n = ++Counter(game, InvadersKey);
 	MapEventNotify(game, InvadersEvent, NotifyKeys[which]);
 	const int32_t finished = Counter(game, FinishedKey);
-	if (pd2::HotSample(g_spawnLogs)) {
-		plog::Info("invaders: %s (class %d) at (%d, %d), invader %d, portals closed %d, %u spawned", ClassNames[which],
-		           FirstInvader + which, usedX, usedY, n, finished, g_spawned.load());
-	}
 	const bool close = finished == 0 ? n != 0 : finished == 1 ? n > 2 : n >= 5;
 	if (close) {
 		++Counter(game, FinishedKey);
 		++g_closed;
-		plog::Info("invaders: portal %u closes after invader %d (%d portals closed)", At<uint32_t>(unit, UnitIdField), n,
-		           Counter(game, FinishedKey));
 		ClosePortal(game, unit);
 		return;
 	}
@@ -318,9 +301,6 @@ auto DropTc(Game* game, Unit* monster, Unit* killer, const char* name, Unit** it
 	                              : nullptr;
 	if (tc == nullptr) {
 		++g_noTc;
-		if (pd2::HotSample(g_noTcLogs)) {
-			plog::Warn("invaders: no TC \"%s\"", name);
-		}
 		return false;
 	}
 	const int32_t ilvl = d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(UnitStat)(monster, StatLevel, 0);
@@ -470,12 +450,6 @@ void RollGear(Game* game, Unit* invader, Unit* player, int32_t which) noexcept {
 	}
 	const uint32_t id = At<uint32_t>(invader, UnitIdField);
 	g_held.fetch_add(static_cast<uint32_t>(held.size()));
-	if (pd2::HotSample(g_dressLogs)) {
-		plog::Info("invaders: %s #%u holds %zu items, %d still in a room (weapon set %s%s):%s", ClassNames[which], id, held.size(),
-		           onFloor, set, missing != 0 ? ", some TCs missing" : "", line);
-		plog::Info("invaders: %s #%u dressed: %d shown, %d not shown; parts HD TR LG RA LA RH LH SH S1-S8 = %s", ClassNames[which], id,
-		           look.shown, look.unshown, hex);
-	}
 	const std::lock_guard lock(g_heldLock);
 	g_heldItems[HeldKey(game, id)] = std::move(held);
 }
@@ -516,10 +490,6 @@ auto DropHeld(Game* game, Unit* monster, int32_t which) noexcept -> bool {
 	}
 	g_released.fetch_add(static_cast<uint32_t>(held.size()) - lost);
 	g_lost.fetch_add(lost);
-	if (pd2::HotSample(g_dropLogs)) {
-		plog::Info("invaders: %s #%u dropped %zu held items%s:%s", ClassNames[which], At<uint32_t>(monster, UnitIdField),
-		           held.size() - lost, lost != 0 ? " (some with no unit or spot, left to the game)" : "", line);
-	}
 	return true;
 }
 
@@ -577,13 +547,6 @@ void OnInvaderDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 	char hex[3 * pd2::invader_dress::PartBytes + 1] = "";
 	for (int i = 0; parts != nullptr && i < pd2::invader_dress::PartBytes; ++i) {
 		std::snprintf(hex + 3 * i, sizeof(hex) - 3 * i, "%02x ", parts[i]);
-	}
-	if (pd2::HotSample(g_deathLogs)) {
-		plog::Info("invaders: %s (class %d) parts HD TR LG RA LA RH LH SH S1-S8 = %s; weapon drop set: %s", ClassNames[which],
-		           event->monster.classId, hex, set);
-		plog::Info("invaders: %s (class %d) died, ear %.4s %s, %d TC drops%s", ClassNames[which], event->monster.classId,
-		           reinterpret_cast<const char*>(&Ears[which]), ear ? "dropped" : "NOT dropped", tcs,
-		           missing != 0 ? ", some TCs missing" : "");
 	}
 }
 

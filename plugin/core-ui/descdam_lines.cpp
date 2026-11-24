@@ -150,9 +150,6 @@ void Write(Line* line, int32_t min, int32_t max, bool show) noexcept {
 	line->length = n;
 }
 void Logged(int slot, int32_t skill, int32_t level, int32_t min, int32_t max, int32_t color) noexcept {
-	if (pd2::HotSample(g_lines[slot])) {
-		plog::Info("descdam %d: skill %d level %d -> %d-%d colour %d", Ids[slot], skill, level, min, max, color);
-	}
 }
 
 // --- 11: Vengeance (0x103ad2e0) --------------------------------------------------------------------------------
@@ -205,10 +202,7 @@ void Throw(uint8_t flag, void* unit, void* skill, const uint8_t* rec, int32_t le
 	const int32_t v1 = DescValue(flag, unit, rec, desc, SdCalc1, level), v2 = DescValue(flag, unit, rec, desc, SdCalc2, level);
 	Call<TwoHandFn>(TwoHandLine)(flag, unit, skill, rec, level, reinterpret_cast<void*>(ThrowFill.address), v1, v2, line,
 	                             line2, color, color2, true);
-	if (pd2::HotSample(g_lines[1])) {
-		plog::Info("descdam 13: skill %d level %d, ddam calc1 %d calc2 %d -> %s / %s", SkillId(rec), level, v1, v2,
-		           line->text != nullptr ? line->text : "", line2->text != nullptr ? line2->text : "");
-	}
+	++g_lines[1];
 }
 
 // --- 15: Dragon Talon, Dragon Flight (D2R's 0x284b40 with PD2's damage%; D2R's base, the server kick's) ----------

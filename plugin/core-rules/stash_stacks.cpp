@@ -131,8 +131,6 @@ void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
 				break;
 			}
 		}
-		plog::Info("stash tabs: the rest of a stack, %.4s x%u, made again: result %u", reinterpret_cast<const char*>(&rests[i].code),
-		           rests[i].quantity, static_cast<uint32_t>(made));
 	}
 }
 
@@ -250,8 +248,6 @@ auto Add(void* proxy, uint64_t itemClass, Unit* rbx, uint8_t* rbp) noexcept -> U
 			break;
 		}
 	}
-	plog::Info("stash tabs: deposit of class %d added %d of %d, %d left, slot count %u, depositor %u (%s)", static_cast<int32_t>(itemClass),
-	           added, wanted, wanted - added, SlotCount(slot), depositor, local ? "local" : "not local");
 	if (units < wanted && local) {
 		QueueRest(rbx, wanted - units, depositor);
 	}

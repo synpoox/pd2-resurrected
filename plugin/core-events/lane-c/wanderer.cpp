@@ -188,8 +188,6 @@ void Buff(Game* game, Unit* boss, bool poolA, int32_t id, uint32_t unitId, int32
 	d2r::Engine<void (*)(Unit*) noexcept>(d2r::sig::QueueUnitUpdate)(boss);
 	int32_t x = 0, y = 0;
 	d2r::UnitXY(boss, &x, &y);
-	plog::Info("wanderer: boss %d (pool %s) at %d,%d: maxhp %d -> %d, damage%% +%d, masteries +%d, try %d, frame %d",
-	           id, poolA ? "A" : "B", x, y, maxhp >> 8, target >> 8, s.bonus, 2 * s.bonus, tryNo, frame);
 	g_bosses.fetch_add(1);
 }
 
@@ -214,7 +212,6 @@ void SpawnBoss(Game* game, const Pending& p) noexcept {
 			plog::Info("wanderer: no corpse and no room near %d,%d, no boss", p.x, p.y);
 			return;
 		}
-		plog::Info("wanderer: corpse gone, boss at the saved spot %d,%d (target %d/%u)", p.x, p.y, p.targetType, p.targetId);
 	}
 	void* found = nullptr;
 	if (room != nullptr) {
@@ -312,8 +309,6 @@ void Leave(Game* game, Unit* unit, Unit* target) noexcept {
 		plog::Warn("wanderer: could not queue the boss for unit %u", unitId);
 		return;
 	}
-	plog::Info("wanderer: left, unit %u at %d,%d (mode %d), boss due at frame %d", unitId, x, y,
-	           At<int32_t>(unit, UnitMode), due);
 }
 
 // The spot record of a unit: its own if it has one, else a free or the oldest slot
@@ -398,8 +393,6 @@ void OnShardDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::Mon
 		DropUniqueAt(game, monster, D2RL::Items::MakeItemCode("wss"), -1, ShardItemLevel, QualityNormal);
 	}
 	g_shards.fetch_add(static_cast<uint32_t>(count));
-	plog::Info("wanderer: %d shards from boss %d (unit %u), event %d", count, event->monster.classId, event->monster.id,
-	           DarkWandererEvent);
 }
 
 }  // namespace

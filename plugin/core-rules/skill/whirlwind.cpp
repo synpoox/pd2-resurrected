@@ -35,7 +35,6 @@ constexpr uint8_t DelayEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x55, 0x56, 0x57
 
 using DelayFn = int32_t (*)(Unit*, Unit*) noexcept;
 DelayFn g_delay = nullptr;
-std::atomic<uint32_t> g_first {0}, g_second {0};
 
 // No SDK service sets a skill's hit timer, so D2R's delay is hooked; it runs only inside Whirlwind's player branch.
 auto Delay(Unit* unit, Unit* weapon) noexcept -> int32_t {
@@ -51,20 +50,6 @@ auto Delay(Unit* unit, Unit* weapon) noexcept -> int32_t {
 	const int32_t frames = record != nullptr ? At<int32_t>(record, d2r::rva::SkParam3) : 0;
 	if (frames < 1) {
 		return d2rFrames;
-	}
-	if (pd2::HotLogsOn()) {
-		// the dual-wield branch asks twice in one frame (left hand, then right); a single weapon once
-		thread_local Unit* lastUnit = nullptr;
-		thread_local int32_t lastFrame = -1;
-		const auto* game = At<const uint8_t*>(unit, d2r::rva::UnitGame);
-		const int32_t frame = game != nullptr ? At<int32_t>(game, d2r::rva::GameFrame) : -1;
-		const bool second = unit == lastUnit && frame == lastFrame;
-		lastUnit = unit;
-		lastFrame = frame;
-		if (const uint32_t n = ++(second ? g_second : g_first); pd2::HotSample(n)) {
-			plog::Info("whirlwind: hit at frame %d, %s, next in %d frames (skill %d Param3; D2R %d) (%u so far)", frame,
-			           second ? "dual-wield second hand" : "first hand", frames, id, d2rFrames, n);
-		}
 	}
 	return frames;
 }
@@ -141,10 +126,6 @@ auto SpinPast(Unit* unit, int32_t* x, int32_t* y, const char* side, std::atomic<
 	*x = tx + Sign(tx - ux) * steps;
 	*y = ty + Sign(ty - uy) * steps;
 	d2r::Engine<void (*)(void*, int32_t, int32_t) noexcept>(d2r::sig::PathSetTargetXY)(path, *x, *y);
-	if (pd2::HotSample(count)) {
-		plog::Info("whirlwind: %s start spins, unit type %d at %d,%d, target type %d at %d,%d, end %d,%d (%u so far)", side,
-		           type, ux, uy, At<int32_t>(target, d2r::rva::UnitType), tx, ty, *x, *y, count.load());
-	}
 }
 
 auto ServerTarget(d2r::Game* game, Unit* unit, int32_t* x, int32_t* y) noexcept -> int32_t {

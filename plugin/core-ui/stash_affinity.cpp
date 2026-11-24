@@ -315,8 +315,6 @@ auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& st
 	// an unread count (0) is left to the read after the move below
 	if (const int32_t was = Quantity(stack.handle), more = Quantity(item.handle);
 	    was > 0 && more > 0 && (topUp ? aff::ToppedUp(was, more, MaxStack).stack : aff::MergedCount(was, more, MaxStack)) == 0) {
-		plog::Info("affinity: %08x onto the stack on page %u cell %d,%d (%d + %d): it does not fit; nothing moved", item.code, page,
-		           x, y, was, more);
 		return items::Result::Conflict;
 	}
 	if (const auto out = Move(player, stack.handle, bag); out != items::Result::Success) {
@@ -376,8 +374,6 @@ auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& st
 	}
 	const auto back = MoveTo(player, stack, page, x, y);  // MoveTo notes the cell used again
 	if (result != items::Result::Success) {
-		plog::Info("affinity: %08x merge failed at %s (result %u, stack %d + %d); the stack went back: result %u", item.code,
-		           step, static_cast<uint32_t>(result), have, add, static_cast<uint32_t>(back));
 		return result;  // Route sends the incoming item back to the inventory
 	}
 	if (rest == 0) {
@@ -385,8 +381,6 @@ auto Merge(D2RL::PlayerHandle player, items::ItemInfo& item, items::ItemInfo& st
 	}
 	stack.quantity = sum;
 	++g_merged;
-	plog::Info("affinity: %08x x%d merged with the stack on page %u cell %d,%d (now %d, %d left on the incoming item; back on its cell: result %u)",
-	           stack.code, add - rest, page, x, y, sum, rest, static_cast<uint32_t>(back));
 	return items::Result::Success;  // a failed move back leaves the whole stack in the inventory: nothing lost
 }
 
@@ -687,7 +681,6 @@ void Swap(D2RL::PlayerHandle player, uint32_t want) noexcept {
 	}
 	g_shown = want;
 	++g_swapped;
-	plog::Info("affinity: the Maps tab shows %08x: %u maps stored, %u shown", want, off, on);
 }
 
 // While a reserved tab is up: an item on the Maps or Bossing page off its place (one put straight onto the page on show,
@@ -893,8 +886,6 @@ auto TakeOut(uint32_t itemId) noexcept -> bool {
 		                                  .placement = items::Placement::Automatic};
 		const items::ItemInfo& on = stack.info;
 		const auto moved = Move(player, on.handle, bag);
-		plog::Info("affinity: %08x x%d taken from page %u cell %d,%d to the inventory for the split: result %u", on.code,
-		           Quantity(on.handle), on.sharedStashPage, on.x, on.y, static_cast<uint32_t>(moved));
 		if (moved != items::Result::Success) {
 			// the consumed take left the stack pending on the client (0x1c6ac0) until an item packet: a move onto its own
 			// cell sends one, else anywhere on its page (the tidy pass routes it home)

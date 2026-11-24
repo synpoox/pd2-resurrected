@@ -38,28 +38,16 @@ constexpr const char* WardDrawCallPattern = "48 8b c8 e8 ?? ?? ?? ?? 85 c0 0f 84
 constexpr uint32_t WardDrawCallAt = 3;
 
 using CorpseTestFn = int32_t (*)(Unit*) noexcept;
-uint64_t g_stockTest = 0;  // 0x33a510, for the log only; set by RedirectCall before the call can land
-uint64_t g_softTest = 0;   // 0x34fa60, for the log only
+uint64_t g_stockTest = 0;  // 0x33a510, the stock test; set by RedirectCall before the call can land
+uint64_t g_softTest = 0;   // 0x34fa60, the stock soft test
 CorpseTestFn g_corpseSel = nullptr;
-std::atomic<uint32_t> g_taken {0}, g_drawn {0};
 
 auto GrimWardCorpse(Unit* corpse) noexcept -> int32_t {
-	const int32_t ok = g_corpseSel(corpse);
-	if (ok != 0 && pd2::HotSample(g_taken)) {
-		const bool stock = reinterpret_cast<CorpseTestFn>(g_stockTest)(corpse) != 0;
-		plog::Info("grim-ward: corpse of monstats %d taken, D2R's soft test %s (%u so far)",
-		           d2r::At<int32_t>(corpse, d2r::rva::UnitClassId), stock ? "passes" : "refuses", g_taken.load());
-	}
-	return ok;
+	return g_corpseSel(corpse);
 }
 
 // PD2's `mov eax,1` in place of the client's soft test
-auto WardDrawSoft(Unit* corpse) noexcept -> int32_t {
-	if (corpse != nullptr && pd2::HotSample(g_drawn)) {
-		const bool soft = reinterpret_cast<CorpseTestFn>(g_softTest)(corpse) != 0;
-		plog::Info("grim-ward: client ward on monstats %d, soft %d (%u so far)",
-		           d2r::At<int32_t>(corpse, d2r::rva::UnitClassId), soft ? 1 : 0, g_drawn.load());
-	}
+auto WardDrawSoft(Unit*) noexcept -> int32_t {
 	return 1;
 }
 

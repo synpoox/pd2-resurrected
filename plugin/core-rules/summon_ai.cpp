@@ -248,9 +248,6 @@ auto ShadowWarriorThink(Game* game, Unit* pet, Tick* tick) noexcept -> void {
 		if (rec != nullptr && rec[SkillAiType] == 1 && state != 0 && g_sw.hasState(owner, state) != 0 &&
 		    g_sw.hasState(pet, state) == 0) {
 			++g_swBuffs;
-			if (pd2::HotSample(n)) {
-				plog::Info("summon ai: shadow warrior think %u: buff %d (the owner has state %d)", n, id, state);
-			}
 			ShadowWarriorCast(game, pet, skill, id, nullptr, tick);
 			return;
 		}
@@ -315,9 +312,6 @@ auto ShadowWarriorThink(Game* game, Unit* pet, Tick* tick) noexcept -> void {
 			return;
 		}
 		++g_swWalks;
-		if (pd2::HotSample(n)) {
-			plog::Info("summon ai: shadow warrior think %u: walks to use skill %d", n, id);
-		}
 		g_sw.walk(game, pet, target);
 		return;
 	}
@@ -325,9 +319,6 @@ auto ShadowWarriorThink(Game* game, Unit* pet, Tick* tick) noexcept -> void {
 		return;  // PD2: nothing to cast at
 	}
 	++g_swCasts;
-	if (pd2::HotSample(n)) {
-		plog::Info("summon ai: shadow warrior think %u: casts skill %d%s", n, id, target != nullptr ? " at its target" : "");
-	}
 	ShadowWarriorCast(game, pet, skill, id, target, tick);
 }
 
@@ -357,9 +348,7 @@ auto ShadowWarriorInit(Game* game, Unit* pet, Tick* tick) noexcept -> void {
 		g_sw.addSkill(pet, id, level > 1 ? level : 1, 0, SwFile, __LINE__);
 		++granted;
 	}
-	if (pd2::HotSample(g_swInits)) {
-		plog::Info("summon ai: shadow warrior init: %d class skills of its owner (Shadow Warrior level %d)", granted, swLevel);
-	}
+	++g_swInits;
 }
 
 // --- ShadowMaster init (monai row 106, #1801) ------------------------------------------------------------------------
@@ -410,16 +399,7 @@ auto ShadowMasterInit(Game* game, Unit* pet, Tick* tick) noexcept -> void {
 		const int32_t sumLevel = g_smCalc(dataFlag, owner, d2r::At<int32_t>(rec, SkSumCalc + 4 * i), skillId, level);
 		g_sw.addSkill(pet, id, sumLevel > 0 ? sumLevel : 0, 0, SwFile, __LINE__);
 	}
-	if (pd2::HotSample(g_smInits)) {
-		char list[256] = {};
-		for (void* skill = FirstSkill(pet); skill != nullptr; skill = NextSkill(skill)) {
-			const size_t used = std::strlen(list);
-			std::snprintf(list + used, sizeof(list) - used, " %d:%d", g_sw.skillId(skill, SwFile, __LINE__),
-			              g_sw.level(pet, skill, 1, 0));
-		}
-		plog::Info("summon ai: shadowmaster init: skill %d level %d, left/right %d, skills (id:level)%s", skillId, level,
-		           firstId, list);
-	}
+	++g_smInits;
 }
 
 // D2R's row-106 init (0x5cec80): its entry, to the owner call; the left / right setters (0x33ec70, 0x33ef10, E8 at

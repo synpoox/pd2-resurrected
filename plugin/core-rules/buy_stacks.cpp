@@ -103,9 +103,7 @@ auto BuyFinder(void* inventory, Unit* item, Unit* a3) noexcept -> Unit* {
 		const int32_t quantity = stat(held, StatQuantity, 0);
 		const int32_t max = g_maxStack(held);
 		if ((quantity > 0 ? quantity : 0) < max) {
-			if (pd2::HotSample(g_merges)) {
-				plog::Info("buy stacks: bought item joins a held stack (quantity %d of %d)", quantity, max);
-			}
+			++g_merges;
 			return held;
 		}
 	}

@@ -107,9 +107,6 @@ LookupFn g_lookup = nullptr;
 FramesFn g_frames = nullptr;
 RetimeFn g_retime = nullptr;
 SetFrameFn g_setFrame = nullptr;
-std::atomic<uint32_t> g_starts {0};
-std::atomic<uint32_t> g_jumps {0};
-std::atomic<uint32_t> g_kept {0};
 
 struct PlayerRow {
 	const uint8_t* records;
@@ -137,10 +134,6 @@ auto Pd2Sequence(const Unit* unit) noexcept -> const Sequence* {
 auto SequenceFrames(Unit* unit) noexcept -> int32_t {
 	const int32_t frames = g_frames(unit);
 	const Sequence* seq = Pd2Sequence(unit);
-	if (seq != nullptr && pd2::HotSample(g_starts)) {
-		plog::Info("skill-sequences: unit type %d %s sequence %d frames, %u so far", d2r::At<int32_t>(unit, d2r::rva::UnitType),
-		           seq->name, frames >> 8, g_starts.load());
-	}
 	return frames;
 }
 
@@ -150,18 +143,11 @@ auto ChannelRetime(Game* game, Unit* unit, int32_t frame) noexcept -> void {
 		g_retime(game, unit, frame);
 		return;
 	}
-	if (pd2::HotSample(g_jumps)) {
-		plog::Info("skill-sequences: server %s next start: no jump to frame %d, %u so far", seq->name, frame, g_jumps.load());
-	}
 }
 
 auto ClientChannelFrame(Unit* unit, int32_t frame) noexcept -> void {
 	const Sequence* seq = Pd2Sequence(unit);
 	const bool pd2 = seq != nullptr && seq->channel;
-	if (pd2 && pd2::HotSample(g_jumps)) {
-		plog::Info("skill-sequences: client %s next start: frame %d, not %d, %u so far", seq->name, Pd2ClientFrame, frame,
-		           g_jumps.load());
-	}
 	g_setFrame(unit, pd2 ? Pd2ClientFrame : frame);
 }
 
@@ -188,10 +174,6 @@ auto Lookup(Unit* unit) noexcept -> const uint8_t* {
 		const int32_t srvDo = CurrentSrvDo(unit, &id);
 		if (srvDo == seq.srvDo) {
 			return reinterpret_cast<const uint8_t*>(&g_pd2Rows[i]);
-		}
-		if (pd2::HotSample(g_kept)) {
-			plog::Info("skill-sequences: skill %d (srvdo %d) keeps D2R's sequence %u, %u frames, %u so far", id, srvDo,
-			           seq.seqnum, seq.oldFrames, g_kept.load());
 		}
 		return row;
 	}

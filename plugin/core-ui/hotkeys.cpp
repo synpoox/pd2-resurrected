@@ -194,7 +194,6 @@ constexpr int SoundIdentify = 13;  // sounds.txt cursor_identify_item
 void PlayUi(int id) noexcept {
 	if (g_play != nullptr && id > 0) {
 		g_play(id, nullptr, 0, 0, 0);
-		plog::Info("hotkeys: sound %d", id);
 	}
 }
 // A map whose base the Maps tab shows (shown: its code, 0 none) is sent onto the Maps page, the rest to their home page
@@ -286,8 +285,6 @@ void Run(const Job& job) noexcept {
 	    g_items->destroyItem(g_context, job.player, spentScroll, items::SocketedItemPolicy::RejectIfNotEmpty) != items::Result::Success) {
 		plog::Warn("hotkeys: identify worked but the scroll was not spent");
 	}
-	plog::Info("hotkeys: %s %s (%u)", ActName[static_cast<int>(job.act)], status == items::Result::Success ? "done" : "failed",
-	           static_cast<uint32_t>(status));
 	// D2R's sound player belongs on the UI thread, not this authoritative game update
 	if (status == items::Result::Success && job.sound > 0) {
 		g_threads->runOnUiThread(g_context, [](const D2RL::PluginContext*, void* sound) noexcept { PlayUi(static_cast<int>(reinterpret_cast<intptr_t>(sound))); },
@@ -397,7 +394,6 @@ void Click(void* widget, uint64_t cell, bool cubeOnly) noexcept {
 					reinterpret_cast<RightFn>(vtable[SlotLeftClick / sizeof(void*)])(widget, cell);  // Ctrl is down: D2R's Ctrl + left click
 					// the click handler runs synchronously on this thread and does not touch the table, so writing back what we read is safe
 					for (int id = 0; id < PanelCount && g_panelTable != nullptr; ++id) g_panelTable[id] = saved[id];
-					plog::Info("hotkeys: drop sent");
 				}
 				return;
 			}
@@ -416,7 +412,6 @@ void Click(void* widget, uint64_t cell, bool cubeOnly) noexcept {
 				}
 				uint64_t spot = cell;
 				g_deposit(widget, &spot);
-				plog::Info("hotkeys: stash %08x to its Gems/Materials/Runes tab (D2R's deposit)", find.info.code);
 				return;
 			}
 			if (Queue(what, player, find.info, what == Act::Identify ? SoundIdentify : g_itemSound != nullptr ? g_itemSound(unit) : 0)) {

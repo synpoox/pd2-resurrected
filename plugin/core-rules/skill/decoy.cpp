@@ -50,7 +50,6 @@ thread_local int g_casting = 0;  // inside a real cast
 thread_local int g_inside = 0;   // inside srvdo 49 at all
 thread_local Unit* g_restored = nullptr;  // a Decoy made by the srvdo 49 call running now, outside a real cast
 std::atomic<uint32_t> g_removed {0};
-std::atomic<uint32_t> g_aimed {0};
 
 // A controller's native aim sends a Decoy cast with no target unit and a point beside the caster (seen: 1 subtile off);
 // the client's auto-target never reaches the server. Such a cast goes to the nearest enemy instead, through the
@@ -73,9 +72,6 @@ auto AimAtNearestEnemy(Game* game, Unit* caster) noexcept -> void {
 		return;
 	}
 	d2r::Engine<void (*)(void*, int32_t, int32_t) noexcept>(PathSetTargetXY)(path, ex, ey);
-	if (pd2::HotSample(g_aimed)) {
-		plog::Info("decoy: cast beside the caster (%d,%d -> %d,%d) goes to the nearest enemy at %d,%d", x, y, tx, ty, ex, ey);
-	}
 }
 
 // D2R's own end of a timed Decoy, 2 frames on

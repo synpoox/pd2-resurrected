@@ -125,11 +125,6 @@ void OnMonsterDeath(const D2RL::PluginContext* context, const D2RL::Lifecycle::M
 		d2r::Engine<void* (*)(Game*, Unit*, int32_t, int32_t, int32_t, uint32_t) noexcept>(DropItemAt)(
 			game, monster, row, QualityNormal, 0, 0);
 		const uint32_t hits = g_hits[i].fetch_add(1, std::memory_order_relaxed) + 1;
-		if (pd2::HotSample(hits)) {
-			plog::Info("key drops: %.4s from monster %d in level %d, TC \"%s\" 1 in %lld, %d players (%u so far)",
-			           reinterpret_cast<const char*>(&r.code), At<int32_t>(monster, UnitClassId), event->levelId, r.tc[difficulty], odds, players,
-			           hits);
-		}
 	}
 }
 

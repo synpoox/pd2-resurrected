@@ -57,8 +57,6 @@ auto OnTcDrop(Game* game, Unit* dropper, Unit* killer, const uint8_t* tc, int32_
 				const uint8_t* swap = want != nullptr ? Record(game, want) : nullptr;
 				const bool changed = swap != nullptr && swap != tc;
 				(changed ? g_swapped : g_kept).fetch_add(1, std::memory_order_relaxed);
-				plog::Info("map boss tc: monster %d in a tier %d map: its row names \"%s\", rolls \"%s\"", At<int32_t>(dropper, UnitClassId), tier, name,
-				           swap != nullptr ? want : name);
 				tc = swap != nullptr ? swap : tc;
 				return g_original(game, dropper, killer, tc, quality, level, a7, items, count, max);
 			}

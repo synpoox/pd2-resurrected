@@ -70,10 +70,7 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 			const int32_t ok =
 				d2r::Engine<int32_t (*)(Game*, Unit*, uint8_t, int32_t, Unit*, int32_t, int32_t, uint8_t) noexcept>(
 					d2r::sig::AiUseSkill)(game, unit, static_cast<uint8_t>(mode), skill, target, 0, 0, 0);
-			if (pd2::HotSample(g_casts.fetch_add(1) + 1)) {
-				plog::Info("megademon ai: class %d cast skill %d mode %d%s -> %d (%u so far)", At<int32_t>(unit, UnitClassId),
-				           skill, mode, target != nullptr ? " on target" : " without a target", ok, g_casts.load());
-			}
+			g_casts.fetch_add(1);
 			return;
 		}
 	}

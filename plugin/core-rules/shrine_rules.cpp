@@ -116,7 +116,6 @@ void ReachPlayer(Game*, Unit* player, void* arg) noexcept {
 	r->fn(r->flag, copy, r->data);
 	ApplyBoosterBonus(r->flag, player, r->code);
 	++r->reached;
-	plog::Info("shrines: code %d reached unit %d at (%d,%d)", r->code, IdOf(player), xy[0], xy[1]);
 }
 
 void Shrine(uint32_t flag, void** ctx, const uint8_t* data) noexcept {
@@ -143,8 +142,6 @@ void Shrine(uint32_t flag, void** ctx, const uint8_t* data) noexcept {
 	d2r::Engine<IterateFn>(PlayerIterate)(game, ReachPlayer, &r);
 	++g_shared;
 	g_reached += static_cast<uint32_t>(r.reached);
-	plog::Info("shrines: code %d used by unit %d at (%d,%d), reached %d other players", code, IdOf(user), xy[0], xy[1],
-	           r.reached);
 }
 
 // With an old gem that is a stack of more than one, D2R's upgrade would remove the whole stack: make the upgraded gem
@@ -170,8 +167,6 @@ auto UpgradeHook(Game* game, Unit* player, int32_t gem, Unit* old) noexcept -> u
 			client, old, 1, static_cast<uint32_t>(d2r::rva::StatQuantity), quantity - 1, 0);
 	}
 	++g_stacks;
-	plog::Info("shrines: gem shrine took one gem off a stack of %d, made one upgraded gem for unit %d", quantity,
-	           IdOf(player));
 	return made;
 }
 

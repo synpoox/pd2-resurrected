@@ -34,16 +34,10 @@ constexpr int32_t StateSkillMove = 18;
 
 using RatesFn = void (*)(Unit*, const char*, int32_t) noexcept;
 RatesFn g_rates = nullptr;
-std::atomic<uint32_t> g_skips {0};
 
 void AuraRates(Unit* unit, const char* file, int32_t line) noexcept {
 	if (unit != nullptr &&
 	    d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::sig::UnitHasState)(unit, StateSkillMove) != 0) {
-		if (pd2::HotSample(g_skips)) {
-			plog::Info("aura-charge-rate: skipped rate refresh on unit type %d row %d in skill_move (%u so far)",
-			           d2r::At<int32_t>(unit, d2r::rva::UnitType), d2r::At<int32_t>(unit, d2r::rva::UnitClassId),
-			           g_skips.load());
-		}
 		return;
 	}
 	g_rates(unit, file, line);

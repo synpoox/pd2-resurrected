@@ -40,7 +40,6 @@ using StartFn = int64_t (*)(Game*, Unit*, int32_t, int32_t, int32_t) noexcept;
 using SrvDoFn = int64_t (*)(Game*, Unit*, int32_t, int32_t) noexcept;
 using HasStateFn = int32_t (*)(Unit*, int32_t) noexcept;
 StartFn g_start = nullptr;
-std::atomic<uint32_t> g_lines {0};
 
 auto InfernoStart(Game* game, Unit* unit, int32_t skillId, int32_t level, int32_t missile) noexcept -> int64_t {
 	const bool going = unit != nullptr && d2r::Engine<HasStateFn>(d2r::sig::UnitHasState)(unit, StateInferno) != 0;
@@ -54,10 +53,6 @@ auto InfernoStart(Game* game, Unit* unit, int32_t skillId, int32_t level, int32_
 		return stock;
 	}
 	const int64_t ran = channel(game, unit, skillId, level);
-	if (pd2::HotSample(g_lines)) {
-		plog::Info("inferno-start: skill %d level %d: srvdo 182 at the channel's next start: %lld, %u so far", skillId,
-		           level, static_cast<long long>(ran), g_lines.load());
-	}
 	return stock;  // 1.13c +0x4453e returns 1 whatever the flame step did; PD2 keeps that
 }
 

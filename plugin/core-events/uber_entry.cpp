@@ -174,7 +174,6 @@ auto HealBosses(Game* game, int32_t level) noexcept -> int32_t {
 			const int32_t before = stat(unit, StatLife, 0);
 			const int32_t life = std::min(max, before + max / 5);
 			d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(unit, StatLife, life, 0);
-			plog::Info("uber: boss %d healed, life %d -> %d of %d", classId, before >> 8, life >> 8, max >> 8);
 			++healed;
 		}
 	}
@@ -196,9 +195,7 @@ auto KeepBossRoom(void* act, void* room) noexcept -> int32_t {
 		     d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(unit, MapEventState) != 0) &&
 		    d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitDead)(unit) == 0) {
 			MarkBossAlone(unit);
-			if (g_bossRoomsKept++ == 0) {
-				plog::Info("uber: boss %d keeps its room", At<int32_t>(unit, UnitClassId));
-			}
+			++g_bossRoomsKept;
 			return 0;
 		}
 	}
@@ -227,8 +224,6 @@ auto PlaceAtArrival(Game* game, Unit* player, int32_t level) noexcept -> void {
 		game, player, room, at.x, at.y, 0, 0);
 	int32_t after[2] = {};
 	d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(UnitCoords)(player, after);
-	plog::Info("uber: %s arrival moved from (%d, %d) to (%d, %d)", bound->encounter, before[0], before[1], after[0],
-	           after[1]);
 }
 
 // PD2 0x1038a680: the user, then every other player in Harrogath at level 80+ within reach of the fountain, loses
@@ -247,8 +242,6 @@ auto WarpGroup(Game* game, Unit* user, int32_t level) noexcept -> int32_t {
 			PlaceAtArrival(game, player, level);
 		}
 		const int32_t now = PlayerLevelId(player);
-		plog::Info("uber: player warped to level %d (now in %d), %d pets removed, %d states stripped", level, now,
-		           pets, states);
 		arrived += now == level ? 1 : 0;
 	};
 	// the others are picked before anyone moves, so a warp never runs while the client list is walked
@@ -310,12 +303,9 @@ auto OpenUber(Game* game, Unit* player, Unit* item, int32_t level) noexcept -> v
 	g_warped += static_cast<uint32_t>(arrived);
 	// stock areas (Vanilla mini-ubers, D2R's Tristram) and the authored private ones open through this same path
 	const placements::Binding* bound = placements::BindingAt(level);
-	plog::Info("uber: level %d (%s, source %d) open at tier %d, %d players in (%u opened)", level,
-	           bound != nullptr ? bound->encounter : "?", bound != nullptr ? static_cast<int>(bound->source) : -1, tier,
-	           arrived, ++g_ubers);
+	++g_ubers;
 	if (tier == 0) {
 		g_portals += static_cast<uint32_t>(made);
-		plog::Info("uber: %d re-entry portals by the fountain", made);
 	}
 }
 
@@ -473,8 +463,7 @@ auto UberPortalFinish(ObjectOperate* args, int32_t level) noexcept -> int32_t {
 		const int32_t healed = HealBosses(game, to);
 		const int32_t pets = RemovePets(game, player);
 		const int32_t states = StripStates(game, player);
-		plog::Info("uber: entry %d into level %d by portal: %d bosses healed, %d pets removed, %d states stripped (%u)",
-		           *entries, to, healed, pets, states, ++g_entries);
+		++g_entries;
 	}
 	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t) noexcept>(WarpToLevel)(game, player, to, 0);
 	const int32_t now = PlayerLevelId(player);
@@ -509,8 +498,7 @@ auto NoUberWaypoint(Game* game, void* room, const uint8_t* preset) noexcept -> b
 	if (record == nullptr || At<uint8_t>(record, ObjOperateFn) != OperateWaypoint) {
 		return false;
 	}
-	plog::Info("uber: waypoint %d not spawned in level %d (%u so far)", At<int32_t>(preset, PresetId), level,
-	           ++g_waypoints);
+	++g_waypoints;
 	return true;
 }
 

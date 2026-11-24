@@ -88,8 +88,6 @@ auto CorruptItem(Game* game, Unit* item, bool desecrate, const char* label) noex
 			int32_t property[4] = {prop, At<int16_t>(mod, 4), At<int16_t>(mod, 6), At<int16_t>(mod, 8)};
 			d2r::Engine<void (*)(Unit*, int32_t*) noexcept>(ApplyCubeMod)(item, property);
 		}
-		plog::Info("%s: item %d %s by cubemain row %d (roll %d of %d-999)", desecrate ? "desecration" : label,
-		           At<int32_t>(item, UnitClassId), desecrate ? "desecrated" : "corrupted", i, roll, floor);
 		return true;
 	}
 	return false;

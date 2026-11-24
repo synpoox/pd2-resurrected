@@ -66,11 +66,8 @@ static_assert(SoulDelay(40, 0) == 50 && SoulDelay(40, 1) == 40 && SoulDelay(40, 
 static_assert(SoulSpread(0) == 24 && SoulSpread(1) == 16 && SoulSpread(2) == 8);
 
 std::atomic<uint32_t> g_soulCasts {0};
-std::atomic<uint32_t> g_soulCastsBy[LastSoul - FirstSoul + 1][3] {};
 std::atomic<uint32_t> g_soulDeaths {0};
 std::atomic<uint32_t> g_thinks {0};
-std::atomic<uint32_t> g_phaseLogs {0};  // the boss phase lines, sampled
-std::atomic<uint32_t> g_soulRestores {0};
 std::atomic<uint32_t> g_phases {0};
 std::atomic<uint32_t> g_novas {0};
 std::atomic<uint32_t> g_waves {0};
@@ -110,9 +107,6 @@ auto SetImmune(Game* game, Unit* unit, bool on) noexcept -> void {
 		d2r::Engine<void (*)(Unit*, int32_t, int32_t) noexcept>(d2r::rva::SetStateGfxFlag)(unit, StateResistAll, 1);
 	}
 	immune = on ? 1 : 0;
-	if (pd2::HotSample(g_phaseLogs)) {
-		plog::Info("dclone: immune %s", on ? "on" : "off");
-	}
 }
 
 // The live monsters in a level: any add alive, and the ones (not Dclone) standing on the centre spot
@@ -185,7 +179,6 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 			const int32_t life = Stat(unit, d2r::rva::StatLife) + max / 100 * 20;
 			SetStat(unit, d2r::rva::StatLife, life < max ? life : max);
 			++g_heals;
-			plog::Info("dclone: players %d -> %d, healed to %d%%", lastPlayers, players, LifePercent(unit));
 		}
 		lastPlayers = players;
 	}
@@ -202,10 +195,7 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 
 	int32_t phase = Stat(unit, StatPhase);
 	const int32_t life = LifePercent(unit);
-	if (pd2::HotSample(g_thinks)) {
-		plog::Info("dclone: thinks (%u so far), phase %d, life %d%%, %d players, adds %d", g_thinks.load(), phase, life,
-		           players, adds ? 1 : 0);
-	}
+	++g_thinks;
 	if (NovaPhase(phase, life)) {
 		const int32_t pct = 100 - phase / 2 * 25;
 		const int32_t max = d2r::Engine<int32_t (*)(Unit*) noexcept>(d2r::rva::UnitMaxLife)(unit);
@@ -213,16 +203,11 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		SetStat(unit, StatCooldown1, m.Aip(5));
 		SetStat(unit, StatPhase, ++phase);
 		++g_phases;
-		plog::Info("dclone: phase %d -> %d at %d%% life: life set to %d%%, %d novas", phase - 1, phase, life, pct,
-		           m.Aip(5) - 1);
 	}
 
 	const int32_t novas = Stat(unit, StatCooldown1);
 	// PD2 aims the path at the centre (0x103331e0) before the run: UberDiabRun's start (srvst 71) keeps that point
 	const auto runToCentre = [&]() {
-		if (pd2::HotSample(g_phaseLogs)) {
-			plog::Info("dclone: run to the centre, %d away (squared)", Dist2(unit, Centre().x, Centre().y));
-		}
 		d2r::Engine<void (*)(void*, int32_t, int32_t) noexcept>(d2r::rva::PathSetTargetXY)(
 			At<void*>(unit, d2r::rva::UnitPath), Centre().x, Centre().y);
 		Cast(game, unit, m.Skill(7), m.Mode(7), nullptr, Centre().x, Centre().y, 50);
@@ -247,9 +232,6 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 			for (int i = 0; i < count; ++i) {
 				KillQuietly(game, onSpot[i]);
 			}
-			if (pd2::HotSample(g_phaseLogs)) {
-				plog::Info("dclone: teleport onto the centre, %d away (squared), %d on the spot killed", d, count);
-			}
 			Cast(game, unit, m.Skill(8), m.Mode(8), nullptr, Centre().x, Centre().y, 50);
 			return;
 		}
@@ -258,10 +240,6 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 		SetStat(unit, StatColdPierce, cold);
 		SetStat(unit, StatCooldown1, novas - 1);
 		++g_novas;
-		if (pd2::HotSample(g_phaseLogs)) {
-			plog::Info("dclone: nova %d of %d (phase %d), cold mastery and pierce %d", m.Aip(5) - novas, m.Aip(5) - 1,
-			           phase, cold);
-		}
 		Cast(game, unit, m.Skill(5), m.Mode(5), target, 0, 0, delay);
 		SetImmune(game, unit, true);
 		return;
@@ -283,7 +261,6 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	if (phase == 0) {
 		SetStat(unit, StatCooldown1, 0);
 		SetStat(unit, StatPhase, 1);
-		plog::Info("dclone: phase 0 -> 1");
 		Idle(game, unit, 50);
 		return;
 	}
@@ -296,7 +273,6 @@ auto ThinkDclone(Game* game, Unit* unit, uint8_t* tick, const Mon& m) noexcept -
 	                          (phase == 5 && life < At<int32_t>(summon, d2r::rva::SkParam6)))) {
 		SetStat(unit, StatPhase, phase + 1);
 		++g_waves;
-		plog::Info("dclone: phase %d -> %d at %d%% life: skeleton wave %d", phase, phase + 1, life, phase / 2 + 1);
 		Cast(game, unit, m.Skill(6), m.Mode(6), target, 0, 0, delay);
 		last = 0;
 		return;
@@ -347,13 +323,6 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 		const int32_t max = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitMaxLife)(unit);
 		if (const int32_t life = Stat(unit, StatLife); max > 0 && life < max) {
 			SetStat(unit, StatLife, max);
-			static std::atomic<int64_t> lastLog[LastSoul - FirstSoul + 1] {};
-			const int64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(
-			                        std::chrono::steady_clock::now().time_since_epoch()).count();
-			if (int64_t prev = lastLog[soul].load();
-			    now - prev >= 1000 && lastLog[soul].compare_exchange_strong(prev, now) && pd2::HotSample(g_soulRestores)) {
-				plog::Info("dclone: soul %d life restored from %d to %d", soul + 1, life, max);
-			}
 		}
 	}
 	Mon m {tick != nullptr ? At<const uint8_t*>(tick, AiTickMonStats) : nullptr};
@@ -367,8 +336,6 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	const int32_t dLife = LifePercent(dclone);
 	if (dMode == ModeDeath || dMode == ModeDead || dLife <= 0) {
 		++g_soulDeaths;
-		plog::Info("trapped soul %d: Dclone is dead or dying (mode %d, life %d%%), the soul dies (%u so far)",
-		           At<int32_t>(unit, UnitClassId), dMode, dLife, g_soulDeaths.load());
 		KillQuietly(game, unit);
 		return;
 	}
@@ -429,13 +396,6 @@ auto ThinkSoul(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	}
 	const int32_t wait = static_cast<int32_t>(d2r::RandomBelow(seed, 8)) + delay - 4;
 	++g_soulCasts;
-	// Sampled per soul and tier, so each soul's first cast at each tier is logged
-	if (const int32_t soul = At<int32_t>(unit, UnitClassId) - FirstSoul; tier >= 0 && tier < 3 &&
-	                                                                       pd2::HotSample(g_soulCastsBy[soul][tier])) {
-		plog::Info("trapped soul %d: tier %d, meteor at (%d, %d), target (%d, %d) spread %d, delay %d (aidel %d), skip "
-		           "%d%%, Dclone %d%% (%u so far)", At<int32_t>(unit, UnitClassId), tier, x, y, tx, ty, spread, wait,
-		           m.AiDel(), skip, dLife, g_soulCasts.load());
-	}
 	Cast(game, unit, m.Skill(1), m.Mode(1), nullptr, x, y, wait);
 }
 

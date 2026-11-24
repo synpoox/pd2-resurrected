@@ -38,7 +38,6 @@ const uint32_t SkeletonKey = D2RL::Items::MakeItemCode("rkey");
 
 using KeyUseFn = int64_t (*)(Game*, Unit*) noexcept;
 KeyUseFn g_keyUse = nullptr;
-std::atomic<uint32_t> g_kept {0}, g_used {0};
 
 auto HoldsSkeletonKey(Unit* player) noexcept -> bool {
 	void* inventory = d2r::Engine<void* (*)(Unit*, const char*, int32_t) noexcept>(d2r::sig::UnitInventory)(player, __FILE__, __LINE__);
@@ -60,15 +59,9 @@ auto HoldsSkeletonKey(Unit* player) noexcept -> bool {
 
 auto KeyUse(Game* game, Unit* player) noexcept -> int64_t {
 	if (game != nullptr && player != nullptr && HoldsSkeletonKey(player)) {
-		if (pd2::HotSample(g_kept)) {
-			plog::Info("skeleton-key: lock opened by rkey, no key used (%u so far)", g_kept.load());
-		}
 		return 1;
 	}
 	const int64_t used = g_keyUse(game, player);
-	if (pd2::HotSample(g_used)) {
-		plog::Info("skeleton-key: no rkey, D2R key use -> %lld (%u so far)", static_cast<long long>(used), g_used.load());
-	}
 	return used;
 }
 

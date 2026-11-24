@@ -369,9 +369,7 @@ auto Buy(Game* game, Unit* player, Unit* npc, uint32_t itemId, uint32_t x, uint3
 		return result;  // the buy failed: it is still in his store
 	}
 	d2r::Engine<void (*)(Game*, Unit*, Unit*, int32_t) noexcept>(d2r::sig::IdentifyItem)(game, player, item, 0);
-	if (pd2::HotSample(g_identified)) {
-		plog::Info("gheed store: bought item %u identified (price %u)", itemId, price);
-	}
+	++g_identified;
 	return result;
 }
 

@@ -42,7 +42,6 @@ constexpr int QuestControlRecord = 0x10;  // the game's quest record (1.13c +0xc
 
 using QuestFlagFn = int32_t (*)(void* record, int32_t quest, int32_t flag) noexcept;
 QuestFlagFn g_questFlag = nullptr;
-std::atomic<uint32_t> g_gameDone {0};
 
 auto GameRecord(const uint8_t* game) noexcept -> void* {
 	const auto* control = game != nullptr ? *reinterpret_cast<uint8_t* const*>(game + GameQuestControl) : nullptr;
@@ -58,10 +57,6 @@ auto QuestDone(void* record, int32_t quest, int32_t flag, const uint8_t* game) n
 	void* const gameRecord = GameRecord(game);
 	if (gameRecord == nullptr || g_questFlag(gameRecord, quest, flag) == 0) {
 		return killer;
-	}
-	if (pd2::HotSample(g_gameDone)) {
-		plog::Info("quest-drop: quest %d flag %d done in the game, quest TC skipped (%u so far)", quest, flag,
-		           g_gameDone.load());
 	}
 	return 1;
 }

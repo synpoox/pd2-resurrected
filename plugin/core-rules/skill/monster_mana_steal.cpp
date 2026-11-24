@@ -37,14 +37,10 @@ constexpr uint32_t ManaBurnCalls[] = {0x21, 0x33};
 
 using SetStatFn = uint64_t (*)(d2r::Unit*, uint32_t stat, int32_t value, uint32_t layer) noexcept;
 SetStatFn g_setStat[2] = {};
-std::atomic<uint32_t> g_burns {0};
 
 template <int Call>
 auto SetManaBurn(d2r::Unit* unit, uint32_t stat, int32_t value, uint32_t layer) noexcept -> uint64_t {
 	const int32_t pd2 = static_cast<int32_t>(static_cast<uint32_t>(value) << 1);  // PD2's shl 1
-	if (pd2::HotSample(g_burns)) {
-		plog::Info("monster-mana-steal: mana burn stat %u %d -> %d", stat, value, pd2);
-	}
 	return g_setStat[Call](unit, stat, pd2, layer);
 }
 

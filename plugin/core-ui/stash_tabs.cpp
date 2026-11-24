@@ -214,7 +214,6 @@ void SelectStock(int32_t tab) noexcept {
 	const auto find = reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address);
 	void* bar = panel != nullptr ? find(panel, "BankTabs") : nullptr;
 	if (bar == nullptr) {
-		plog::Info("stash tabs: no BankTabs to select tab %d on (panel %p)", tab, panel);
 		return;
 	}
 	const auto select = reinterpret_cast<void (*)(void*, int32_t, bool) noexcept>(SelectTab.address);
@@ -491,9 +490,6 @@ void StashOnMessage(void* panel, const uint64_t* message) noexcept {
 		const auto* action = reinterpret_cast<const uint8_t*>(message[0x22]);
 		if (action != nullptr && action[0x18] == 0 && !reinterpret_cast<bool (*)() noexcept>(MessageHandled.address)()) {
 			const int32_t id = *reinterpret_cast<const int32_t*>(action + 0x10);
-			if (id == TabLeft || id == TabRight || id == CycleLeft || id == CycleRight || id == Option3) {
-				plog::Info("stash tabs: pad action %d (view %u, tab %d)", id, static_cast<uint32_t>(g_view), g_tab);
-			}
 			g_cycleHeld = id == CycleLeft ? true : g_cycleHeld;
 			if (g_stashOpen && OnPadAction(id)) {
 				reinterpret_cast<void (*)() noexcept>(MarkHandled.address)();
@@ -653,7 +649,6 @@ void RunRequest() noexcept {
 		SelectShared();
 		OpenPage(static_cast<uint32_t>(what - 101));
 	}
-	plog::Info("stash tabs: console opened %s (page %u)", what == 1 ? "Personal" : what == 2 ? "Materials" : what == 3 ? "Maps" : what == 4 ? "Bossing" : "Shared", g_page + 1);
 }
 
 // UI thread
@@ -701,7 +696,6 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame* frame, void
 		if (g_pending && g_view != View::None && g_head == g_tail) {  // every arrow sent: the page is the one asked for
 			g_pending = false;
 			stash_affinity::SetTabOpen(true, g_page);
-			plog::Info("stash tabs: shared page %u on show (all %u arrows sent)", g_page + 1, LeftPresses + g_page);
 		}
 	}
 	if (g_pages <= aff::BossingPage) {  // no such page: its tab is gone, not a button onto another page

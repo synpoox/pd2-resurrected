@@ -44,7 +44,6 @@ using NameIndexFn = int32_t (*)(void*, const char*, int32_t) noexcept;
 using TablesFn = const uint8_t* (*)(uint8_t) noexcept;
 AreaFn g_area = nullptr;
 std::atomic<bool> g_logged {false};
-std::atomic<uint32_t> g_casts {0};
 
 // The skills row of `name` in this bank, < 1 when missing (the map's answer, as 0x49fba0 reads it)
 auto SkillByName(const uint8_t* tables, const char* name) noexcept -> int32_t {
@@ -87,10 +86,6 @@ auto Area(Game* game, int32_t mode, Unit* unit, int32_t range, void* callback, d
 	c->state = state;
 	std::memset(reinterpret_cast<uint8_t*>(c) + sizeof(d2r::CurseParams), 0, 0x10);  // Life Tap's events, 0 elsewhere
 	const int32_t radius = d2r::EvalCalc(game, unit, skill, SkAuraRangeCalc, skillId, level);
-	if (const uint32_t n = ++g_casts; pd2::HotSample(n)) {
-		plog::Info("monster curse: skill %d level %d, state %d, %d frames, radius %d, stat %d = %d (%u so far)", skillId,
-		           level, c->state, c->frames, radius, c->stats[0], c->values[0], n);
-	}
 	return g_area(game, mode, unit, radius, callback, c);
 }
 

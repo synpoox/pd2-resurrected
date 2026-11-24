@@ -59,7 +59,6 @@ std::atomic<uint32_t> g_dropped {0};
 std::atomic<uint32_t> g_failed {0};
 std::atomic<uint32_t> g_rolls {0};
 std::atomic<uint32_t> g_hits {0};
-std::atomic<uint32_t> g_uniqueLogs {0};
 
 auto Tier(Game* game) noexcept -> int32_t {
 	uint32_t key = TierKey;
@@ -90,11 +89,6 @@ auto DropUniqueAt(Game* game, Unit* monster, uint32_t code, int32_t uniqueRow, i
 	setStat(monster, StatLevel, level, 0);
 	const int32_t quality = made != nullptr ? d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemQuality)(made) : -1;
 	const int32_t ilvl = made != nullptr ? d2r::Engine<int32_t (*)(Unit*) noexcept>(ItemLevel)(made) : -1;
-	if (pd2::HotSample(g_uniqueLogs)) {
-		plog::Info("unique drop: %.4s unique row %d: item row %d, %s, quality %d, item level %d",
-		           reinterpret_cast<const char*>(&code), uniqueRow, row, made != nullptr ? "dropped" : "NOT dropped", quality,
-		           ilvl);
-	}
 	return quality == wanted;
 }
 
@@ -111,12 +105,10 @@ auto UberDeathDrops(Game* game, Unit* monster, uint32_t* seed) noexcept -> void 
 	}
 	const int32_t tier = Tier(game);
 	const uint32_t deaths = g_deaths.fetch_add(1, std::memory_order_relaxed) + 1;
-	plog::Info("uber drops: Diablo Clone died, tier %d (%u so far)", tier, deaths);
 	Drop(game, monster, Annihilus);
 	if (tier >= 1) {
 		const uint32_t roll = d2r::RandomBelow(seed, UniqueOdds);
 		g_rolls.fetch_add(1, std::memory_order_relaxed);
-		plog::Info("uber drops: tier %d, 1 in %u roll %u%s", tier, UniqueOdds, roll, roll == 0 ? ": a unique" : "");
 		if (roll == 0) {
 			g_hits.fetch_add(1, std::memory_order_relaxed);
 			Drop(game, monster, Rolled[d2r::RandomBelow(seed, static_cast<uint32_t>(std::size(Rolled)))]);

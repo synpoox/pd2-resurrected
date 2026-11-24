@@ -123,7 +123,6 @@ auto OpenHarrogathPortal(Game* game) noexcept -> bool {
 	if (room == nullptr || OpenPortalAt(game, room, DarkPortal, x, y, Arena()) == nullptr) {
 		return false;
 	}
-	plog::Info("lucion: Harrogath portal at (%d, %d)", x, y);
 	return true;
 }
 
@@ -343,8 +342,7 @@ auto Desecrate(Game* game, Unit* player, Unit* item) noexcept -> DesecrateResult
 			d2r::Engine<uint8_t (*)(Unit*) noexcept>(ItemStorePage)(item), d2r::Engine<uint32_t (*)(Unit*) noexcept>(UnitPackedXY)(item));
 		g_desecrated.fetch_add(1, std::memory_order_relaxed);
 	}
-	plog::Info("desecration: attempt %u at tier %d, roll %d of 100 against %d: %s, stage %d", ++g_attempts, tier, roll,
-	           chance, success ? "desecrated" : "failed", AttemptedStage);
+	++g_attempts;
 	return success ? DesecrateResult::Desecrated : DesecrateResult::Failed;
 }
 
@@ -353,9 +351,7 @@ auto Desecrate(Game* game, Unit* player, Unit* item) noexcept -> DesecrateResult
 // One use per game (#1357): PD2's roll sets the stage to 9 and the altar then does nothing, so no panel opens at stage 9.
 // shortcut: the altar stays in mode 0 (PD2 sets mode 1 after an attempt), the HD altar may have no mode-1 art; upgrade once checked
 auto OperateSacrificeAltar(Game* game, Unit* player) noexcept -> int32_t {
-	if (game != nullptr && player != nullptr && *CounterOf(game, LucionStageKey) == AttemptedStage) {
-		plog::Info("altar: already used in this game, no panel");
-	} else if (game != nullptr && player != nullptr) {
+	if (game != nullptr && player != nullptr && *CounterOf(game, LucionStageKey) != AttemptedStage) {
 		OpenAltarPanel(game, player);
 	}
 	return 1;

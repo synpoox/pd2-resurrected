@@ -49,8 +49,6 @@ void Act(const D2RL::PluginContext*, void* native, void* user) noexcept {
 	auto* item = static_cast<Unit*>(native);
 	if (job->kind == Kind::Corrupt) {
 		const bool done = CorruptFreshItem(job->game, item);
-		plog::Info("test aid: corrupt: item %d %s", At<int32_t>(item, UnitClassId),
-		           done ? "corrupted (the normal roll)" : "NOT corrupted (already corrupted, or no row matches)");
 		if (!done) {
 			return;
 		}

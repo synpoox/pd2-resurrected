@@ -91,7 +91,6 @@ struct Nearest {
 	int32_t candidates;
 	uint32_t nextId, lowId;  // for the hot log only: D2R's pick (the next id above the last target, else the lowest)
 };
-std::atomic<uint32_t> g_tests {0}, g_rolls {0}, g_searches {0};
 
 enum class Owner { None, Monster, Player };
 
@@ -144,14 +143,6 @@ auto Reach(Unit* unit, Unit* target, int32_t range, int32_t* reach) noexcept -> 
 	// PD2's roll: its last arg + 2 + growth instead of UnitReach + last arg, then 0x103049f0's growth on top
 	const int32_t widened = roll ? range - d2r::Engine<RangeFn>(d2r::sig::UnitReach)(unit) + 2 + growth * 2 : range + growth;
 	const int32_t in = g_reach(unit, target, widened, reach);
-	if (pd2::HotLogsOn() && pd2::HotSample(roll ? g_rolls : g_tests)) {
-		plog::Info("melee-reach: %s unit type %d class %d (%s owner) -> target type %d class %d mode %d, range %d -> %d, "
-		           "in reach %d",
-		           roll ? "roll" : "test", At<int32_t>(unit, d2r::rva::UnitType), At<int32_t>(unit, d2r::rva::UnitClassId),
-		           owner == Owner::Player ? "player" : owner == Owner::Monster ? "monster" : "no",
-		           At<int32_t>(target, d2r::rva::UnitType), At<int32_t>(target, d2r::rva::UnitClassId),
-		           At<int32_t>(target, d2r::rva::UnitMode), range, widened, in);
-	}
 	return in;
 }
 
@@ -197,15 +188,6 @@ auto WhirlSearch(d2r::Game* game, Unit* unit, int32_t x, int32_t y, int32_t radi
 	Unit* pick = ctx.best != nullptr ? ctx.best : ctx.last;
 	if (out != nullptr) {
 		*out = ctx.candidates;
-	}
-	if (pd2::HotSample(g_searches)) {
-		plog::Info("melee-reach: whirlwind search unit type %d, radius %d -> %d, %d in range, last id %u, picked id %d "
-		           "at distance^2 %lld%s; D2R's next-id pick %d (%u so far)",
-		           At<int32_t>(unit, d2r::rva::UnitType), radius, widened, ctx.candidates, skip,
-		           pick != nullptr ? static_cast<int32_t>(At<uint32_t>(pick, UnitIdField)) : -1,
-		           ctx.best != nullptr ? static_cast<long long>(ctx.bestDist) : -1LL,
-		           ctx.best == nullptr && ctx.last != nullptr ? " (last target, nothing else)" : "",
-		           static_cast<int32_t>(ctx.nextId != UINT32_MAX ? ctx.nextId : ctx.lowId), g_searches.load());
 	}
 	return pick;
 }

@@ -32,18 +32,11 @@ constexpr const char* HungerCallPattern =
 constexpr uint32_t HungerCallAt = 15;
 
 using CorpseTestFn = int32_t (*)(Unit*) noexcept;
-uint64_t g_stockTest = 0;  // 0x33a510, for the log only; set by RedirectCall before the call can land
+uint64_t g_stockTest = 0;  // 0x33a510, the stock test; set by RedirectCall before the call can land
 CorpseTestFn g_corpseSel = nullptr;
-std::atomic<uint32_t> g_taken {0};
 
 auto HungerCorpse(Unit* corpse) noexcept -> int32_t {
-	const int32_t ok = g_corpseSel(corpse);
-	if (ok != 0 && pd2::HotSample(g_taken)) {
-		const bool stock = reinterpret_cast<CorpseTestFn>(g_stockTest)(corpse) != 0;
-		plog::Info("hunger-corpse: client takes monstats %d, D2R's soft test %s (%u so far)",
-		           d2r::At<int32_t>(corpse, d2r::rva::UnitClassId), stock ? "passes" : "refuses", g_taken.load());
-	}
-	return ok;
+	return g_corpseSel(corpse);
 }
 
 }  // namespace
