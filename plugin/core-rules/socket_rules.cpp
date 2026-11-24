@@ -240,10 +240,15 @@ void OnHostMessage(const D2RL::PluginContext*, net::ChannelHandle, net::PeerHand
 	uint32_t unitId = 0;
 	std::memcpy(&unitId, data, sizeof(unitId));
 	std::lock_guard<std::mutex> lock(g_peerLock);
+	for (const PeerEntry& e : g_peers) {
+		if (e.peer != net::InvalidPeerHandle && e.peer != peer && e.unitId == unitId) {
+			return;  // first claim wins: another client cannot take a player's rests (the SDK cannot check a claim)
+		}
+	}
 	PeerEntry* slot = nullptr;
 	for (PeerEntry& e : g_peers) {
-		if (e.peer == peer || e.unitId == unitId) {
-			e.peer = net::InvalidPeerHandle;  // one entry per peer and per unit id
+		if (e.peer == peer) {
+			e.peer = net::InvalidPeerHandle;  // one entry per peer
 		}
 		if (slot == nullptr && e.peer == net::InvalidPeerHandle) {
 			slot = &e;
@@ -256,7 +261,24 @@ void OnHostMessage(const D2RL::PluginContext*, net::ChannelHandle, net::PeerHand
 
 void OnClientMessage(const D2RL::PluginContext*, net::ChannelHandle, uint16_t, const void*, uint32_t, void*) noexcept {}
 
+void Connect(const D2RL::PluginContext* context, void*) noexcept;
+std::atomic<bool> g_connected {false};
+
 void OnConnection(const D2RL::PluginContext* context, const net::ConnectionEvent* event, void*) noexcept {
+	const bool clientSide = event->peer == net::InvalidPeerHandle;
+	if (clientSide && event->state == net::ConnectionState::Connected) {
+		g_connected = true;
+	} else if (clientSide && !g_connected && (event->state == net::ConnectionState::Disconnected ||
+	                                          (event->state == net::ConnectionState::Rejected &&
+	                                           event->reason == net::RejectionReason::HostUnavailable))) {
+		// a time-out or HostUnavailable before connecting: connect again (README), within the same try budget
+		if (g_connectTries.fetch_add(1) < 600) {
+			g_threads->runOnUiThread(context, Connect, nullptr);
+		}
+		return;
+	} else if (clientSide && event->state == net::ConnectionState::Disconnected) {
+		g_connected = false;
+	}
 	if (event->state == net::ConnectionState::Connected) {
 		// client side (and the host's own in-process connection): name this player to the host
 		const uint32_t unitId = LocalPlayerId();
@@ -288,6 +310,14 @@ void Connect(const D2RL::PluginContext* context, void*) noexcept {
 }
 
 void Reconnect(const D2RL::PluginContext* context) noexcept {
+	{
+		// a new game: the host makes it before any client joins, so no peer of an earlier game is kept
+		std::lock_guard<std::mutex> lock(g_peerLock);
+		for (PeerEntry& e : g_peers) {
+			e.peer = net::InvalidPeerHandle;
+		}
+	}
+	g_connected = false;
 	g_connectTries = 0;
 	Connect(context, nullptr);
 }
@@ -434,8 +464,14 @@ auto Insert(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint
 	}
 	const uint32_t owner = At<uint32_t>(player, UnitIdField);
 	const bool local = owner == LocalPlayerId();
-	if (!local && PeerOf(owner) == net::InvalidPeerHandle) {
-		g_refusedRemote.fetch_add(1);  // no handle for that player, so no rest: its stack stays on the cursor
+	bool room = false;
+	{
+		std::lock_guard<std::mutex> lock(g_restLock);
+		room = (local ? g_restCount : g_remoteCount) < MaxRests;
+	}
+	if (!room || (!local && PeerOf(owner) == net::InvalidPeerHandle)) {
+		// no rest could be made (no handle for that player, or the queue is full), so refused: D2R's put-back keeps the stack whole
+		g_refusedRemote.fetch_add(1);
 		return 0;
 	}
 	SetQuantity(filler, 1);
