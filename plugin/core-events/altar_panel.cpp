@@ -220,6 +220,7 @@ void ReturnAltarItem(const D2RL::PluginContext*, void* user) noexcept {
 		if (MoveToInventory(player, amulet)) {
 			++g_returned;
 		} else {
+			plog::Warn("altar: the amulet did not move back to the inventory");  // once per streak (the flag below)
 			g_returnFailLogged.store(true);  // one log per streak: no retry until the panel opens again
 		}
 	}

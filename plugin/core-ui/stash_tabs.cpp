@@ -214,6 +214,7 @@ void SelectStock(int32_t tab) noexcept {
 	const auto find = reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address);
 	void* bar = panel != nullptr ? find(panel, "BankTabs") : nullptr;
 	if (bar == nullptr) {
+		plog::Info("stash tabs: no BankTabs to select tab %d on (panel %p)", tab, panel);
 		return;
 	}
 	const auto select = reinterpret_cast<void (*)(void*, int32_t, bool) noexcept>(SelectTab.address);
@@ -637,6 +638,7 @@ void RunRequest() noexcept {
 		SelectShared();
 		OpenPage(static_cast<uint32_t>(what - 101));
 	}
+	plog::Info("stash tabs: console opened %s (page %u)", what == 1 ? "Personal" : what == 2 ? "Materials" : what == 3 ? "Maps" : what == 4 ? "Bossing" : "Shared", g_page + 1);
 }
 
 // UI thread

@@ -1148,6 +1148,9 @@ auto SrvDoSplash(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcep
 	if (struck == nullptr && path != nullptr && At<int32_t>(unit, d2r::rva::UnitType) <= d2r::rva::UnitMonster) {
 		struck = At<Unit*>(path, d2r::rva::PathTargetUnit);
 	}
+	if (struck == nullptr) {
+		++g_splashes;  // a refused cast counts too
+	}
 	return Splash(game, unit, struck, skillId, level);
 }
 
@@ -1838,7 +1841,9 @@ auto SrvDoDragonFlight(Game* game, Unit* unit, int32_t skillId, int32_t level) n
 	const uint32_t resultFlags = damage.resultFlags;
 	ReleaseDamage(damage);
 	++g_dragonFlights;
-	++g_dragonFlightHits;
+	if (hit) {
+		++g_dragonFlightHits;
+	}
 	return 1;
 }
 

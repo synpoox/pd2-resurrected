@@ -285,6 +285,9 @@ void Run(const Job& job) noexcept {
 	    g_items->destroyItem(g_context, job.player, spentScroll, items::SocketedItemPolicy::RejectIfNotEmpty) != items::Result::Success) {
 		plog::Warn("hotkeys: identify worked but the scroll was not spent");
 	}
+	if (status != items::Result::Success) {
+		plog::Warn("hotkeys: %s failed (%u)", ActName[static_cast<int>(job.act)], static_cast<uint32_t>(status));
+	}
 	// D2R's sound player belongs on the UI thread, not this authoritative game update
 	if (status == items::Result::Success && job.sound > 0) {
 		g_threads->runOnUiThread(g_context, [](const D2RL::PluginContext*, void* sound) noexcept { PlayUi(static_cast<int>(reinterpret_cast<intptr_t>(sound))); },

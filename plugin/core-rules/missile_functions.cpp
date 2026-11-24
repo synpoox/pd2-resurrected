@@ -956,7 +956,9 @@ auto SrvHitBladeFragment(Game* game, Unit* missile, Unit* hit) noexcept -> int32
 	};
 	if (hit == nullptr) {
 		const int32_t created = WallBounce(missile, owner, row, generation, create);
-		++g_fragmentWalls;
+		if (created >= 0) {
+			++g_fragmentWalls;
+		}
 		return 0;
 	}
 	uint32_t roll = d2r::RandomBelow(d2r::Engine<uint32_t* (*)(Unit*) noexcept>(UnitSeed)(owner), 0x8000);
@@ -1035,7 +1037,9 @@ auto CltHitBladeFragment(Unit* missile, Unit* hit) noexcept -> int32_t {
 		params.targetY = dy;
 		return d2r::api.clientCreateMissile(&params, 0);
 	});
-	++g_fragmentClientWalls;
+	if (created >= 0) {
+		++g_fragmentClientWalls;
+	}
 	return 1;
 }
 
@@ -1057,7 +1061,9 @@ auto SrvDoBlessedHammer(Game* game, Unit* missile) noexcept -> int64_t {
 		++g_hammerKept;
 	}
 	const uint32_t hitAfter = LastHitId(missile);
-	++g_hammerHits;
+	if (hitAfter != hitBefore && hitAfter != 0xffffffffu) {
+		++g_hammerHits;
+	}
 	++g_hammerFrames;
 	return result;
 }

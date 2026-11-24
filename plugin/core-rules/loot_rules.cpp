@@ -636,6 +636,7 @@ void ArmageddonNow(const D2RL::PluginContext*, void* user) noexcept {
 	ArmageddonRows rows;
 	if (!old.found || g_items->editNativeItem(g_context, old.info.handle, ReadRows, &rows) != items::Result::Success ||
 	    rows.unique < 0) {
+		plog::Info("armageddon: console: %s", old.found ? "the bank has no 7cr, 7cr2 or one unique on 7cr2" : "no Phase Blade in the inventory");
 		return;
 	}
 	const items::TransactionInput input {.item = old.info.handle, .quantity = 1, .socketedItemPolicy = items::SocketedItemPolicy::RejectIfNotEmpty};
@@ -659,6 +660,10 @@ void ArmageddonNow(const D2RL::PluginContext*, void* user) noexcept {
 	const items::Result status = g_items->executeTransaction(g_context, &transaction, &result);
 	items::ItemInfo info {.structSize = items::ItemInfoSize};
 	const bool read = status == items::Result::Success && g_items->getItemInfo(g_context, made, &info) == items::Result::Success;
+	plog::Info("armageddon: console: Phase Blade (class %u, bank row %d) -> 2H Phase Blade row %d: result %u, quality %u, "
+	           "unique row %d, item level %u",
+	           old.info.classId, rows.phaseBlade, rows.blade, static_cast<uint32_t>(status), read ? static_cast<uint32_t>(info.quality) : 0,
+	           read ? info.qualityRecordId : -1, read ? info.itemLevel : 0);
 }
 
 // UI thread: the SDK names the local player here

@@ -78,7 +78,6 @@ std::atomic<uint32_t> g_closed {0};
 std::atomic<uint32_t> g_deaths {0};
 std::atomic<uint32_t> g_drops {0};
 std::atomic<uint32_t> g_noTc {0};
-pd2::LogOnce g_failLogged;  // game thread only: a failed spawn or TC writes its warning once per class (#2101)
 std::atomic<uint32_t> g_held {0};      // items rolled at spawn and held
 std::atomic<uint32_t> g_released {0};  // held items put on the floor at death
 std::atomic<uint32_t> g_lost {0};      // held items with no unit or no floor spot at death
@@ -264,7 +263,8 @@ void ThinkPortal(Game* game, Unit* unit, uint8_t* tick) noexcept {
 		usedX = x + step[0], usedY = y + step[1];
 	}
 	if (invader == nullptr) {
-		if (g_failLogged.First(pd2::Key(1, static_cast<uint32_t>(which)))) {
+		static pd2::LogOnce once;  // game thread only: one per call site
+		if (once.First(pd2::Key(1, static_cast<uint32_t>(which)))) {
 			plog::Warn("invaders: no %s at the portal (%d, %d)", ClassNames[which], x, y);
 		}
 		Idle(game, unit, aidel);
@@ -304,7 +304,8 @@ auto DropTc(Game* game, Unit* monster, Unit* killer, const char* name, Unit** it
 										dataFlag, static_cast<uint16_t>(index), 0)
 	                              : nullptr;
 	if (tc == nullptr) {
-		if (g_failLogged.First(pd2::Key(2, static_cast<uint32_t>(reinterpret_cast<uintptr_t>(name))))) {
+		static pd2::LogOnce once;  // game thread only: one per call site
+		if (once.First(pd2::Key(2, static_cast<uint32_t>(reinterpret_cast<uintptr_t>(name))))) {
 			plog::Warn("invaders: no TC \"%s\"", name);
 		}
 		++g_noTc;

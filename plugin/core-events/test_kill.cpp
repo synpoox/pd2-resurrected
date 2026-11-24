@@ -111,6 +111,7 @@ void Run(const D2RL::PluginContext*, void* user) noexcept {
 		const int64_t max = d2r::Engine<int32_t (*)(Unit*) noexcept>(UnitMaxLife)(monster);
 		const auto life = static_cast<int32_t>(std::max<int64_t>(256, max * cmd.percent / 100));
 		d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(SetUnitStat)(monster, StatLife, life, 0);
+		plog::Info("test aid: life: class %d unit %u set to %d%% (%d of %lld)", classId, id, cmd.percent, life, static_cast<long long>(max));
 		return;
 	}
 	// KillQuietly's death mode, with no UnitNoDrop (so the drop rolls) and the killer the owner (null for wild monsters).
@@ -120,6 +121,8 @@ void Run(const D2RL::PluginContext*, void* user) noexcept {
 	d2r::Engine<void (*)(Unit*, int32_t, void*) noexcept>(ModeCmdInit)(monster, ModeDeath, block);
 	*reinterpret_cast<void**>(block + 0x10) = d2r::Engine<void* (*)(Game*, Unit*) noexcept>(MissileOwner)(game, monster);
 	d2r::Engine<uint64_t (*)(Game*, void*, int32_t) noexcept>(ModeCmdRun)(game, block, 1);
+	plog::Info("test aid: kill: class %d unit %u killed, level %d (death path, drops roll)", classId, id,
+	           ai_common::LevelOf(monster));
 }
 
 }  // namespace

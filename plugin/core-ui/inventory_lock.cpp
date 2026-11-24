@@ -304,6 +304,7 @@ void Load(void* player) noexcept {
 	}
 	Save(g_name, g_locked.load());
 	g_dirty = false;
+	plog::Info("inventory lock: %s is %s", g_name.empty() ? "(unnamed)" : g_name.c_str(), g_locked.load() ? "locked" : "unlocked");
 }
 
 sigscan::Entry* const Sigs[] = {&d2r::sig::FindUnit, &d2r::sig::ItemPage, &d2r::sig::UnitPackedXY, &d2r::sig::UnitClassOf,

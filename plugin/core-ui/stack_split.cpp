@@ -304,14 +304,23 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 		++g_splits;
 	} else {
 		++g_failed;
+		plog::Warn("split: splitStack failed (%u), %d stays whole", static_cast<uint32_t>(status), found.before);
 	}
 	if (shared) {
 		// What stays down goes home: the one item, or the whole stack when the split failed
 		const items::Result returned = Move(player, placed.handle, BackTo(home));
 		g_failed += returned == items::Result::Success ? 0 : 1;
+		if (returned != items::Result::Success) {
+			plog::Warn("split: shared stash page %u cell %d,%d: back home failed (%u), left in the inventory", home.sharedStashPage,
+			           home.x, home.y, static_cast<uint32_t>(returned));
+		}
 	}
 	if (isMap && saved.count > 0 && status == items::Result::Success) {
 		const auto applied = g_items->editNativeItem(g_context, result.cursorItem, ApplyNative, &saved);
+		if (applied != items::Result::Success) {
+			plog::Warn("split: the forced event (%d entries) was not set on the new map piece (%u)", saved.count,
+			           static_cast<uint32_t>(applied));
+		}
 	}
 	// #2097: on a shared stash page the move back home takes over the client's cursor (as a merge's move does, #1762), so
 	// the client held the rest undrawn until the next click put it down. An editItem of the cursor stack to its own count,

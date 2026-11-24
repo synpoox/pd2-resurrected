@@ -71,6 +71,9 @@ void MoveNow(const D2RL::PluginContext*, void*) noexcept {
 		.structSize = items::ExistingItemTransactionSize, .player = job.player, .operationCount = 1, .operations = &op};
 	items::ExistingItemTransactionResult result {.structSize = items::ExistingItemTransactionResultSize};
 	const items::Result status = g_items->executeExistingItemTransaction(g_context, &transaction, &result);
+	if (status != items::Result::Success) {
+		plog::Warn("padbinds: stack of %d to the Cube failed (%u)", job.quantity, static_cast<uint32_t>(status));
+	}
 }
 
 auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions::ItemInteractionEvent* event, void*) noexcept

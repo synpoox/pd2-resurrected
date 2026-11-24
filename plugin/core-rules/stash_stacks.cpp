@@ -131,6 +131,10 @@ void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
 				break;
 			}
 		}
+		if (made != items::Result::Success) {
+			plog::Warn("stash tabs: the rest of a stack, %.4s x%u, not made again: result %u",
+			           reinterpret_cast<const char*>(&rests[i].code), rests[i].quantity, static_cast<uint32_t>(made));
+		}
 	}
 }
 
