@@ -2,6 +2,152 @@
 
 Player-facing changes, newest first. Entries follow PD2 unless noted. Until multiplayer, a build may break characters (ADR 0003).
 
+### 0.2.5-alpha (2026-11-23)
+
+
+#### Items
+
+- Raised the Gems, Materials and Runes stash tabs to stacks of up to 255 (#1767).
+- Let throwing weapons, javelins and quivers drop with sockets, as in PD2 (#1828).
+- Added PD2's rare chance for an imbued Phase Blade to become the Armageddon Blade (#1843).
+- Stopped Embersworn from dropping from the unique roll, matching PD2 (#1852).
+- Gheed in a map event has a 1 in 200 chance to sell Kadala's Heirloom (#1915).
+- A stackable bought from a vendor now joins a held stack of the same item, as in PD2 (#1916).
+- Uniques bought from the map event Gheed now arrive identified (#1962).
+- Charged skills with no charges left stay on the skill list and keep their hotkey, as in PD2 (#1992)
+- Slow on items no longer slows the prime evils and other bosses PD2 protects, as in PD2 (#2004).
+- Vendors now refuse what PD2 vendors refuse: gems, runes, most stackable items and Uber maps (#2012).
+- A quest drop stops for everyone once the quest is done in the game, as in PD2 (#2023).
+- You can carry up to 5,000,000 gold at any level, as in PD2 (#2027).
+- The Skeleton Key Unlimited opens locked chests and doors without using up a key (#2030).
+- A corrupted item's tooltip shows the stats its corruption added or changed in red (#2070).
+- A map sent to a full Maps tab now stays in your inventory instead of vanishing into hidden storage (#2095).
+- A map put into the stash now tops up the stack of the same map first (#2096).
+
+#### Bug Fixes
+
+- Tidy no longer leaves a key stack over 50 in your inventory (#1785).
+- Fix Leap and Leap Attack crossing the screen at run speed instead of PD2's leap speed (#1788)
+- Fixed Valkyries turning back from far monsters instead of attacking them, as in PD2 (#1790).
+- Gave Shadow Warriors PD2's AI: they mirror the owner's buffs and chase targets farther (#1800).
+- Fixed the Decoy not getting its PD2 summon skills (Strafe, Critical Strike, Pierce, Penetrate) (#1801).
+- Poison Creeper hits poisoned foes, and vines eat corpses at full life or mana, as in PD2 (#1802).
+- Made mercenaries keep Battle Orders up, whirl and curse as in PD2 (#1803).
+- Restore the Maps and Bossing stash tabs when the mod's d2rloader.toml lost add_shared_tabs (#1808).
+- Jewel Fragments now have a cell in the Materials stash tab and stack there (#1811).
+- Fixed Whirlwind and Blade Dance hits not triggering melee splash (#1812).
+- A stack put on a partly full Gems, Materials or Runes tab cell tops it up to the limit and keeps the rest (#1816).
+- Fixed Ctrl+click stack split on a Shared stash tab putting the whole stack down (#1820).
+- Fixed Ctrl+right drop and Ctrl+Shift+right cube hotkeys doing nothing on items in the Cube grid (#1821).
+- Fixed Classic and Lord of Destruction characters failing to save after a level-up or gear change while hurt (#1825).
+- Fixed the Gems, Materials and Runes tab tooltip showing a stale quantity instead of the cell count (#1827).
+- Made magic items always roll a prefix and a suffix from item level 65 (85 jewelry, 90 charms) (#1829)
+- Fixed Frenzy stacking to the skill level instead of reaching its full bonus at 5 hits (#1831).
+- Stop Telekinesis from picking up arrows and bolts, as in PD2 (#1833)
+- Keep Dim Vision and Terror at full length in Nightmare and Hell, as in PD2 (#1837).
+- Stop a hit that blinds from replacing the target's curse, as in PD2 (#1837).
+- Raise the missile pierce cap from 4 to 10, and 6 for Lightning Fury, as in PD2 (#1839).
+- Made Poison and Exploding shrines drop PD2's gas and fire throwing potions (#1851).
+- Fixed the Maps and Bossing stash tabs missing pages on Classic and LoD characters (#1854).
+- Talic's Whirlwind and Korlic's Leap now play their HD animations (#1858).
+- Make chill also lower faster cast rate (not below 0) and Leap speed, as in PD2 (#1861).
+- Fix Dragon Talon's kick damage to use its synergies and drop the last kick's knockback, as in PD2 (#1862).
+- Fix Half Freeze Duration: 2 or more points now prevent freeze and chill, as in PD2 (#1864).
+- Fixed Mind Blast not stunning at 1 hard point and capped Smite's stun on players, as in PD2 (#1865).
+- Make dual wielders attack at the faster weapon's speed instead of the average, as in PD2 (#1867).
+- Fixed Blade Sentinel missing PD2's periodic area hit with the caster's weapon damage (#1869).
+- Made Frozen Armor and Enchant also buff allies in range, at half strength for other players and mercs (#1870).
+- Fixed Lieutenant of Sin never casting Blaze and Armageddon on their cooldowns, as in PD2 (#1871).
+- Unsummoning your Iron Golem now drops the item it was made from, as in PD2 (#1873).
+- Magic quivers now roll a prefix and suffix at item level 65+ (#1882).
+- Fixed a very fast pick-up and Ctrl+put-down of a stack sometimes not splitting on a merge (#1885).
+- Fixed skills on striking not casting during Whirlwind and Blade Dance (#1889).
+- Fixed Berserk's pierce and phys res penalty stuck at 5%; all its effects now match its tooltip (#1900).
+- Bosses' Amplify Damage curse now obeys curse resistance and max curses (#1902).
+- Frenzy gains a charge on every swing, hit or miss, as in PD2 (#1904).
+- Fixed a skill description index assert from two skills naming a missing skill description (#1908).
+- Cursed bosses now cast Amplify Damage on you, as in PD2 (#1918).
+- A unique quiver (or any item) in the map Gheed's stock can be bought only once (#1923).
+- Fixed joined TCP/IP players being unable to buy the map event Gheed's uniques (#1924).
+- Made aura mercenaries turn their aura back on when they lose it, as in PD2 (#1925).
+- Made Battle Orders mercenaries also buff party members and your other summons, as in PD2 (#1925).
+- Fixed Fend, Zeal and Fury hits not widening their splash with each hit as in PD2 (#1936).
+- Fixed act 4 and 5 mercenaries missing hireling rules for ally buffs and Static Field (#1937).
+- Fixed Mind Blast: consecutive casts widen it, and it no longer converts monsters (#1946).
+- Fixed a stunned player getting a longer stun from another player's or a pet's hit (#1947).
+- Ormus' ring for returning the Gidbinn is corrupted, as in PD2 (#1950).
+- Fix Leap and Leap Attack bouncing the Barbarian on landing (#1961)
+- The Amazon's Decoy now plays its Strafe animation in HD (#1964).
+- Combat Reflexes' tooltip shows its flat life bonus instead of a percent (#1965).
+- Mercenaries and summons follow you, and warp back when far, as in PD2 (#1989).
+- Iron Wolves take maces, scepters, wands, orbs and Paladin shields; Barbarians axes, maces and hammers (#1990).
+- Howl and War Cry now reach as far as in PD2 (#2013).
+- Map, uber and Zhar portals stay linked when you walk far from them, as in PD2 (#2020).
+- Monsters gain 70% more life per extra player, as in PD2 (#2025)
+- Dragon Talon and Dragon Flight character screen damage shows PD2's kick damage base (#2051)
+- Decoy on a controller now goes to the reticle or the nearest enemy instead of next to you, and Decoys no longer come back when you rejoin a game (#2068).
+- Duriel's Smite, Jab and Charge now play their HD animations (#2083).
+- Scarabs, Blunderbores, Siege Beasts, Radament and more now play HD animations for special attacks (#2092).
+- Stash affinity writes its retry log lines once per item, so a full Maps tab no longer drops FPS (#2094).
+- After a Ctrl+click stack split on a Shared stash tab, the rest shows on the cursor at once (#2097).
+- Remove plugin log lines that only served game checks; the per-event ones cost FPS (#2101)
+
+#### Changed
+
+- Gave aura-enchanted bosses PD2's eight monster auras, capped at level 13 (#1830).
+- Shorten the wait before you can use a portal again to 0.6 seconds instead of 3 seconds, as in PD2 (#2022).
+
+#### Skills
+
+- Made Valkyries and revived monsters act sooner, and large revived monsters fit through tight gaps (#1835).
+- Melee attacks reach further as in PD2: monsters by 1, players by half their weapon's range and 1 more against a moving target (#1977).
+- Redemption no longer eats the corpses of player summons and mercenaries, as in PD2 (#1987).
+- Summoned minions act sooner after they appear, as in PD2 (#1988).
+- An aura no longer changes the speed of a Charge or Lucion Dash already under way, as in PD2 (#1993).
+- Sacrifice kills now make the corpse explode, damaging nearby enemies as in PD2 (#1994).
+- Blood Golem heals itself and you for its listed life per hit, as in PD2 (#2001).
+- Raven summons 1 raven per cast, plus 1 more per 10 hard points, as in PD2 (#2002).
+- The character screen's skill Damage for Vengeance, throws, kicks, charge-ups, arrows and Blade Fury is PD2's (#2005)
+- Missile and area hits leech half the life and mana, and Leap Attack a third of the life, as in PD2 (#2009).
+- Changed chance to hit to PD2's formula, which can reach 100% instead of 95% (#2010).
+- Whirlwind and Blade Dance now hit every 0.24 seconds, twice when dual-wielding, as in PD2 (#2015).
+- Whirlwind and Blade Dance always spin through a target in reach and end just past it, as in PD2 (#2016).
+- Chilling Armor's ice shard now falls on the ranged attacker, as in PD2 (#2017).
+- Sacrifice's life cost is lowered by your damage reduction, as in PD2 (#2018).
+- Grim Ward works on hard corpses such as skeletons too, as in PD2 (#2019).
+- Inferno and Arctic Blast fire their full line again at each start while you keep channelling, as in PD2 (#2024).
+- Jab, Inferno, Arctic Blast and Blade Fury animate faster, with PD2's shorter frames (#2028).
+- Blessed Hammers and other missiles no longer set off Sacrifice corpse explosions (#2043).
+- Split Throw's attack speed buff lasts for the whole throw and ends with it, as in PD2 (#2045).
+- The character sheet's chance to hit now shows PD2's chance, up to 100% (#2048).
+- Dragon Talon and Dragon Tail kicks deal PD2's base damage, from your gear, dexterity and boots (#2051)
+- Hunger works on hard corpses such as skeletons too, as in PD2 (#2067).
+
+#### Characters
+
+- Added the max-level aura on level 99 characters (#1838).
+- Running no longer drops your defense to 0: monsters must roll to hit you, as in PD2 (#2074).
+
+#### Maps
+
+- Stock the map event's Gheed with up to 5 random uniques and keep him standing still (#1842).
+
+#### Changes
+
+- Classic/LoD characters play the full mod; move SharedStashSoftCoreV2.d2i out of the save folder first (#1853).
+
+#### Features
+
+- Gold within a few yards of you is picked up automatically outside town, as in PD2 (#1863).
+
+#### Monsters
+
+- Monsters steal a sixteenth of the mana they did, and Mana Burn bosses drain far less mana (#1995).
+- Werewolf and Werebear no longer block your other skills for a moment after you shift.
+- Oblivion Knights and the void knights cast PD2's monster curses, not the Necromancer's (#2003).
+- Baal's throne waves come 5 seconds after his taunt instead of 10, as in PD2 (#2014).
+- New HD models and mercenary portraits for the Dark and Light Ascendant, by RuffnecKk.
+
 ### 0.2.4-alpha (2026-11-22)
 
 #### Bug Fixes
