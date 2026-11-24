@@ -152,7 +152,8 @@ void Write(Line* line, int32_t min, int32_t max, bool show) noexcept {
 	line->text[n] = '\0';
 	line->length = n;
 }
-void Logged(int slot, int32_t skill, int32_t level, int32_t min, int32_t max, int32_t color) noexcept {
+void Logged(int slot, int32_t, int32_t, int32_t, int32_t, int32_t) noexcept {
+	++g_lines[slot];
 }
 
 // --- 11: Vengeance (0x103ad2e0) --------------------------------------------------------------------------------
