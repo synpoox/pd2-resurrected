@@ -27,6 +27,7 @@
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle_events.h>
+#include <D2RLPlugin/network.h>
 #include <D2RLPlugin/threads.h>
 
 #include <atomic>
@@ -137,9 +138,10 @@ InsertFn g_insert = nullptr;
 constexpr int32_t ItemModeCursor = 4, ItemModeSocketed = 6;
 std::atomic<uint32_t> g_split {0}, g_refusedRemote {0};
 
-// The rest of a socketed stack, made again on the game thread. shortcut: the local player only (the SDK names the player
-// on the UI thread, as stash_stacks.cpp); a remote player's stacked insert is refused, so nothing is lost; upgrade for a
-// hosted game. Leaving the game before the queued job runs (one update) loses the rest.
+// The rest of a socketed stack, made again on the game thread through the SDK. The local player's handle comes from the UI
+// thread (as stash_stacks.cpp); a remote player's from its peer (getPeerPlayer): each client's core-rules tells the host its
+// player unit id over a private channel once its player is ready. A remote stacked insert with no known peer is refused, so
+// nothing is lost. Leaving the game before the queued job runs (one update) loses the rest.
 struct Rest {
 	uint32_t code, quantity, itemLevel;
 };
@@ -150,6 +152,7 @@ std::mutex g_restLock;
 const D2RL::ItemService* g_items = nullptr;
 const D2RL::InventoryService* g_inventory = nullptr;
 const D2RL::ThreadService* g_threads = nullptr;
+void Reconnect(const D2RL::PluginContext* context) noexcept;
 // kept from LocalPlayerReady, so the rest is made on the next game update with no UI-thread hop first
 std::atomic<D2RL::PlayerHandle> g_localPlayer {D2RL::InvalidPlayerHandle};
 
@@ -157,6 +160,7 @@ void KeepLocalPlayer(const D2RL::PluginContext* context, const D2RL::Lifecycle::
 	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
 	g_localPlayer = g_inventory->getLocalPlayer(context, &player) == D2RL::Inventory::Result::Success ? player
 	                                                                                                   : D2RL::InvalidPlayerHandle;
+	Reconnect(context);
 }
 
 // server and client unit ids match, in a local or a hosted game
@@ -167,6 +171,170 @@ auto LocalPlayerId() noexcept -> uint32_t {
 }
 
 void PickPlayer(const D2RL::PluginContext*, void*) noexcept;
+
+// Game thread: one rest to the player's cursor, else the inventory, else the ground
+auto CreateRest(D2RL::PlayerHandle player, const Rest& rest) noexcept -> D2RL::Items::Result {
+	namespace items = D2RL::Items;
+	items::Result made = items::Result::Success;
+	for (const auto container : {items::ItemContainer::Cursor, items::ItemContainer::Inventory, items::ItemContainer::Ground}) {
+		const items::ItemCreateSpec spec {.structSize = items::ItemCreateSpecSize,
+		                                  .code = rest.code,
+		                                  .quality = items::Quality::Normal,
+		                                  .qualityRecordId = items::RandomQualityRecord,  // 0 is refused (InvalidArgument)
+		                                  .itemLevel = rest.itemLevel > 0 ? rest.itemLevel : 1,
+		                                  .seedMode = items::SeedMode::Random,
+		                                  // a single keeps the native default (the stat may be absent on one)
+		                                  .quantity = rest.quantity > 1 ? rest.quantity : items::DefaultValue,
+		                                  .durability = items::DefaultValue,
+		                                  .stateFlags = items::ItemStateIdentified,
+		                                  .destination = {.structSize = items::ItemDestinationSize,
+		                                                  .container = container,
+		                                                  .placement = items::Placement::Automatic}};
+		D2RL::ItemHandle item = D2RL::InvalidItemHandle;
+		made = g_items->createItem(g_context, player, &spec, &item);
+		if (made == items::Result::Success || made == items::Result::StaleHandle) {
+			break;
+		}
+	}
+	return made;
+}
+
+// Remote players (hosted TCP/IP game): unit id -> the peer that named it
+namespace net = D2RL::Network;
+constexpr uint16_t ChannelId = 1;
+constexpr uint64_t ChannelToken = 0x5044325232313139ull;  // "PD2R2119"; client and host must match
+constexpr uint16_t MessagePlayerId = 1;
+const D2RL::NetworkService* g_network = nullptr;
+net::ChannelHandle g_channel = net::InvalidChannelHandle;
+struct PeerEntry {
+	uint32_t unitId;
+	net::PeerHandle peer;
+};
+constexpr int MaxPeers = 16;
+PeerEntry g_peers[MaxPeers] {};
+std::mutex g_peerLock;
+struct RemoteRest {
+	Rest rest;
+	uint32_t owner;
+};
+RemoteRest g_remote[MaxRests];
+int g_remoteCount = 0;
+std::atomic<int> g_connectTries {0};
+
+auto PeerOf(uint32_t unitId) noexcept -> net::PeerHandle {
+	std::lock_guard<std::mutex> lock(g_peerLock);
+	for (const PeerEntry& e : g_peers) {
+		if (e.peer != net::InvalidPeerHandle && e.unitId == unitId) {
+			return e.peer;
+		}
+	}
+	return net::InvalidPeerHandle;
+}
+
+// Host: a client names its player unit id (a later name for the same peer replaces the old one)
+void OnHostMessage(const D2RL::PluginContext*, net::ChannelHandle, net::PeerHandle peer, uint16_t id, const void* data,
+                   uint32_t size, void*) noexcept {
+	if (id != MessagePlayerId || size != sizeof(uint32_t) || peer == net::InvalidPeerHandle) {
+		return;
+	}
+	uint32_t unitId = 0;
+	std::memcpy(&unitId, data, sizeof(unitId));
+	std::lock_guard<std::mutex> lock(g_peerLock);
+	PeerEntry* slot = nullptr;
+	for (PeerEntry& e : g_peers) {
+		if (e.peer == peer || e.unitId == unitId) {
+			e.peer = net::InvalidPeerHandle;  // one entry per peer and per unit id
+		}
+		if (slot == nullptr && e.peer == net::InvalidPeerHandle) {
+			slot = &e;
+		}
+	}
+	if (slot != nullptr) {
+		*slot = {unitId, peer};
+	}
+}
+
+void OnClientMessage(const D2RL::PluginContext*, net::ChannelHandle, uint16_t, const void*, uint32_t, void*) noexcept {}
+
+void OnConnection(const D2RL::PluginContext* context, const net::ConnectionEvent* event, void*) noexcept {
+	if (event->state == net::ConnectionState::Connected) {
+		// client side (and the host's own in-process connection): name this player to the host
+		const uint32_t unitId = LocalPlayerId();
+		if (unitId != 0xffffffffu) {
+			g_network->sendToHost(context, g_channel, MessagePlayerId, &unitId, sizeof(unitId));
+		}
+	} else if (event->state == net::ConnectionState::Disconnected && event->peer != net::InvalidPeerHandle) {
+		std::lock_guard<std::mutex> lock(g_peerLock);
+		for (PeerEntry& e : g_peers) {
+			if (e.peer == event->peer) {
+				e.peer = net::InvalidPeerHandle;
+			}
+		}
+	}
+}
+
+// UI thread: connect to the host once the player is ready; a TCP client may get Busy until the host's transport packet
+// arrives, so it retries on the next UI frames (about 10 seconds)
+void Connect(const D2RL::PluginContext* context, void*) noexcept {
+	if (g_network == nullptr || g_channel == net::InvalidChannelHandle) {
+		return;
+	}
+	const net::Result result = g_network->connectToHost(context, g_channel);
+	if ((result == net::Result::Busy || result == net::Result::Unavailable) && g_connectTries.fetch_add(1) < 600) {
+		g_threads->runOnUiThread(context, Connect, nullptr);
+	} else if (result != net::Result::Success && result != net::Result::Conflict) {
+		plog::Warn("sockets: no host channel (result %u); a remote player's stacked sockets are refused", static_cast<uint32_t>(result));
+	}
+}
+
+void Reconnect(const D2RL::PluginContext* context) noexcept {
+	g_connectTries = 0;
+	Connect(context, nullptr);
+}
+
+// Game thread: each remote rest for its player's handle, named by the peer
+void MakeRemoteRests(const D2RL::PluginContext* context, void*) noexcept {
+	RemoteRest rests[MaxRests];
+	int count = 0;
+	{
+		std::lock_guard<std::mutex> lock(g_restLock);
+		std::memcpy(rests, g_remote, sizeof(RemoteRest) * g_remoteCount);
+		count = g_remoteCount;
+		g_remoteCount = 0;
+	}
+	for (int i = 0; i < count; ++i) {
+		D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+		const net::PeerHandle peer = PeerOf(rests[i].owner);
+		const bool named = peer != net::InvalidPeerHandle &&
+		                   g_network->getPeerPlayer(context, g_channel, peer, &player) == net::Result::Success;
+		const D2RL::Items::Result made = named ? CreateRest(player, rests[i].rest) : D2RL::Items::Result::NotFound;
+		if (made != D2RL::Items::Result::Success) {
+			plog::Warn("sockets: the rest of player %u's stack, %.4s x%u, not made again: result %u", rests[i].owner,
+			           reinterpret_cast<const char*>(&rests[i].rest.code), rests[i].rest.quantity, static_cast<uint32_t>(made));
+		}
+	}
+}
+
+void QueueRemoteRest(Unit* filler, int32_t left, uint32_t owner) noexcept {
+	using namespace d2r::rva;
+	bool first = false;
+	{
+		std::lock_guard<std::mutex> lock(g_restLock);
+		if (g_remoteCount >= MaxRests) {
+			plog::Warn("sockets: too many rests queued; %d items lost", left);
+			return;
+		}
+		first = g_remoteCount == 0;
+		g_remote[g_remoteCount++] = {{d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemCode)(filler), static_cast<uint32_t>(left),
+		                              d2r::Engine<uint32_t (*)(Unit*) noexcept>(ItemLevel)(filler)},
+		                             owner};
+	}
+	if (first && g_threads->runOnGameThread(g_context, MakeRemoteRests, nullptr) != D2RL::Threads::Result::Success) {
+		plog::Warn("sockets: could not queue the rest of a remote stack; it is lost");
+		std::lock_guard<std::mutex> lock(g_restLock);
+		g_remoteCount = 0;
+	}
+}
 
 // Game thread: each rest to the cursor, else the inventory, else the ground
 void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
@@ -181,27 +349,7 @@ void MakeRests(const D2RL::PluginContext*, void* user) noexcept {
 		g_restCount = 0;
 	}
 	for (int i = 0; i < count; ++i) {
-		items::Result made = items::Result::Success;
-		for (const auto container : {items::ItemContainer::Cursor, items::ItemContainer::Inventory, items::ItemContainer::Ground}) {
-			const items::ItemCreateSpec spec {.structSize = items::ItemCreateSpecSize,
-			                                  .code = rests[i].code,
-			                                  .quality = items::Quality::Normal,
-			                                  .qualityRecordId = items::RandomQualityRecord,  // 0 is refused (InvalidArgument)
-			                                  .itemLevel = rests[i].itemLevel > 0 ? rests[i].itemLevel : 1,
-			                                  .seedMode = items::SeedMode::Random,
-			                                  // a single keeps the native default (the stat may be absent on one)
-			                                  .quantity = rests[i].quantity > 1 ? rests[i].quantity : items::DefaultValue,
-			                                  .durability = items::DefaultValue,
-			                                  .stateFlags = items::ItemStateIdentified,
-			                                  .destination = {.structSize = items::ItemDestinationSize,
-			                                                  .container = container,
-			                                                  .placement = items::Placement::Automatic}};
-			D2RL::ItemHandle item = D2RL::InvalidItemHandle;
-			made = g_items->createItem(g_context, player, &spec, &item);
-			if (made == items::Result::Success || made == items::Result::StaleHandle) {
-				break;
-			}
-		}
+		const items::Result made = CreateRest(player, rests[i]);
 		if (made == items::Result::StaleHandle && player == g_localPlayer.exchange(D2RL::InvalidPlayerHandle)) {
 			// the kept handle is from an earlier game: these rests go back through the UI thread for a fresh one
 			bool queued = false;
@@ -284,8 +432,10 @@ auto Insert(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint
 	if (quantity <= 1 || player == nullptr) {
 		return g_insert(game, player, fillerId, parentId, flag);
 	}
-	if (At<uint32_t>(player, UnitIdField) != LocalPlayerId()) {
-		g_refusedRemote.fetch_add(1);  // no rest can be made for a remote player, so its stack stays on the cursor
+	const uint32_t owner = At<uint32_t>(player, UnitIdField);
+	const bool local = owner == LocalPlayerId();
+	if (!local && PeerOf(owner) == net::InvalidPeerHandle) {
+		g_refusedRemote.fetch_add(1);  // no handle for that player, so no rest: its stack stays on the cursor
 		return 0;
 	}
 	SetQuantity(filler, 1);
@@ -293,7 +443,11 @@ auto Insert(void* game, Unit* player, uint32_t fillerId, uint32_t parentId, uint
 	// in a socket: the insert set its mode to 6 (a cursor item already has page 0xff, so the page tells nothing)
 	if (At<int32_t>(filler, UnitMode) == ItemModeSocketed) {
 		g_split.fetch_add(1);
-		QueueRest(filler, quantity - 1);
+		if (local) {
+			QueueRest(filler, quantity - 1);
+		} else {
+			QueueRemoteRest(filler, quantity - 1, owner);
+		}
 	} else {
 		SetQuantity(filler, quantity);  // refused: the stack stays whole
 	}
@@ -320,6 +474,18 @@ auto InstallStackInsert(const D2RL::PluginContext* context) noexcept -> bool {
 	    !D2RL::HasLifecycleServiceField(lifecycle, D2RL::LifecycleServiceRequiredSize) ||
 	    lifecycle->registerGameplayEventListener(context, &ready, &readyHandle) != D2RL::Lifecycle::Result::Success) {
 		plog::Warn("sockets: no LocalPlayerReady listener; the rest of a stack takes the UI-thread path");
+	}
+	const net::ChannelRegistration channel {.structSize = net::ChannelRegistrationSize,
+	                                        .localChannelId = ChannelId,
+	                                        .compatibilityToken = ChannelToken,
+	                                        .hostMessage = OnHostMessage,
+	                                        .clientMessage = OnClientMessage,
+	                                        .connectionState = OnConnection};
+	if (context->QueryService(&g_network) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasNetworkServiceField(g_network, D2RL::NetworkServiceRequiredSize) ||
+	    g_network->registerChannel(context, &channel, &g_channel) != net::Result::Success) {
+		g_network = nullptr;
+		plog::Warn("sockets: no network channel; a remote player's stacked sockets are refused");
 	}
 	return sigscan::HookBySignature(context, "SocketInsert", InsertPattern, 0, InsertEntry, sizeof(InsertEntry), &Insert, &g_insert);
 }
