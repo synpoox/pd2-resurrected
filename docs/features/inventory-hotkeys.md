@@ -21,6 +21,10 @@ PD2 prices a throwing weapon as one item whatever its stack size, buying and sel
 On a Shared stash tab (#1820) the SDK reads the stack's count as 0 and refuses `splitStack`, so the split goes through the
 inventory: the stack moves there, splits, and the item left down moves back to its page and cell. With no free inventory
 cell the stack stays down whole and the log reads `split: refused, no room in the inventory`.
+The client never drew the stack `splitStack` put on the cursor, so the rest was held unseen until the next click put it
+down ([#2097](https://github.com/synpoox/pd2-resurrected/issues/2097)). After the split (and any move back) an `editItem` of
+the cursor stack to its own count sends it again, as `ResendCursor` does for the stash ([stash-affinity](stash-affinity.md));
+the `split:` line ends with `(resent 0)`.
 
 ## Rebinding
 
