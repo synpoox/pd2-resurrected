@@ -166,8 +166,7 @@ Gap 1. No new engine address is needed: every call below already exists as a sig
    - `DropUniqueAt(game, monster, D2RL::Items::MakeItemCode("wss"), -1, 131, QualityNormal)` `count` times
      (`uber_drops.h`; `QualityNormal` is 2). PD2 asks for quality 7, which a `corr` item turns into normal, so asking
      for normal gives the same item and avoids a failed-quality warning.
-   - `plog::Info("wanderer: %d shards from boss %d (unit %u), event 14", count, event->monster.classId, event->monster.id)`
-     and add a `g_shards` counter to `WandererCounters`.
+   - add a `g_shards` counter to `WandererCounters`.
 3. Constants at the top: `ShardItemLevel = 131`, `ShardMin = 4`, `ShardSpread = 7` (comment: PD2 `0x10379950`,
    `seed % 7 + 4`). If the owner picks 3-6 instead, `ShardMin = 3`, `ShardSpread = 4`, plus a deviations row.
 4. Add a `static_assert(ShardMin + ShardSpread - 1 == 10)` (or `== 6`) next to the constants.
@@ -197,7 +196,7 @@ None.
 Slot per `docs/agents/game-check.md`, Hell, level-99 character, map with the event forced (the `wanderer` test aid,
 `ForceNextMapEvent`), or `cheat goto 110` + `cheat mspawn 938` for one Wanderer. The `MapEvent(game) == 14` gate means
 an `mspawn` outside a Wanderer map leaves and spawns a boss but drops no shards; use a forced Wanderer map for the drop.
-Log lines expected: 3 `wanderer: left`, 3 `wanderer: boss`, and after each boss kill `wanderer: N shards` with
+Expected: 3 wanderers leave, 3 bosses spawn, and each boss kill drops N Worldstone Shards on the ground with
 4 <= N <= 10. Hover check (name plate) is the owner's.
 
 ## Open questions
