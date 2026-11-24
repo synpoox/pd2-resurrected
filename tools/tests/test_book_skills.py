@@ -21,6 +21,15 @@ class BookSkills(unittest.TestCase):
             self.assertIn(skill, self.skills)
             self.assertEqual(row["pSpell"], self.misc[code]["pSpell"])
 
+    def test_unlimited_books_keep_their_save_layout_and_skill_ids(self):
+        skills = {r["skill"]: r for r in D.rows("skills")}
+        for code, skill_id in (("rtp", "583"), ("rid", "582")):
+            with self.subTest(code=code):
+                item = self.misc[code]
+                # A book/scroll type changes serialization and hides pre-fix saves (#2124).
+                self.assertEqual((item["type"], item["type2"], item["stackable"]), ("ubru", "", "0"))
+                self.assertEqual(skills[self.books[code]["BookSkill"]]["*Id"], skill_id)
+
 
 if __name__ == "__main__":
     unittest.main()
