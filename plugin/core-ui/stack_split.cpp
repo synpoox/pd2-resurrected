@@ -318,11 +318,12 @@ void SplitNow(const D2RL::PluginContext*, void*) noexcept {
 		const auto applied = g_items->editNativeItem(g_context, result.cursorItem, ApplyNative, &saved);
 		plog::Info("split: set the forced event (%d entries) on the new map piece (%u)", saved.count, static_cast<uint32_t>(applied));
 	}
-	// #2097: the client never draws the stack splitStack puts on the cursor (maps and runes alike), so it held the rest
-	// unseen until the next click put it down. An editItem of it to its own count, after the last move, sends it again
-	// (0x9d action 0x15: the client rebuilds it as its cursor item), as stash_affinity's ResendCursor does (#1762).
+	// #2097: on a shared stash page the move back home takes over the client's cursor (as a merge's move does, #1762), so
+	// the client held the rest undrawn until the next click put it down. An editItem of the cursor stack to its own count,
+	// after that move, sends it again (0x9d action 0x15: the client rebuilds it as its cursor item), as stash_affinity's
+	// ResendCursor does. An inventory, cube or personal stash split is drawn already.
 	auto resent = items::Result::Unsupported;
-	if (status == items::Result::Success) {
+	if (shared && status == items::Result::Success) {
 		const items::ItemEdit same {.structSize = items::ItemEditSize,
 		                            .fields = items::EditFieldBit(items::EditField::Quantity),
 		                            .quantity = back};
