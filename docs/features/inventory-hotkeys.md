@@ -24,7 +24,7 @@ cell the stack stays down whole and the log reads `split: refused, no room in th
 The move back home took over the client's cursor, so the rest was held but not drawn until the next click put it down
 ([#2097](https://github.com/synpoox/pd2-resurrected/issues/2097)). After that move an `editItem` of the cursor stack to its
 own count sends it again, as `ResendCursor` does for the stash ([stash-affinity](stash-affinity.md)); the `split:` line ends
-with `(resent 0)`.
+with `(resent 0)` after a shared-page split, `(resent 2)` elsewhere.
 
 ## Rebinding
 
