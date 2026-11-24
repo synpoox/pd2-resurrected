@@ -1,6 +1,8 @@
-// PD2's skill tooltip damage lines (#2005). D2R's descdam dispatcher (93847 0x28a100, D2Client UI/SkillDesc.cpp) calls
+// PD2's character screen skill damage lines (#2005). D2R's descdam dispatcher (93847 0x28a100, D2Client UI/SkillDesc.cpp) calls
 // table[descdam] (ids 1-28, 0x2368fe0) with (dataFlag, unit, skill, skills record, level, &line, &offhand line,
-// &colour, &offhand colour); a function writes the damage text ("min-max") and its colour. Each function below is
+// &colour, &offhand colour); a function writes the damage text ("min-max") and its colour. Its one caller is the
+// character screen's left and right skill damage box (0x14e60e0, LeftSkillStats / RightSkillStats), never the skill
+// tree hover (#2105); PD2's is the same (D2Client +0x2fd30, called only by the character panel +0xbcea0). Each function below is
 // PD2's (ProjectDiablo.dll, PD2.gpr; read byte by byte, docs/features/core-rules.md descdam row) built from D2R's own pieces: its
 // weapon fill (0x28dcb0 + 0x28d5f0, which ids 7 and 24 call), skill calcs, elemental and physical damage and its
 // "min-max" formatter, so only the numbers PD2 changed differ from D2R's lines.
