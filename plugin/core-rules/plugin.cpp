@@ -41,7 +41,7 @@
 #define MODKIT_PLUGIN_NAME "core-rules"
 #endif
 #ifndef MODKIT_PLUGIN_VERSION
-#define MODKIT_PLUGIN_VERSION "0.2.5"
+#define MODKIT_PLUGIN_VERSION "0.2.6"
 #endif
 
 namespace {
