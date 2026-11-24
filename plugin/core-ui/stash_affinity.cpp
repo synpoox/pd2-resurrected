@@ -24,9 +24,12 @@
 #include "stash_affinity.h"
 
 #include "log.h"
+#include "hot_log.h"
+#include "log_once.h"
 #include "map_stack.h"
 #include "pd2_engine.h"
 #include "stash_home.h"
+#include "stash_tabs.h"
 
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
@@ -92,6 +95,7 @@ std::atomic<uint32_t> g_want {0};
 std::atomic<bool> g_open {false};
 std::atomic<uint32_t> g_viewPage {0};
 std::atomic<bool> g_tidyFailed {false};
+pd2::LogOnce g_moveLogged, g_refusalLogged, g_failLogged;  // game thread only: a retry loop writes a line once (#2094)
 std::atomic<bool> g_hinted {false}, g_stopped {false};
 std::atomic<uint32_t> g_handStacked {0};
 std::atomic<uint32_t> g_routed {0}, g_merged {0}, g_swapped {0}, g_returned {0}, g_failed {0}, g_updates {0};
@@ -180,8 +184,11 @@ auto MoveTo(D2RL::PlayerHandle player, items::ItemInfo& item, uint32_t page, int
 	if (x >= 0) {
 		Use(page, x, y, true);
 	}
-	plog::Info("affinity: %08x from container %u page %u to page %u cell %d,%d", item.code,
-	           static_cast<uint32_t>(item.container), item.sharedStashPage, page, x, y);
+	// a tab or base switch moves every stored map (20 lines a click, #2094) and a moved item may get a new id: hot-gated
+	if (pd2::HotLogsOn() && g_moveLogged.First(pd2::Key(item.runtimeId, page * 256 + static_cast<uint32_t>(y + 1) * 16 + static_cast<uint32_t>(x + 1)))) {
+		plog::Info("affinity: %08x from container %u page %u to page %u cell %d,%d", item.code,
+		           static_cast<uint32_t>(item.container), item.sharedStashPage, page, x, y);
+	}
 	item.container = C::SharedStash;
 	item.sharedStashPage = page;
 	item.x = x;
@@ -277,9 +284,12 @@ auto MapRefusal(const items::ItemInfo& a, const items::ItemInfo& b, uint32_t sta
 	} else {
 		reason = MapStatsRefusal(a, b, same);
 	}
-	plog::Info("affinity: map %08x (quality %u) onto the stack at page %u cell %d,%d (quality %u): stats equal %d, %s%s", a.code,
-	           static_cast<uint32_t>(a.quality), b.sharedStashPage, b.x, b.y, static_cast<uint32_t>(b.quality), same,
-	           reason == nullptr ? "merge" : "refused: ", reason == nullptr ? "" : reason);
+	// a refusal is one line per stored stack for every item, every pass (290 lines for 25 maps, #2094): hot-gated
+	if ((reason == nullptr || pd2::HotLogsOn()) && g_refusalLogged.First(pd2::Key(a.runtimeId, b.runtimeId))) {
+		plog::Info("affinity: map %08x (quality %u) onto the stack at page %u cell %d,%d (quality %u): stats equal %d, %s%s", a.code,
+		           static_cast<uint32_t>(a.quality), b.sharedStashPage, b.x, b.y, static_cast<uint32_t>(b.quality), same,
+		           reason == nullptr ? "merge" : "refused: ", reason == nullptr ? "" : reason);
+	}
 	return reason;
 }
 
@@ -488,9 +498,10 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 		return true;
 	}
 	items::Result moved = items::Result::Conflict;
+	bool full = false;  // the shown base's Maps view has no free cell (#2095)
 	if (home.category == aff::Category::Maps) {
 		const bool shown = g_shown != 0 && aff::Normal(item.code) == aff::Normal(g_shown);
-		// A stack of the same map below a full one takes it first (#1759), also a map put by hand onto a free cell of its
+		// A stack of the same map below a full one takes it first (#1759), also a map quick-moved onto a free cell of its
 		// own page, which AtHome already calls home (#2096); a full stack or a failed merge falls through
 		const uint32_t stackPage = shown ? aff::MapsPage : home.page;
 		for (uint32_t i = 0; i < g_pass.reservedCount && moved != items::Result::Success; ++i) {
@@ -506,11 +517,19 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 			++g_routed;
 			return true;
 		}
-		if (atHome) {
+		if (atHome && item.container == C::SharedStash) {  // a merge that failed after its take step left it in the inventory
 			return true;
 		}
 		const aff::Cell cell = shown ? FreeMapCell() : aff::Cell {};
-		moved = cell.x >= 0 ? MoveTo(player, item, aff::MapsPage, cell.x, cell.y) : ToStorage(player, item);
+		// #2095: with the shown base's view full the map stays in the inventory (below); its storage row is not on screen, so it looked deleted
+		if (cell.x >= 0) {
+			moved = MoveTo(player, item, aff::MapsPage, cell.x, cell.y);
+		} else if (!shown) {
+			moved = ToStorage(player, item);
+		} else {
+			full = true;
+			moved = items::Result::Unsupported;  // no page problem: skips the add_shared_tabs hint below
+		}
 	} else {  // a fixed cell: Map Materials, Bossing
 		int32_t& on = At(home.page, home.row, home.column);
 		if (on == -1) {
@@ -532,12 +551,16 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 	                                   .placement = items::Placement::Automatic};
 	const items::Result returned = Move(player, item.handle, back);
 	(returned == items::Result::Success ? g_returned : g_failed)++;
-	static std::atomic<bool> pageFailLogged {false};  // a stuck item retries about once a second
-	if (!pageFailLogged.exchange(true)) {
+	if (full && returned == items::Result::Success && g_failLogged.First(pd2::Key(item.runtimeId, 0xFFFFu))) {  // once per item
+		plog::Info("affinity: the Maps tab is full: %08x stays in the inventory", item.code);
+	}
+	// a stuck item retries about once a second: one line per item and page (#1705, #2094)
+	if (g_failLogged.First(pd2::Key(item.runtimeId, home.page))) {
 		plog::Info("affinity: %08x could not go to page %u (result %u); back to the inventory: result %u", item.code, home.page,
 		           static_cast<uint32_t>(moved), static_cast<uint32_t>(returned));
 	}
-	if (moved != items::Result::Unsupported && !g_hinted.exchange(true)) {  // Unsupported: a stack count that could not be read
+	// Unsupported: a stack count that could not be read; a page the stash has is full or its cell taken, not missing (#1705)
+	if (moved != items::Result::Unsupported && !stash_tabs::HasPage(home.page) && !g_hinted.exchange(true)) {
 		plog::Info("affinity: the reserved pages are shared tabs %u-%u; set [d2rcore.stash] add_shared_tabs to at least %u",
 		           aff::FirstReservedPage, aff::LastReservedPage, aff::RequiredExtraTabs);
 	}
