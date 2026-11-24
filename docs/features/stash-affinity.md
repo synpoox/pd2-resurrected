@@ -50,7 +50,7 @@ currency, Bossing; items the RotW Materials tab takes (Pandemonium keys, organs,
 
 core-ui's `affinity` part, SDK only: a game-thread watch notes those items in the inventory each update; one that is gone from
 the inventory and in a stash on the next update was quick-moved (Ctrl+click or the pad), and `executeExistingItemTransaction`
-moves the item itself (rolls, sockets and quantity stay; the Shift+Right Click stash hotkey sends a homed item straight to its page, #1724, and a map of the shown base onto the Maps page, #1773: on its storage row it counted as home and stayed off the Maps view): a map merges into a stack below 50 on its page first when both are normal quality with equal stats (#1759, the #1326 rule), else goes to the Maps tab if its base is shown, else to its base's row
+moves the item itself (rolls, sockets and quantity stay; the Shift+Right Click stash hotkey sends a homed item straight to its page, #1724, and a map of the shown base onto the Maps page, #1773: on its storage row it counted as home and stayed off the Maps view): a map merges into a stack below 50 on its page first when both are normal quality with equal stats (#1759, the #1326 rule), else goes to the Maps tab if its base is shown (a full Maps view keeps a shown-base map in the inventory, #2095), else to its base's row
 (or anywhere on its tier's storage page when the row is full); a currency to its cell, merged into the stack there (the
 merge runs in the inventory: the loader refuses to edit or destroy a shared-stash item; loader 1.3.1 reads quantity 0 for
 PD2's stacks, so the counts are stat 70 read off the native items, #1744); a bossing item to its cell, merged the same way. A
