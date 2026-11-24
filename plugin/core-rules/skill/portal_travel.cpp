@@ -17,7 +17,6 @@
 // function; no SDK service reaches the test.
 #include "common.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "sig.h"
 
@@ -38,7 +37,6 @@ constexpr const char* LevelCall =
 
 using PortalLevelFn = uint16_t (*)(void* object) noexcept;
 PortalLevelFn g_level = nullptr;
-std::atomic<uint32_t> g_skipped {0};
 
 // PD2's map test 0x1037c580
 constexpr auto IsMapLevel(int32_t level) noexcept -> bool {
@@ -58,9 +56,6 @@ auto SkipCheck(const uint8_t* op) noexcept -> bool {
 	std::memcpy(&object, op + 8, sizeof(object));
 	const int32_t level = g_level(object);
 	const bool skip = !IsMapLevel(level);
-	if (pd2::HotSample(g_skipped)) {
-		plog::Info("portal-travel: object 60 to level %d, act-quest check %s", level, skip ? "skipped" : "run");
-	}
 	return skip;
 }
 

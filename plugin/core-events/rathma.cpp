@@ -267,8 +267,7 @@ auto PairDead(Game* game, Unit* monster) noexcept -> void {
 	                 Harrogath) != nullptr) {
 		++g_portals;
 	}
-	plog::Info("rathma: pair dead at tier %d, %d adds killed (%u kills, %u tome rolls hit, %u uniques, %u portals)",
-	           tier, killed, ++g_kills, g_tomes.load(), g_uniques.load(), g_portals.load());
+	++g_kills;
 }
 
 }  // namespace
@@ -292,7 +291,6 @@ auto RathmaDeath(Game* game, Unit* monster) noexcept -> void {
 	}
 	if (stage != before) {
 		++g_stages;
-		plog::Info("rathma: stage %d -> %d (class %d died)", before, stage, classId);
 		if (stage == 6) {
 			BuffRathmaSurvivor(game, monster);
 		}
@@ -313,14 +311,15 @@ auto RathmaRoom(Game* game, void* room, int32_t level) noexcept -> bool {
 	if (int32_t& stage = Counter(game, StageKey); stage == s->from) {
 		stage = s->from + 1;
 		++g_stages;
-		plog::Info("rathma: stage %d -> %d (level %d's first room)", s->from, stage, level);
 		const bool portal = s->from != 0 && OpenArenaPortal(game, room, *s);
 		int spawned = 0;
 		for (int i = 0; i < s->bossCount; ++i) {
 			spawned += SpawnBoss(game, room, level, s->bosses[i]) ? 1 : 0;
 		}
-		plog::Info("rathma: level %d, %d of %d bosses spawned, arena portal %s", level, spawned, s->bossCount,
-		           s->from == 0 ? "none (stage 1, #1262)" : portal ? "open" : "FAILED");
+		if (spawned < s->bossCount || (s->from != 0 && !portal)) {
+			plog::Warn("rathma: level %d, %d of %d bosses spawned, arena portal %s", level, spawned, s->bossCount,
+			           s->from == 0 ? "none (stage 1, #1262)" : portal ? "open" : "FAILED");
+		}
 	}
 	const int32_t x = At<int32_t>(room, RoomX), y = At<int32_t>(room, RoomY);
 	const bool arena = Meets(s->arena.x - ArenaHalf, s->arena.x + ArenaHalf, x, x + At<int32_t>(room, RoomWidth)) &&

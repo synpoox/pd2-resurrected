@@ -5,7 +5,6 @@
 #include "ai_common.h"
 #include "ai_hooks.h"
 #include "log.h"
-#include "hot_log.h"
 #include "uber_drops.h"
 
 #include <D2RLPlugin/item.h>
@@ -40,8 +39,6 @@ static_assert(NihlWaveRow(2, 20, 15, 10) == 2 && NihlWaveRow(21, 20, 15, 10) == 
 
 std::atomic<uint32_t> g_nihlStages {0};
 std::atomic<uint32_t> g_nihlSpawned {0};
-std::atomic<uint32_t> g_phaseLogs {0};  // the wave line, sampled
-std::atomic<uint32_t> g_nihlSpawnLogs {0};
 std::atomic<uint32_t> g_nihlNovas {0};
 std::atomic<uint32_t> g_nihlDeaths {0};
 std::atomic<uint32_t> g_nihlDrops {0};
@@ -80,8 +77,6 @@ auto DropMendelnLoot(Game* game, Unit* unit) noexcept -> void {
 		dropped += n;
 	}
 	++g_nihlDrops;
-	plog::Info("nihlathakMap: rtmv %s and %d of %d items from %s at ilvl %d", soul ? "dropped" : "not dropped", dropped,
-	           target, MendelnTc, ilvl);
 }
 
 // D2R's champion and unique makers (docs/research/map-events-audit.md section 6), our own signatures; 93847 RVAs are
@@ -152,10 +147,6 @@ auto SpawnWaveMonster(Game* game, Unit* unit, int32_t ux, int32_t uy, uint32_t* 
 	if (leader == nullptr) {
 		return false;
 	}
-	if (pd2::HotSample(g_nihlSpawnLogs)) {
-		plog::Info("nihlathakMap: wave %s %d at (%d, %d), %d pack mates", WaveKindName[static_cast<int>(kind)], monster, xy[0],
-		           xy[1], mates);
-	}
 	return true;
 }
 
@@ -179,9 +170,7 @@ auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	d2r::UnitXY(unit, &ux, &uy);
 	const int32_t a0 = m.Aip(1, 0), a1 = m.Aip(1, 1), a2 = m.Aip(1, 2);
 	const int32_t last = a0 + a1 + a2 + 1, i = stage - 1;
-	if (pd2::HotSample(g_nihlStages)) {
-		plog::Info("nihlathakMap: stage %d of %d (%u thinks)", stage, last + 3, g_nihlStages.load());
-	}
+	++g_nihlStages;
 	// PD2 casts these with no target at (0, 0); the port casts at the caster, where srvdo 169 puts the nova anyway
 	if (stage == 1) {
 		// Wake when a player comes within 14
@@ -190,20 +179,16 @@ auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 			return;
 		}
 		Counter(game, StageKey) = 2;
-		plog::Info("nihlathakMap: a player is near, stage 1 -> 2, skill %d", m.Skill(1));
 		Cast(game, unit, m.Skill(1), m.Mode(1), nullptr, ux, uy, 0);
 		return;
 	}
 	if (i == last) {
 		Counter(game, StageKey) = stage + 1;
-		plog::Info("nihlathakMap: waves done, waiting 100");
 		d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(AiSetDelay)(game, unit, 100);
 		return;
 	}
 	if (i == last + 1) {
 		++g_nihlNovas;
-		plog::Info("nihlathakMap: casts skill %d (RathmaDeath) at (%d, %d) (%u novas)", m.Skill(2), ux, uy,
-		           g_nihlNovas.load());
 		Cast(game, unit, m.Skill(2), m.Mode(2), nullptr, ux, uy, 0);
 		Counter(game, StageKey) = stage + 1;
 		d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(AiSetDelay)(game, unit, 25);
@@ -211,7 +196,6 @@ auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	}
 	if (i > last + 1) {
 		++g_nihlDeaths;
-		plog::Info("nihlathakMap: after the nova, it dies (%u deaths)", g_nihlDeaths.load());
 		DropMendelnLoot(game, unit);
 		KillQuietly(game, unit);
 		return;
@@ -236,10 +220,6 @@ auto ThinkNihlathak(Game* game, Unit* unit, uint8_t* tick) noexcept -> void {
 	g_nihlSpawned += spawned;
 	// The pause: aip5's Normal column, Nightmare's past aip1's first column, Hell's past the first two
 	const int32_t delay = m.Aip(5, i > a0 + a1 + 1 ? 2 : i > a0 + 1 ? 1 : 0);
-	if (pd2::HotSample(g_phaseLogs)) {
-		plog::Info("nihlathakMap: stage %d, wave of aip%d: %d normal, %d champion, %d unique, %d spawned (%u so far), "
-		           "delay %d", stage, row, normal, champions, uniques, spawned, g_nihlSpawned.load(), delay);
-	}
 	Counter(game, StageKey) = stage + 1;
 	Idle(game, unit, delay);
 	const uint32_t r = d2r::RandomBelow(seed, 3);

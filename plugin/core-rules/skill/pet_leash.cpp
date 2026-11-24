@@ -22,7 +22,6 @@
 #include "common.h"
 #include "registry.h"
 
-#include "hot_log.h"
 #include "../item_rules.h"
 #include "log.h"
 #include "pd2_engine.h"
@@ -65,7 +64,7 @@ using UnitDeadFn = int32_t (*)(Unit*) noexcept;
 
 PreThinkFn g_preThink = nullptr;
 leash::Engine g_leash;
-std::atomic<uint32_t> g_calls {0}, g_moves[6] {}, g_logged {0}, g_held {0}, g_noOwner {0};
+std::atomic<uint32_t> g_calls {0}, g_moves[6] {};
 
 auto PreThink(Game* game, Unit* unit, uint8_t* tick) noexcept -> int32_t {
 	const int32_t stock = g_preThink(game, unit, tick);
@@ -85,10 +84,6 @@ auto PreThink(Game* game, Unit* unit, uint8_t* tick) noexcept -> int32_t {
 	}
 	Unit* owner = d2r::Engine<FindUnitFn>(d2r::sig::FindUnit)(game, 0, At<uint32_t>(ai, AiOwnerId));
 	if (owner == nullptr || d2r::Engine<UnitDeadFn>(d2r::sig::UnitDead)(owner) != 0) {
-		if (pd2::HotSample(g_noOwner)) {
-			plog::Info("pet-leash: class %d (ai %d) owner %u %s, no leash", At<int32_t>(unit, d2r::rva::UnitClassId), row,
-			           At<uint32_t>(ai, AiOwnerId), owner == nullptr ? "not found" : "dead");
-		}
 		return 0;
 	}
 	++g_calls;
@@ -96,17 +91,6 @@ auto PreThink(Game* game, Unit* unit, uint8_t* tick) noexcept -> int32_t {
 	int32_t move = leash::MoveNone;
 	bool fighting = false;
 	const uint64_t moved = leash::Leash(g_leash, game, unit, nullptr, owner, WalkRadius, g_moves, &d2, &move, &fighting);
-	const bool warp = move == leash::MoveWarp;
-	const char* limit = fighting ? "3.2" : "1.0";
-	if ((warp || move == leash::MoveBack) && pd2::HotSample(g_logged)) {
-		plog::Info("pet-leash: class %d (ai %d) %s, owner %lld squared away (limit %s x 361), mover %llu (%u leashed so far)",
-		           At<int32_t>(unit, d2r::rva::UnitClassId), row, warp ? "warps" : "walks back", static_cast<long long>(d2), limit,
-		           static_cast<unsigned long long>(moved), g_calls.load());
-	} else if (move == leash::MoveNone && d2 > 361 && pd2::HotSample(g_held)) {
-		// past the idle limit but kept: the pet is fighting (3.2 limit), the think runs
-		plog::Info("pet-leash: class %d (ai %d) fights, owner %lld squared away (limit %s x 361), no walk back (%u so far)",
-		           At<int32_t>(unit, d2r::rva::UnitClassId), row, static_cast<long long>(d2), limit, g_held.load());
-	}
 	return moved != 0 ? 1 : 0;
 }
 

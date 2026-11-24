@@ -298,12 +298,7 @@ void RerollNow(const D2RL::PluginContext*, void* user) noexcept {
 	items::ItemInfo remade {.structSize = items::ItemInfoSize};
 	const bool remadeRead =
 		status == items::Result::Success && g_items->getItemInfo(g_context, newItem, &remade) == items::Result::Success;
-	plog::Info("reroll: quality %u row %d level %u quantity %d durability %d/%d sockets %u (filled %d), demonic cubes %d: "
-	           "result %u, new row %d quantity %d durability %d/%d, %d of them placed (%u so far)",
-	           static_cast<uint32_t>(old.quality), old.qualityRecordId, old.itemLevel, old.quantity, old.durability,
-	           old.maximumDurability, old.socketCount, taken.count, scan.cubes.quantity, static_cast<uint32_t>(status),
-	           remadeRead ? remade.qualityRecordId : -1, remadeRead ? remade.quantity : -1,
-	           remadeRead ? remade.durability : -1, remadeRead ? remade.maximumDurability : -1, placed, ++g_rerolls);
+	++g_rerolls;
 }
 
 // UI thread: the SDK names the local player only here. The pressing player's unit id comes from the executor; a
@@ -428,7 +423,6 @@ auto CubeExecute(Game* game, Unit* player, const uint8_t* record, MatchOut* out)
 	}
 	++g_rollRows;
 	if (!ShardReady(player)) {
-		plog::Info("corruption: roll row ran, no clean shard in the cube, no second row");
 		return made;
 	}
 	// Through core-events' hook, so op 30 blocks still apply to the second search
@@ -436,7 +430,6 @@ auto CubeExecute(Game* game, Unit* player, const uint8_t* record, MatchOut* out)
 	MatchOut again {};
 	d2r::Engine<SearchFn>(d2r::rva::CubeRecipeSearch)(&result, game, player, &again);
 	if (result.found == 0) {
-		plog::Info("corruption: roll row ran, no outcome row matches");
 		return made;
 	}
 	const uint8_t* outcome =
@@ -447,7 +440,7 @@ auto CubeExecute(Game* game, Unit* player, const uint8_t* record, MatchOut* out)
 	if (!KeepCubeLeftovers(game, player, outcome)) {
 		return made;
 	}
-	plog::Info("corruption: one press runs outcome row %d, %u so far", result.row, ++g_onePress);
+	++g_onePress;
 	g_executorOriginal(game, player, outcome, &again);
 	return made;
 }

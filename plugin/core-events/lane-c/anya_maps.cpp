@@ -102,7 +102,6 @@ auto AnyaGift(void* closure, void* arg) noexcept -> uint64_t {
 	}
 	g_grants.fetch_add(1, std::memory_order_relaxed);
 	g_maps.fetch_add(MapCount, std::memory_order_relaxed);
-	plog::Info("anya maps: gave %d T1 maps (%s)", MapCount, given);
 	return result;
 }
 

@@ -12,7 +12,6 @@
 
 #include "ai_hooks.h"
 #include "log.h"
-#include "hot_log.h"
 #include "placements.h"
 #include "map_open.h"
 
@@ -124,11 +123,7 @@ auto Cast(Game* game, Unit* unit, int32_t skill, int32_t mode, Unit* target, int
 	}
 	const int32_t ok = d2r::Engine<int32_t (*)(Game*, Unit*, uint8_t, int32_t, Unit*, int32_t, int32_t, uint8_t) noexcept>(
 		d2r::rva::AiUseSkill)(game, unit, static_cast<uint8_t>(mode), skill, target, x, y, 0);
-	if (pd2::HotSample(g_casts)) {
-		plog::Info("rathma ai: class %d cast skill %d mode %d at (%d, %d)%s -> %d (%u so far)",
-		           At<int32_t>(unit, d2r::rva::UnitClassId), skill, mode, x, y, target != nullptr ? " on target" : "", ok,
-		           g_casts.load());
-	}
+	++g_casts;
 }
 
 // As lucion.cpp's KillQuietly: no drop, then the death mode
@@ -267,7 +262,6 @@ auto Retreat(Tick& t) noexcept -> void {
 		for (int i = 0; i < n; ++i) {
 			KillQuietly(t.game, adds[i]);
 		}
-		plog::Info("rathma: class %d retreats at %d%% life (stage %d), %d adds killed", t.classId, t.life, stage, n);
 	} else if (t.sub == 1) {
 		t.sub = 2;
 		const int32_t before = stage;
@@ -280,14 +274,12 @@ auto Retreat(Tick& t) noexcept -> void {
 		}
 		if (stage != before) {
 			++g_stages;
-			plog::Info("rathma: stage %d -> %d (retreat of class %d)", before, stage, t.classId);
 		}
 		const auto [x, y] = Spot(stage);
 		// PD2 0x1038a060 / 0x1038a1f0 / 0x1038a510: a ghostly portal here linked to object 587 in the next level
 		if (OpenPortalAt(t.game, d2r::Engine<void* (*)(Unit*) noexcept>(d2r::rva::UnitRoom)(t.unit), GhostlyPortal, x, y,
 		                 level) != nullptr) {
 			++g_portals;
-			plog::Info("rathma: ghostly portal at (%d, %d) to level %d (%u so far)", x, y, level, g_portals.load());
 		}
 		SetStat(t.unit, StatPick, 0);
 		Cast(t.game, t.unit, t.m.Skill(7), t.m.Mode(7), nullptr, x, y);
@@ -303,7 +295,6 @@ auto Retreat(Tick& t) noexcept -> void {
 		*reinterpret_cast<uint32_t*>(reinterpret_cast<uint8_t*>(t.unit) + d2r::rva::UnitMainFlags) |=
 			d2r::rva::UnitNoTreasure | d2r::rva::UnitNoExperience;
 		KillQuietly(t.game, t.unit);
-		plog::Info("rathma: class %d leaves through the portal", t.classId);
 		t.next = 1;
 		t.sub = 0;
 	} else {
@@ -535,7 +526,6 @@ auto LifeEvent(Tick& t) noexcept -> bool {
 		++g_events;
 		if (t.bone) {
 			if (e.event == 1 || e.event == 4 || e.event == 6) {
-				plog::Info("rathma: class %d event %d at %d%% life: none", t.classId, e.event, t.life);
 				return false;
 			}
 			t.cur = wave ? 0x21 : 0x20;
@@ -543,8 +533,6 @@ auto LifeEvent(Tick& t) noexcept -> bool {
 				HoldLife(t.unit, e.life);
 				t.immune = true;
 			}
-			plog::Info("rathma: class %d event %d at %d%% life: slot 7 (skill %d)%s", t.classId, e.event, t.life,
-			           t.m.Skill(7), wave ? ", life held" : "");
 			SetImmune(t.game, t.unit, t.immune, true);
 			Run(t);
 			return true;
@@ -555,8 +543,6 @@ auto LifeEvent(Tick& t) noexcept -> bool {
 			HoldLife(t.unit, e.life);
 			t.immune = true;
 		}
-		plog::Info("rathma: class %d event %d at %d%% life: slot 8 to the spot, then %s", t.classId, e.event, t.life,
-		           wave ? "slot 7 (life held)" : "the cast chain (slots 6, 3, then 2/5/1)");
 		SetImmune(t.game, t.unit, t.immune, true);
 		Run(t);
 		return true;
@@ -570,14 +556,6 @@ auto LifeEvent(Tick& t) noexcept -> bool {
 		HoldLife(t.unit, 15);
 		SetImmune(t.game, t.unit, true, true);
 		t.next = 6;
-		// The resists as SetImmune left them: the monsterinfo readout rarely catches a retreating boss (#604)
-		const bool state8 = d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::rva::UnitHasState)(t.unit,
-		                                                                                          StateResistAll) != 0;
-		plog::Info("rathma: class %d event 8 at %d%% life: retreat (stage %d), resists %d/%d/%d/%d/%d/%d "
-		           "(fire/cold/lightning/poison/magic/damage), state 8 %s",
-		           t.classId, t.life, stage, Stat(t.unit, ImmuneStats[0]), Stat(t.unit, ImmuneStats[1]),
-		           Stat(t.unit, ImmuneStats[2]), Stat(t.unit, ImmuneStats[3]), Stat(t.unit, ImmuneStats[4]),
-		           Stat(t.unit, ImmuneStats[5]), state8 ? "on" : "off");
 		if (original) {
 			Retreat(t);  // PD2 runs state 6's code here, whatever the state
 		} else {
@@ -587,7 +565,6 @@ auto LifeEvent(Tick& t) noexcept -> bool {
 	}
 	if (t.life < 20 && stage >= 5) {
 		SetStat(t.unit, StatEvent, 8);
-		plog::Info("rathma: class %d event 8 at %d%% life%s", t.classId, t.life, t.bone ? ": none" : ": the cast chain");
 		if (t.bone) {
 			return false;
 		}
@@ -619,7 +596,6 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	if (stage == 0) {
 		stage = 1;
 		++g_stages;
-		plog::Info("rathma: stage 0 -> 1 (class %d)", t.classId);
 	}
 	t.stage = stage;
 	const int32_t tier = Counter(game, TierKey);
@@ -632,10 +608,7 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	t.sub = Counter(game, UnitKey(Sub, id));
 	t.last = Counter(game, UnitKey(Last, id));
 	t.next = 1;
-	if (pd2::HotSample(g_thinks)) {
-		plog::Info("rathma: class %d unit %u thinks (%u so far), state %d.%d, stage %d, life %d%%", t.classId, id,
-		           g_thinks.load(), t.cur, t.sub, stage, t.life);
-	}
+	++g_thinks;
 
 	// The players in his level: the nearest (squared distance) and the farthest within 0x5dc
 	const int32_t level = LevelOf(unit);
@@ -682,7 +655,6 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	if (stage > 5 && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(UnitHasState)(unit, StateMonFrenzy) == 0 &&
 	    ApplyAuraState(game, unit, unit, RathmaDeath, 1)) {
 		++g_buffs;
-		plog::Info("rathma: class %d takes RathmaDeath's buff (stage %d, %u so far)", t.classId, stage, g_buffs.load());
 	}
 
 	// Immune: retreating, the poison set in stages 1 and 5 while the blood golem lives or a cast chain runs, the bone
@@ -740,8 +712,7 @@ auto BuffRathmaSurvivor(Game* game, Unit* dead) noexcept -> void {
 		plog::Warn("rathma: no survivor %d took RathmaDeath's buff", other);
 		return;
 	}
-	plog::Info("rathma: survivor %d casts RathmaDeath on the first clone's death (%u so far)", other,
-	           ++g_survivorCasts);
+	++g_survivorCasts;
 }
 
 auto InstallRathmaAi(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {

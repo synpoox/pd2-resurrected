@@ -1,7 +1,6 @@
 // The uber lane's steps of the monster-death listener (death_steps.h), moved out of key_drops.cpp (#943).
 #include "death_steps.h"
 
-#include "hot_log.h"
 #include "log.h"
 #include "placements.h"
 #include "rathma.h"
@@ -44,10 +43,6 @@ auto UberExtraDrop(const DeathContext& death) noexcept -> void {
 	} drop {nullptr, death.monster, killer};
 	d2r::Engine<void (*)(d2r::Game*, d2r::Unit*, int32_t, void*) noexcept>(MonsterTcDrop)(death.game, death.monster, 0,
 	                                                                                      &drop);
-	static std::atomic<uint32_t> logs {0};
-	if (pd2::HotSample(logs)) {
-		plog::Info("uber: extra drop for monster %d in level %d", d2r::At<int32_t>(death.monster, UnitClassId), level);
-	}
 }
 
 }  // namespace
