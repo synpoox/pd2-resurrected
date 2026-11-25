@@ -335,11 +335,18 @@ auto Queue(Act act, D2RL::PlayerHandle player, const items::ItemInfo& info, int 
 }
 
 // ---- left click ----
+auto PanelOpen(int id) noexcept -> bool;
+constexpr int PanelStash = 0x18, PanelCube = 0x19;
 auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions::ItemInteractionEvent* event, void*) noexcept
 	-> D2RL::ItemInteractions::Decision {
 	using D2RL::ItemInteractions::Decision;
 	if (event->inputSource != D2RL::ItemInteractions::InputSource::KeyboardMouse) return Decision::Continue;
-	const int act = Match(event->modifiers, false);
+	int act = Match(event->modifiers, false);
+	// #2115: D2R's Ctrl+click quick-move does nothing for a map or bossing item while a Gems/Materials/Runes tab is up (no grid to
+	// land in), so the affinity watch never saw it move. With the stash up and no real Cube (panel 0x19 reads shut on the stack tabs), send it home as the stash bind does.
+	const bool quick = act < 0 && event->modifiers == ModifierBit(Modifier::Control) && event->container == items::ItemContainer::Inventory &&
+	                   g_binds[static_cast<int>(Act::Stash)].on && PanelOpen(PanelStash) && !PanelOpen(PanelCube);
+	if (quick) act = static_cast<int>(Act::Stash);
 	if (act < 0 || static_cast<Act>(act) == Act::Drop) return Decision::Continue;
 	items::ItemInfo info {.structSize = items::ItemInfoSize};
 	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
@@ -347,7 +354,8 @@ auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions
 	    g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success) {
 		return Decision::Continue;
 	}
-	if (!Queue(static_cast<Act>(act), player, info, SoundIdentify)) return Decision::Continue;
+	if (quick && pd2::affinity::HomeOf(info.code).category == pd2::affinity::Category::None) return Decision::Continue;
+	if (!Queue(static_cast<Act>(act), player, info, quick ? 0 : SoundIdentify)) return Decision::Continue;
 	return Decision::Consume;
 }
 
@@ -360,7 +368,7 @@ using PanelFn = uint8_t (*)(int) noexcept;  // D2R's "is panel N open" (93847 0x
 PanelFn g_panel = nullptr;
 // panel ids, read in game: inventory 1, stash 24 (0x18), Cube 25 (0x19); D2R's own Drop label needs 0x16, 0xd, 0xb shut too (vendor panels)
 constexpr int PanelCount = 32;  // D2R's own loop over the table is < 0x20; the dwords after it belong to other code
-constexpr int PanelInventory = 1, PanelStash = 0x18;
+constexpr int PanelInventory = 1;
 constexpr int AlwaysOpen[] = {0, 20, 28, 29};  // open with only the inventory up (read in game; 28 only in town): HUD panels, no NPC, stash or Cube panel
 auto PanelOpen(int id) noexcept -> bool { return g_panel != nullptr && g_panel(id) != 0; }
 uint8_t* g_panelTable = nullptr;  // the byte-per-panel "is open" table behind g_panel

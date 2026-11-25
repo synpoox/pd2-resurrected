@@ -1,0 +1,1 @@
+- Send map and bossing items to their stash tab with Ctrl+click from any tab (#2115).
