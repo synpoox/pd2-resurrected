@@ -733,7 +733,7 @@ Each row lists its record count, then each site. A D2Game call site is the `e8` 
 
 | Records | 1.13c function | Change | Status | Ours / evidence | D2R |
 |---|---|---|---|---|---|
-| 1: D2Game call `+0xd14a2` (to `0x74200`) -> PD2 `0x103999f0` | - | +0xd14a2: gold to and from the stash through PD2's copy (0x103999f0) with a 25,000,000 cap | not needed | D2R's own stash gold; stash gold caps go with the cut stash layouts (docs/research/items/pd2-remaining-items.md:115) | - |
+| 1: D2Game call `+0xd14a2` (to `0x74200`) -> PD2 `0x103999f0` | - | +0xd14a2: gold to and from the stash through PD2's copy (0x103999f0) with a 25,000,000 cap | ported | core-rules `stash_gold_cap.cpp` ([#2118](https://github.com/synpoox/pd2-resurrected/issues/2118)): D2R's bank cap `0x34b310` and the shared-stash page check `0x133610` raised to 25,000,000; the shared pages share one 25,000,000 pool (gold handler `0x4ba580` wrapped); withdraw keeps the inventory cap ([#2027](https://github.com/synpoox/pd2-resurrected/issues/2027)) | `0x34b310`, `0x133610`, `0x4ba580` |
 
 ### Teleport blocked
 
