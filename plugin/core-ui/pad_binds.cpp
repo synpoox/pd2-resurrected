@@ -5,6 +5,7 @@
 #include "pad_binds.h"
 
 #include "controller_split.h"
+#include "hotkeys.h"
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"
@@ -276,6 +277,33 @@ void OnActivateCell(void* widget, uint64_t focus) noexcept {
 	g_activate(widget, focus);
 }
 
+// #2180: Shift+right click on a stack-tab cell did nothing: the slot widget's right click (93847 0x2ce2c0, vtable 0x108) only acts with
+// Ctrl held, and the hotkeys' grid hook never sees this widget. With the stash bind on Shift+right, it takes one out as Ctrl+click does
+// (vtable 0xd8, mode 0, with the same inventory top-up). shortcut: one per click, as Ctrl+click; upgrade if a whole-stack take is wanted.
+using SlotRightFn = void (*)(void*) noexcept;
+SlotRightFn g_slotRight = nullptr;
+constexpr uint8_t SlotRightEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x55, 0x56, 0x57, 0x48, 0x83, 0xec, 0x30};
+constexpr size_t SlotTake = 0xd8;
+
+void OnSlotRightClick(void* widget) noexcept {
+	void* const slotItem = *reinterpret_cast<void**>(static_cast<char*>(widget) + WidgetItem);
+	if (g_key != nullptr && slotItem != nullptr && hotkeys::StashBindIsShiftRight() && g_key(0x10) != 0 && g_key(0x11) == 0 &&
+	    g_key(0x12) == 0) {
+		D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+		D2RL::ItemHandle cursor = D2RL::InvalidItemHandle;
+		if (g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
+		    g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::NotFound) {
+			if (d2r::sig::UnitClassOf.rva != 0 && d2r::sig::UnitStat.rva != 0) {
+				NoteTake(player, slotItem);
+			}
+			uint64_t cell = 0;
+			reinterpret_cast<void (*)(void*, uint64_t*, char) noexcept>((*static_cast<void***>(widget))[SlotTake / sizeof(void*)])(widget, &cell, 0);
+			return;
+		}
+	}
+	g_slotRight(widget);
+}
+
 }  // namespace
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
@@ -312,6 +340,11 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	                        "48 89 5c 24 10 48 89 6c 24 18 48 89 74 24 20 57 48 83 ec 30 48 8b b1 08 06 00 00", 0, &bulk) == 1 &&
 	    sigscan::HookBySignature(context, "StackTabActivate", "48 89 5c 24 18 48 89 54 24 10 55 56 57 41 56 41 57", 0, ActivateEntry,
 	                             sizeof ActivateEntry, OnActivateCell, &g_activate);
+	if (!sigscan::HookBySignature(context, "StackTabRightClick",
+	                              "48 89 5c 24 18 55 56 57 48 83 ec 30 48 8b b1 08 06 00 00 48 8b d9 48 8b ce e8 ?? ?? ?? ?? bd 03 00 00 00", 0,
+	                              SlotRightEntry, sizeof SlotRightEntry, OnSlotRightClick, &g_slotRight)) {
+		plog::Warn("padbinds: Shift+right click on a stack tab cell is off (signature not found)");
+	}
 	if (hooked) {
 		g_bulk = reinterpret_cast<BulkFn>(context->exeBase + bulk);
 	} else {

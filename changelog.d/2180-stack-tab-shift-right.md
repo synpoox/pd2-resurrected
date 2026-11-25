@@ -1,0 +1,1 @@
+- Shift+right click on a Gems, Materials or Runes tab item now takes it out to the inventory.
