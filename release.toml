@@ -25,7 +25,7 @@ fragments = "changelog.d"
 github = "synpoox/pd2-resurrected"
 
 [stage]
-plugins = ["core-rules", "core-events", "core-ui"]
+plugins = ["core-rules", "core-events", "core-ui", "aa-settings-host"]
 companions = true
 item_type_check = false   # not checked before the toolkit either: a mod table's item type ids are its own
 loader_from_game = true   # pin --game's official D2RLoader.exe in the catalog

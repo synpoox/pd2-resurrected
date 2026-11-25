@@ -1,0 +1,1 @@
+- Pick the loot filter and its toggles in Options > Gameplay > Loot Filter (#2237).
