@@ -80,7 +80,7 @@ auto GoldMessage(void* game, void* player, const uint8_t* message, int32_t size)
 }
 
 // The PlrMsg handler table slot that holds the gold handler: false (nothing changed) when any check fails.
-auto InstallPool(const D2RL::PluginContext* context) noexcept -> bool {
+auto SwapGoldSlot(const D2RL::PluginContext* context) noexcept -> bool {
 	uint64_t handler = 0, dispatch = 0, list = 0;
 	// 0x4ba580's entry through `cmp ebx, 0x11; je` (the message size check)
 	if (sigscan::ScanUnique(context->exeBase,
@@ -130,7 +130,7 @@ auto InstallStashGoldCap(const D2RL::PluginContext* context, char* report, size_
 	const bool on = found && context->PatchBytes(page, Stock, sizeof(Stock), Pd2, sizeof(Pd2)) &&
 	                context->PatchBytes(cap, Stock, sizeof(Stock), Pd2, sizeof(Pd2));
 	// the pool only on top of the raised cap: alone it would cut deposits D2R then refuses at 2,500,000 anyway
-	const bool pool = on && InstallPool(context);
+	const bool pool = on && SwapGoldSlot(context);
 	plog::Info("stash-gold-cap: pd2 25000000 %s, shared pool %s", on ? "on" : "FAILED", pool ? "on" : "FAILED");
 	const size_t used = std::strlen(report);
 	if (used < reportSize) {
