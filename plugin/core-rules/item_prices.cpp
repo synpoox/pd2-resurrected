@@ -22,7 +22,7 @@
 //    `bps`, `bpl` or of a throwing type (`tpot`, `tkni`, `taxe`, `jave`, `thro`, `misl`, `ajav`); a non-stackable item with
 //    the code `ubtm`, `dcma`, `rtma`, `uba`, `llmr`, `lsvl`, `rkey`, `rid` or `rtp`; a unique `cm1`, `cm2` or of type `t5m`.
 //    Codes are compared as item codes and types are found by code in the itemtypes table (the SDK's DataTableService), so no
-//    id is hard-coded. Every caller is a sell path: the vendor panel, its tooltip and controller prompts (client), and the
+//    id is hard-coded. Every caller but one is a sell path (the one, the server buy handler checking the bought item, keeps D2R's answer, #2173): the vendor panel, its tooltip and controller prompts (client), and the
 //    SUnitNpc.cpp sell handlers (server). So the client refuses as it does for a quest item and the item stays where it was,
 //    and a host refuses a sell message too. Native: no PluginSDK service decides what a vendor takes.
 #include "item_prices.h"
@@ -37,6 +37,8 @@
 #include <D2RLPlugin/data_tables.h>
 
 #include <windows.h>
+
+#include <intrin.h>
 
 #include <algorithm>
 #include <atomic>
@@ -242,9 +244,19 @@ auto PdRefuses(Unit* item) noexcept -> bool {
 	                            HasCode(ListedCodes, code), unique);
 }
 
+// The server buy handler (0x53d850) also asks ItemIsSellable, of the item being bought (0x53d976); PD2's sell list must not
+// apply to it, or Anya's stacked orbs fail with "That item has just been traded" (#2173). The call is found by signature:
+// mov edx,4 / mov rcx,r13 / call FindUnit / mov [rsp+78h],rax / mov r15,rax / test rax,rax / jz / mov rcx,rax / call
+// ItemIsSellable (+33) / test eax,eax / jz / mov r8d,0x450
+constexpr const char* BuyHandlerCall =
+    "ba 04 00 00 00 49 8b cd e8 ?? ?? ?? ?? 48 89 44 24 78 4c 8b f8 48 85 c0 0f 84 ?? ?? ?? ?? 48 8b c8 e8 ?? ?? ?? ?? 85 c0 0f 84 "
+    "?? ?? ?? ?? 41 b8 50 04 00 00";
+constexpr uint32_t BuyHandlerCallAt = 33;
+uint64_t g_buyReturn = 0;
+
 auto SellableHook(Unit* item) noexcept -> int32_t {
 	const int32_t result = g_sellable(item);
-	if (result != 0 && PdRefuses(item)) {
+	if (result != 0 && reinterpret_cast<uint64_t>(_ReturnAddress()) != g_buyReturn && PdRefuses(item)) {
 		g_sellRefusals.fetch_add(1);
 		return 0;
 	}
@@ -259,6 +271,12 @@ auto InstallSellRefusals(const D2RL::PluginContext* context) noexcept -> bool {
 		plog::Warn("skipped vendor sell refusals: an item function or the data table service is missing");
 		return false;
 	}
+	uint64_t buyRva = 0;
+	if (sigscan::ScanUnique(context->exeBase, BuyHandlerCall, 0, &buyRva) != 1) {
+		plog::Warn("skipped vendor sell refusals: the buy handler's call not found exactly once");
+		return false;
+	}
+	g_buyReturn = context->exeBase + buyRva + BuyHandlerCallAt + 5;
 	g_context = context;
 	return sigscan::HookBySignature(context, "ItemIsSellable", SellablePattern, 0, SellableEntry, sizeof(SellableEntry), SellableHook,
 	                                &g_sellable);

@@ -1,0 +1,1 @@
+- Fix map orbs bought from Anya failing with "That item has just been traded" (#2173).
