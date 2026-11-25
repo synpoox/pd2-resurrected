@@ -191,32 +191,68 @@ auto WhirlSearch(d2r::Game* game, Unit* unit, int32_t x, int32_t y, int32_t radi
 	return pick;
 }
 
+// Why a part is off, for the startup log: the first check that failed (nullptr = on)
+auto ScanOff(int matches) noexcept -> const char* {
+	return matches == 0 ? "the signature matches nowhere" : "the signature matches more than once (or is bad)";
+}
+
 }  // namespace
 
 auto InstallMeleeReach(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
 	using sigscan::State;
 	uint64_t rva = 0;
-	if (sigscan::ScanUnique(context->exeBase, MeleeRangePattern, 0, &rva) == 1) {
+	const int rangeN = sigscan::ScanUnique(context->exeBase, MeleeRangePattern, 0, &rva);
+	if (rangeN == 1) {
 		g_meleeRange = reinterpret_cast<RangeFn>(context->exeBase + rva);
 	}
-	if (sigscan::ScanUnique(context->exeBase, RollReachCall, 0, &rva) == 1) {
+	const int rollN = sigscan::ScanUnique(context->exeBase, RollReachCall, 0, &rva);
+	if (rollN == 1) {
 		g_rollReturn = context->exeBase + rva + RollReachCallAt + 5;
 	}
-	const bool test = g_meleeRange != nullptr && g_rollReturn != 0 && d2r::sig::UnitReach.state == State::Ok &&
-	                  d2r::sig::UnitInReach.state == State::Ok &&
-	                  sigscan::HookBySignature(context, "UnitInReach", d2r::sig::UnitInReach.pattern, 0, ReachEntry,
-	                                           sizeof(ReachEntry), &Reach, &g_reach);
-	if (sigscan::ScanUnique(context->exeBase, AreaIterateCall, 0, &rva) == 1) {
+	const char* testOff = nullptr;
+	const char* testPart = nullptr;
+	if (rangeN != 1) {
+		testPart = "MeleeRangePattern"; testOff = ScanOff(rangeN);
+	} else if (rollN != 1) {
+		testPart = "RollReachCall"; testOff = ScanOff(rollN);
+	} else if (d2r::sig::UnitReach.state != State::Ok) {
+		testPart = "UnitReach"; testOff = "the shared signature did not resolve";
+	} else if (d2r::sig::UnitInReach.state != State::Ok) {
+		testPart = "UnitInReach"; testOff = "the shared signature did not resolve";
+	} else if (!sigscan::HookBySignature(context, "UnitInReach", d2r::sig::UnitInReach.pattern,
+	                                     d2r::sig::UnitInReach.at,  // the shared pattern starts past the entry
+	                                     ReachEntry, sizeof(ReachEntry), &Reach, &g_reach)) {
+		testPart = "UnitInReach hook"; testOff = "the entry hook did not install (another plugin's patch?)";
+	}
+	const bool test = testOff == nullptr;
+	const int areaN = sigscan::ScanUnique(context->exeBase, AreaIterateCall, 0, &rva);
+	if (areaN == 1) {
 		const uint64_t site = context->exeBase + rva + AreaIterateCallAt;
 		int32_t rel = 0;
 		std::memcpy(&rel, reinterpret_cast<const void*>(site + 1), 4);
 		g_area = reinterpret_cast<AreaFn>(site + 5 + static_cast<int64_t>(rel));
 	}
-	const bool search = g_meleeRange != nullptr && g_area != nullptr && d2r::sig::UnitRoom.state == State::Ok &&
-	                    RedirectCall(context, WhirlSearchCall, WhirlSearchCallAt, reinterpret_cast<uint64_t>(&WhirlSearch),
-	                                 &g_nearest);
-	plog::Info("melee-reach: pd2 reach test and roll %s, whirlwind search %s", test ? "on" : "FAILED",
-	           search ? "on" : "FAILED");
+	const char* searchOff = nullptr;
+	const char* searchPart = nullptr;
+	if (rangeN != 1) {
+		searchPart = "MeleeRangePattern"; searchOff = ScanOff(rangeN);
+	} else if (areaN != 1) {
+		searchPart = "AreaIterateCall"; searchOff = ScanOff(areaN);
+	} else if (d2r::sig::UnitRoom.state != State::Ok) {
+		searchPart = "UnitRoom"; searchOff = "the shared signature did not resolve";
+	} else if (!RedirectCall(context, WhirlSearchCall, WhirlSearchCallAt, reinterpret_cast<uint64_t>(&WhirlSearch),
+	                         &g_nearest)) {
+		searchPart = "WhirlSearchCall"; searchOff = "the call redirect did not install";
+	}
+	const bool search = searchOff == nullptr;
+	char testText[160] = "on", searchText[160] = "on";
+	if (!test) {
+		std::snprintf(testText, sizeof(testText), "off (%s: %s)", testPart, testOff);
+	}
+	if (!search) {
+		std::snprintf(searchText, sizeof(searchText), "off (%s: %s)", searchPart, searchOff);
+	}
+	plog::Info("melee-reach: pd2 reach test and roll %s, whirlwind search %s", testText, searchText);
 	const size_t used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; melee-reach%s", test && search ? "" : " FAILED");
