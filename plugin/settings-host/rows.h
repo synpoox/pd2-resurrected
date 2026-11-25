@@ -24,9 +24,9 @@ inline auto ToggleWidget(const std::string& row, bool on) -> std::string {
 // A dropdown row is D2R's own DropdownListWidget named `widget`: the row name with ":" for "/", as D2R's child find
 // reads a "/" as a path step. A pick sends PanelManager:OpenPanel with no text. Its states are static layout text, so
 // the layout and this table list the same options in the same order: state i stands for the owner's label labels[i].
-// Pyre names a filter by its "name", and adds " (<file stem>)" when two share one (the shipped filter.json is also
-// "PD2R Starter"; Pyre lists it as "PD2R Starter (Legacy)"), so a state matches either form.
-// shortcut: a filter with no state (filter.json, a player's own file) can't be picked here; they pick it in the toml.
+// Pyre names a filter by its "name", and adds " (<file stem>)" when two share one (a player's own filter.json named
+// "PD2R Starter" lists as "PD2R Starter (Legacy)"), so a state matches either form.
+// shortcut: a filter with no state (a player's own file) can't be picked here; they pick it in the toml.
 // Upgrade when the loader can set a dropdown's states.
 struct Dropdown {
 	const char* row;
