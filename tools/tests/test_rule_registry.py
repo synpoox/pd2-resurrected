@@ -5,7 +5,7 @@ from pathlib import Path
 
 SKILL = Path(__file__).resolve().parents[2] / "plugin" / "core-rules" / "skill"
 INSTALL = re.compile(r"^auto (Install\w+)\(const D2RL::PluginContext\*", re.M)
-RULE = re.compile(r"^PD2R_RULE\((\w+),\s*(\d+)\)", re.M)
+RULE = re.compile(r"^PD2R_RULE(?:_N)?\((\w+),\s*(-?\d+)", re.M)
 
 
 class RuleRegistry(unittest.TestCase):
