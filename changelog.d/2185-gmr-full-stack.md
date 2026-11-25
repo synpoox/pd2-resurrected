@@ -1,0 +1,1 @@
+- Ctrl+click or Shift+right-click on a Gems, Materials or Runes stack moves up to 50 into the inventory.

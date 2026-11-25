@@ -249,6 +249,21 @@ void NoteTake(D2RL::PlayerHandle player, void* slotItem) noexcept {
 	ReleaseSRWLockExclusive(&g_topUpLock);
 }
 
+// #2185: take min(50, count) of the slot's stack in one go (the same take as hold-Y's: mode 0, inventory). The inventory caps a stack
+// at 50 and the take only fills what fits, so the total is conserved. False (nothing done) when the count or the take is unavailable.
+bool TakeStack(void* widget, void* slotItem, D2RL::PlayerHandle player) noexcept {
+	if (g_bulk == nullptr || d2r::sig::UnitStat.rva == 0 || d2r::sig::UnitClassOf.rva == 0) {
+		return false;
+	}
+	const int32_t count = d2r::Engine<int32_t (*)(d2r::Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(static_cast<d2r::Unit*>(slotItem), 70, 0);
+	if (count < 1) {
+		return false;
+	}
+	NoteTake(player, slotItem);
+	g_bulk(widget, nullptr, 0, static_cast<uint8_t>(count < 50 ? count : 50));
+	return true;
+}
+
 void OnActivateCell(void* widget, uint64_t focus) noexcept {
 	void* const slotItem = *reinterpret_cast<void**>(static_cast<char*>(widget) + WidgetItem);
 	if (g_key != nullptr && slotItem != nullptr && d2r::sig::UnitClassOf.rva != 0 && d2r::sig::UnitStat.rva != 0 && g_key(0x11) != 0 &&
@@ -257,6 +272,9 @@ void OnActivateCell(void* widget, uint64_t focus) noexcept {
 		D2RL::ItemHandle cursor = D2RL::InvalidItemHandle;
 		if (g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
 		    g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::NotFound) {
+			if (TakeStack(widget, slotItem, player)) {
+				return;
+			}
 			NoteTake(player, slotItem);
 		}
 	}
@@ -278,8 +296,8 @@ void OnActivateCell(void* widget, uint64_t focus) noexcept {
 }
 
 // #2180: Shift+right click on a stack-tab cell did nothing: the slot widget's right click (93847 0x2ce2c0, vtable 0x108) only acts with
-// Ctrl held, and the hotkeys' grid hook never sees this widget. With the stash bind on Shift+right, it takes one out as Ctrl+click does
-// (vtable 0xd8, mode 0, with the same inventory top-up). shortcut: one per click, as Ctrl+click; upgrade if a whole-stack take is wanted.
+// Ctrl held, and the hotkeys' grid hook never sees this widget. With the stash bind on Shift+right, it takes up to 50 out as Ctrl+click does
+// (TakeStack, else vtable 0xd8 mode 0 for one, with the same inventory top-up).
 using SlotRightFn = void (*)(void*) noexcept;
 SlotRightFn g_slotRight = nullptr;
 constexpr uint8_t SlotRightEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x55, 0x56, 0x57, 0x48, 0x83, 0xec, 0x30};
@@ -293,6 +311,9 @@ void OnSlotRightClick(void* widget) noexcept {
 		D2RL::ItemHandle cursor = D2RL::InvalidItemHandle;
 		if (g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
 		    g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::NotFound) {
+			if (TakeStack(widget, slotItem, player)) {
+				return;
+			}
 			if (d2r::sig::UnitClassOf.rva != 0 && d2r::sig::UnitStat.rva != 0) {
 				NoteTake(player, slotItem);
 			}
