@@ -587,6 +587,7 @@ auto QuickWithdraw(D2RL::PlayerHandle player, const items::ItemInfo& item, int32
 	if (Quantity(item.handle) + Quantity(made) != had || g_items->getItemInfo(g_context, made, &rest) != items::Result::Success) {
 		return undo();
 	}
+	ResendCursor(player, item.runtimeId);  // the client still draws the old count: send the cut stack again
 	Route(player, rest);  // a full page leaves the rest in the inventory, where the next pass splits it as a hand take
 	return true;
 }
