@@ -42,8 +42,9 @@ plugin with the builder's Starter filter as its default `filter.json`.
 
 - Edit or make a filter: [PD2R loot filter builder](https://synpoox.github.io/pd2r-lootfilter/), built from this mod's own item data. In Chrome or Edge it can save straight into the game folder.
 - Default (Starter) filter, shows every drop: [filter.json](https://raw.githubusercontent.com/synpoox/pd2-resurrected/main/companions/filter.json).
-- All five strictness levels ship in `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter\` (Starter, Regular, Strict, Very strict, Endgame), built with the builder. Starter is the active default. To switch, open **Esc → Options → Gameplay → Loot Filter Profile** in game (this is the Pyre plugin's own setting, separate from D2R's native `.fltr` filters; a native filter in use turns it off). Open any of them in the builder to change it.
-- Your own filter: open a shipped one in the builder and save it under a new name into the `filter\` folder (it then shows in the dropdown). Don't edit the shipped `pd2r-*.json` files: a new release overwrites them. Your pick in the dropdown is kept across updates.
+- All five strictness levels ship in `<D2R folder>\mods\PD2Resurrected\d2rloader\configilter\` (Starter, Regular, Strict, Very strict, Endgame), built with the builder. Starter is the default.
+- To switch, set `selected_filter` in `<D2R folder>\mods\PD2Resurrected\d2rloader\config\pyre-lootfilter.toml` to `"filter/pd2r-strict.json"` (or another file in `filter\`) and restart the game. Updates keep that file.
+- Your own filter: open a shipped one in the builder, save it under a new name into the `filter\` folder and point `selected_filter` at it. Don't edit the shipped `pd2r-*.json` files: a new release overwrites them. D2R's own `.fltr` filters are separate; one in use turns this plugin off.
 
 A new release keeps an edited `filter.json`, but replaces the shipped `filter\pd2r-*.json` files.
 
