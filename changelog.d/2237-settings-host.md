@@ -1,0 +1,1 @@
+- Pick the loot filter, Item Roll Ranges and Controller QOL options in Options > Gameplay (#2237).

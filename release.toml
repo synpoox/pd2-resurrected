@@ -25,7 +25,7 @@ fragments = "changelog.d"
 github = "synpoox/pd2-resurrected"
 
 [stage]
-plugins = ["core-rules", "core-events", "core-ui"]
+plugins = ["core-rules", "core-events", "core-ui", "aa-settings-host"]
 companions = true
 item_type_check = false   # not checked before the toolkit either: a mod table's item type ids are its own
 loader_from_game = true   # pin --game's official D2RLoader.exe in the catalog
@@ -33,7 +33,7 @@ notes = "release/notes/{version}.md"   # launcher copy without issue numbers; or
 
 # Files players may edit: shipped_default in the launcher manifest, kept on Update and Repair.
 [package]
-preserve = ["d2rloader/config/d2rloader.toml", "d2rloader/config/filter.json", "d2rloader/config/pyre-lootfilter.toml"]
+preserve = ["d2rloader/config/d2rloader.toml", "d2rloader/config/pyre-lootfilter.toml"]
 
 # Schema 3 release-manifest.json for the Resurrected launcher; each release is merged into the shared feed below (pass the tested D2R.exe with --game-exe).
 [catalog]

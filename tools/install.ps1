@@ -49,7 +49,7 @@ if (Get-Process D2R, D2RLoader -ErrorAction SilentlyContinue | Where-Object { $_
 $repoMod = (Get-Content (Join-Path $PSScriptRoot "..\mod.json") -Raw | ConvertFrom-Json).name
 $plugins = Join-Path $Game "mods\$repoMod\d2rloader\plugins"
 New-Item -ItemType Directory -Force $plugins | Out-Null
-foreach ($name in @("core-rules", "core-events", "core-ui")) {
+foreach ($name in @("core-rules", "core-events", "core-ui", "aa-settings-host")) {
     $dll = Join-Path $PSScriptRoot "..\plugin\build\Release\$name.dll"
     if (-not (Test-Path $dll)) { throw "$dll missing: run plugin\build.ps1 first" }
     Copy-Item $dll $plugins -Force

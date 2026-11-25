@@ -170,6 +170,14 @@ modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 )
 target_link_libraries(plugin_core_ui PRIVATE core_common xinput)
 
+# The settings host Pyre-Flies' companions look for (#2237): SDK only, client-only. Its id is the provider id they acquire.
+set(SETTINGS_HOST_VERSION "0.2.6" CACHE STRING "aa-settings-host PluginInfo::version")
+modkit_add_plugin(aa-settings-host VERSION "${SETTINGS_HOST_VERSION}" SOURCES
+	settings-host/plugin.cpp
+	settings-host/plugin.rc
+)
+target_link_libraries(plugin_aa_settings_host PRIVATE core_common)
+
 # Host self-check of common/event_link.h (#944): not shipped, not in `all`. With CARTOGRAPHER_SRC (a d2r-tools
 # plugins/cartographer/src checkout, read-only) it also checks Cartographer's own stat code.
 set(CARTOGRAPHER_SRC "" CACHE PATH "Cartographer src/ folder for event_link_check (optional)")
@@ -282,6 +290,11 @@ add_executable(almanac_identify_check EXCLUDE_FROM_ALL tests/almanac_identify_ch
 target_include_directories(almanac_identify_check PRIVATE core-ui)
 target_link_libraries(almanac_identify_check PRIVATE core_common)
 core_options(almanac_identify_check)
+
+# settings-host's row names and click step (#2237): settings-host/rows.h has no engine types.
+add_executable(settings_rows_check EXCLUDE_FROM_ALL tests/settings_rows_check.cpp)
+target_compile_features(settings_rows_check PRIVATE cxx_std_20)
+core_options(settings_rows_check)
 
 # Under build.ps1 -Tests (MODKIT_BUILD_TESTS=ON) every *_check program is built and run by ctest; otherwise they stay out of `all` (#1949).
 if(MODKIT_BUILD_TESTS)
