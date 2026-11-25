@@ -1,0 +1,1 @@
+- Sacrifice now reaches one step farther, as in Project Diablo 2.

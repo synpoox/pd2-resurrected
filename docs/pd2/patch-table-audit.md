@@ -1270,7 +1270,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvstfunc | 10 | `0x103b5dd0` | missing | [#2224](https://github.com/synpoox/pd2-resurrected/issues/2224): PD2 rolls with the skill ToHit and adds no calc1 damage; D2R `0x558930` (1.13c `0x4c3a0`) rolls to-hit 0 and adds calc1 as damage percent |
 | `0x1036ba20` | srvstfunc | 27 | `0x103b5ed0` | not needed | close enough ([#2006](https://github.com/synpoox/pd2-resurrected/issues/2006)): D2R's `0x571f40` puts the same attackrate on through `0x434290`, a flag-4 list the next mode change frees, as PD2's `0x10381a70` |
 | `0x1036ba20` | srvstfunc | 28 | `0x103b6020` | deviation | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849): the only change lets item_skillonequip (stat 191, Blade Shield on Innocence) pass the gate; core-rules runs it as an item aura, docs/deviations.md "Skill while equipped" |
-| `0x1036ba20` | srvstfunc | 29 | `0x103b61a0` | missing | [#2225](https://github.com/synpoox/pd2-resurrected/issues/2225): PD2 Sacrifice adds +1 reach to the precheck `0x103049e0` and the roll; D2R `0x565240` and melee_reach.cpp use 0 |
+| `0x1036ba20` | srvstfunc | 29 | `0x103b61a0` | ported | [#2225](https://github.com/synpoox/pd2-resurrected/issues/2225): Sacrifice's roll takes reach extra 1 in melee_reach.cpp |
 | `0x1036ba20` | srvstfunc | 37 | `0x103b6310` | ported | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: SrvStMeleeSplash ([#1936](https://github.com/synpoox/pd2-resurrected/issues/1936)) |
 | `0x1036ba20` | srvstfunc | 66 | `0x103b6460` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvstfunc | 67 | `0x103b6520` | ported | `plugin/core-rules/skill_functions.cpp` |
