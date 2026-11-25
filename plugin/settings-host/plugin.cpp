@@ -120,6 +120,7 @@ struct Row {
 	bool removed = false;
 	bool value = false;  // toggle
 	int32_t index = 0;   // dropdown
+	int32_t shown = -1;  // the state its widget showed at the last sync or pick (OnPick tells the picked dropdown by it)
 	std::vector<std::string> options;
 	abi::ToggleAppliedFn onToggle = nullptr;
 	abi::IntAppliedFn onIndex = nullptr;
@@ -130,7 +131,7 @@ struct Row {
 
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::WidgetService* g_widgets = nullptr;
-const D2RL::PluginCommunicationService* g_comms = nullptr;  // until "ready" is published
+std::atomic<const D2RL::PluginCommunicationService*> g_comms {nullptr};  // until "ready" is published
 std::mutex g_lock;
 std::deque<Row> g_rows;  // handle = index + 1; a deque keeps the rows in place as more are added
 std::atomic<uint32_t> g_frames {0}, g_clicks {0};
@@ -338,13 +339,12 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 	// Clients that loaded first (the loader sorts file names case-sensitively: "Item Roll Ranges.dll" comes before
 	// us) subscribed to "ready" and acquire the service when it fires. An acquire fails while our load call runs, so
 	// it fires on the first frame.
-	if (g_comms != nullptr) {
+	if (const D2RL::PluginCommunicationService* comms = g_comms.exchange(nullptr)) {
 		const D2RL::PluginCommunication::PublishEventRequest ready {
 			.structSize = D2RL::PluginCommunication::PublishEventRequestSize,
 			.name = "ready",
 			.eventVersion = 1,
 		};
-		const D2RL::PluginCommunicationService* comms = std::exchange(g_comms, nullptr);
 		const auto result = comms->publishEvent(g_context, &ready);
 		plog::Info("published \"ready\" for the companions that loaded first (result %u)", static_cast<unsigned>(result));
 	}
@@ -368,18 +368,22 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 	}
 	try {
 		const std::lock_guard guard(g_lock);
-		for (const Row& row : g_rows) {
+		for (Row& row : g_rows) {
 			if (!row.dropdown) {
 				Show(panel, settings_rows::ToggleWidget(row.name, true), !row.removed && row.value);
 				continue;
 			}
 			const settings_rows::Dropdown* d = settings_rows::FindDropdown(row.name);
-			const bool picked = !row.removed && row.index >= 0 && static_cast<size_t>(row.index) < row.options.size();
-			uint8_t* widget = d != nullptr && picked ? NativeDropdown(*d) : nullptr;
-			const int32_t state = widget != nullptr ? settings_rows::StateOf(*d, row.options[row.index]) : -1;
+			const bool valid = row.index >= 0 && static_cast<size_t>(row.index) < row.options.size();
+			uint8_t* widget = d != nullptr && !row.removed ? NativeDropdown(*d) : nullptr;
+			if (widget == nullptr) {
+				continue;
+			}
+			const int32_t state = valid ? settings_rows::StateOf(*d, row.options[row.index]) : -1;
 			if (state >= 0) {  // a no-op when it already shows that state
 				reinterpret_cast<void (*)(void*, int32_t) noexcept>(DropdownSelect.address)(widget, state);
 			}
+			row.shown = *reinterpret_cast<int32_t*>(widget + DropdownSelected);
 		}
 	} catch (...) {
 		g_dirty = true;
@@ -404,10 +408,11 @@ auto OnPick() noexcept -> D2RL::SharedEvents::UiMessageAction {
 				continue;
 			}
 			const int32_t picked = *reinterpret_cast<int32_t*>(widget + DropdownSelected);
-			const bool valid = row.index >= 0 && static_cast<size_t>(row.index) < row.options.size();
-			if (valid && settings_rows::StateOf(*d, row.options[row.index]) == picked) {
+			// compared with what it showed, not with the owner's option: that may have no state, or be a change not yet shown
+			if (picked == row.shown) {
 				continue;
 			}
+			row.shown = picked;
 			const int32_t at = settings_rows::OptionOf(*d, picked, row.options);
 			g_dirty = true;  // a pick the owner does not offer goes back to the owner's
 			if (at >= 0) {
