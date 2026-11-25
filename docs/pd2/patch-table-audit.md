@@ -1313,7 +1313,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036c2b0` | skill and item event functions (auraeventfunc) | 27 | `0x10347300` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036c2b0` | skill and item event functions (auraeventfunc) | 32 | `0x10347370` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036c2b0` | skill and item event functions (auraeventfunc) | 33 | `0x103473a0` | documented | [p12-ormus-robes](../research/items/p12-ormus-robes.md) |
-| `0x103a9170` | missile srvdo | 1 | `0x103a75c0` | missing | [#2228](https://github.com/synpoox/pd2-resurrected/issues/2228): the installer is srvhit (1.13c dispatcher `0x3ede0` reads row `+0xe`); PD2 drops the 0x400 gate, takes an empty HitPar1 radius from the skill calc1 and returns 6 without CollideKill; D2R slot `0x45bc40` |
+| `0x103a9170` | missile srvdo | 1 | `0x103a75c0` | missing | [#2228](https://github.com/synpoox/pd2-resurrected/issues/2228): the installer is srvhit (1.13c dispatcher `0x3ede0` reads row `+0xe`); for an empty HitPar1 PD2 takes the radius from calc1 of the row's Skill (`+0x194`), not the missile's own skill, without the clamp to 1, and returns 6 without CollideKill (the 0x400 gate it drops is 1.13c-only); D2R slot `0x45bc40` |
 | `0x103a9170` | missile srvdo | 6 | `0x103a7750` | ported | `plugin/core-rules/missile/` |
 | `0x103a9170` | missile srvdo | 7 | `0x103a7840` | missing | [#2227](https://github.com/synpoox/pd2-resurrected/issues/2227): really srvhit 7 (Holy Bolt, Holy Nova); PD2 heals from cltcalc2..cltcalc3, D2R `0x45cb80` from calc1..calc2, which PD2 data fills with the bolt count; return codes match |
 | `0x103a9170` | missile srvdo | 30 | `0x103a7a50` | ported | `plugin/core-rules/missile/` |
