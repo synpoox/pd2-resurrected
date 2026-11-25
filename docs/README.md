@@ -22,7 +22,6 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 Cartographer itself (how it works, its tables, reverse engineering) is documented in d2r-tools: `docs/cartographer/` and `docs/reverse-engineering/cartographer/`. Only what this mod decided is kept here.
 
 - [cartographer/contracts.md](cartographer/contracts.md) — What PD2R ships on Cartographer, and its id and file rules
-- [cartographer/core-events-lanes.md](cartographer/core-events-lanes.md) — core-events lane allowlist (enforced by a test)
 
 ## Features and rule lists
 

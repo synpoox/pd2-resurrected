@@ -10,7 +10,7 @@
 // (event_portals.cpp's listener) lets the second use drop 2-3 Catalyst Shards. The Spire of Darkness places its altar
 // and three fog objects; once used, the rooms send shadow waves until the progress passes 90, which kills them. Void /
 // Tomb opens a portal pair to the Bitter Depths with a marker. The invaders (MS10) place up to three portals; the
-// portal's think and the invaders' drops are lane-c/invaders.cpp's. Horazon's death is event_portals.cpp's. The altars' use is PD2's operate 79 (0x103aa460) in D2R's free
+// portal's think and the invaders' drops are maps/invaders.cpp's. Horazon's death is event_portals.cpp's. The altars' use is PD2's operate 79 (0x103aa460) in D2R's free
 // operate slot 35 (pd2_port.FUNCS), which also serves the Temple's Sacrifice Altar (Lucion's Desecration), written into D2R's operate table as map_open.cpp writes slot 60.
 //
 // Each spawn sends the event's notify string to every player as a red chat line (#336; PD2 0x1037dbc0, packet 0x26
@@ -82,7 +82,7 @@ enum : int32_t {
 };
 // The events' monsters, PD2 922 nihlathakMap, 921 darkwandererMap and 945 treasurefallenMap in port monstats ids
 constexpr int32_t MendelnMonster = 939, DarkWandererMonster = 938, TreasureFallenMonster = 962;
-constexpr int32_t InvaderPortalMonster = 1199;  // monstats InvaderPortal (monai Overseer): the invaders' portal (lane-c/invaders.cpp)
+constexpr int32_t InvaderPortalMonster = 1199;  // monstats InvaderPortal (monai Overseer): the invaders' portal (maps/invaders.cpp)
 constexpr int32_t GheedMonster = 147, HorazonMonster = 936;  // PD2 919 summonerMap
 constexpr int32_t EventMarker = 597;  // PD2 object 594 empty_eventmarker: invisible, AutoMap 1499
 constexpr int32_t ShardAltar = 614;   // PD2 611 ForceShardAltar

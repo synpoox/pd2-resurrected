@@ -1,6 +1,6 @@
-// The parts registry (#943; the part type and its install and status code are plugin-common's parts.h): each lane registers its parts and status counters from its own folder (lane-a .. lane-d,
+// The parts registry (#943; the part type and its install and status code are plugin-common's parts.h): each feature folder registers its parts and status counters (maps/, ubers/, generic/,
 // parts_shared.cpp) with a PartReg / CountersReg object; plugin.cpp installs them sorted by order, which is the install
-// sequence the log shows. Orders are one global sequence (docs/cartographer/core-events-lanes.md): a new part takes an unused number.
+// sequence the log shows. Orders are one global sequence: a new part takes an unused number.
 #pragma once
 
 #include "parts.h"  // plugin-common: parts::Part, InstallAll, WriteStatus

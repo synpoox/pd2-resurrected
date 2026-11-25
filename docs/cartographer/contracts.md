@@ -31,11 +31,11 @@ None of it reads PD2 map items, affixes or recipes. PD2's map rows, code and hoo
 
 ## Id and file rules
 
-`tools/tests/test_core_events_lanes.py` enforces the core-events plugin allowlist ([core-events-lanes.md](core-events-lanes.md)); `tools/tests/test_cartographer_base.py` checks the data base. Shared files (`merge/ids-*.tsv`, the committed `misc.txt`, `lvlmaze.txt`, `cartographer.txt`, `plugin/core-events/part_registry.cpp`, this file) change one PR at a time.
+core-events sources live in `plugin/core-events/maps/` (map events and the Maps tab), `ubers/` (uber fights) and `generic/` (the cube part); `tools/tests/test_cartographer_base.py` checks the data base. Shared files (`merge/ids-*.tsv`, the committed `misc.txt`, `lvlmaze.txt`, `cartographer.txt`, `plugin/core-events/part_registry.cpp`, this file) change one PR at a time.
 
-- Appending new affix ids to `merge/ids-magic*.tsv` and `ids-rare*.tsv`: lane A, one PR at a time, always after the current maximum; lanes B, C and D ask lane A (the shared serial role during a checkpoint) instead of appending, so #948 and #949 cannot collide.
-- Uber-key recipes and uber tiers: recipe and tier behavior is lane B (core-rules); the uber-only access, rewards and fights that use them are lane D.
-- Lane A's removal of PD2 map stats must keep `map_force_event` (553): it is the Catalyst marker. The marker needs the func 24 property `map-force-event-l` (#953).
+- Appending new affix ids to `merge/ids-magic*.tsv` and `ids-rare*.tsv`: one PR at a time, always after the current maximum, so #948 and #949 cannot collide.
+- Uber-key recipes and uber tiers: recipe and tier behavior is core-rules and `generic/`; the uber-only access, rewards and fights that use them are `ubers/`.
+- Removing PD2 map stats must keep `map_force_event` (553): it is the Catalyst marker. The marker needs the func 24 property `map-force-event-l` (#953).
 - Native event progress divides by the built level's real room count, not PD2's 200 (#956).
 
 ## Known caveats

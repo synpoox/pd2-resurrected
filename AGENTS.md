@@ -52,6 +52,8 @@ Toolkit paths below are relative to the toolkit checkout (`py -3 tools/toolkit_p
 
 - New core-rules rule = one file `plugin/core-rules/skill/<rule>.cpp`: define `Install<Rule>(context, report, reportSize)`,
   end with `PD2R_RULE(Install<Rule>, <next free multiple of 10>)`. No other file changes.
+- Item rules live in `plugin/core-rules/item/` and missile functions in `plugin/core-rules/missile/`; each folder's `shared.h`
+  holds the names its files share.
 - Do not add to `plugin/core-rules/skill_functions.cpp` (360 KB). Never read it whole:
   `grep -n` for the function, then read only that range.
 - Use the PluginSDK (toolkit `third_party/PluginSDK`, `include/D2RLPlugin/`) before any native hook.

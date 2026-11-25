@@ -147,7 +147,7 @@ state.
 
 ## Implementation spec
 
-### pd2r plugin (`plugin/core-events/lane-c/wanderer.cpp`)
+### pd2r plugin (`plugin/core-events/maps/wanderer.cpp`)
 
 Gap 1. No new engine address is needed: every call below already exists as a signature entry or SDK service in main.
 
