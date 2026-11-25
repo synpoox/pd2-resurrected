@@ -1,0 +1,1 @@
+- Installs and test slots now get the pinned Cartographer 0.1.2 release. (#2196)

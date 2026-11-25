@@ -41,7 +41,7 @@ python <toolkit>/release/companions.py install --game DIR
 `companions/manifest.json` (checked by SHA-256, never committed; an entry pins a GitHub release asset (`repo`, `tag`),
 a file at a repo commit (`commit`), or a direct download link (`url`, e.g. a D2RLoader Hub release)). `install` is
 `modkit install` plus the companions, our `companions/filter.json`, plugin settings
-(`companions/config/`), Cartographer's `signatures.txt` (manifest `project_files`), and the vanilla
+(`companions/config/`), and the vanilla
 item tables the loot filter needs when the build doesn't ship them (manifest `filter_tables`). The tool tests find modkit through the same finder (or on `PYTHONPATH`).
 
 ### Importing a new PD2 version

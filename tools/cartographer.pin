@@ -1,2 +1,0 @@
-# Minimum d2r-tools commit for local Cartographer installs, and exact source for release builds. Includes the map Boss fix: SpawnMonster found when Bind and Summon hooks it (d2r-tools#581).
-e921faaa772ae30a976726ad10551a1e735f40d4
