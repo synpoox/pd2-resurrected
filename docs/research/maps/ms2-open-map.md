@@ -15,29 +15,21 @@ Resolves the D2R side of [MS2](https://github.com/synpoox/pd2-resurrected/issues
   [UB2](https://github.com/synpoox/pd2-resurrected/issues/227) opens the keys, PvP is cut, and PD2 refuses the Monastery map's level 152.
 - The other maps and the two map orbs (`upmp`, `fort`, used by [MS5](https://github.com/synpoox/pd2-resurrected/issues/220)'s recipes) drop again.
 
-## D2R's item spells (`D2Game\src\Skills\SkillItem.cpp`)
+## D2R's item spells
 
-The server's use-item handler `0x4f40c0` calls the check dispatcher `0x5817f0` (game, player, item, target) -> bool,
-then the use dispatcher `0x581680`. Both look up the item's spell entry (`0x300ae0`); the entry holds handler indexes
-(check below 11, use below 16), so entry 16 runs nothing. After the use, the caller frees the item when the entry's
-flag is 0, as entry 16's is: a used map is gone.
+The generic D2R facts (the use-item handler and its check/use dispatchers, spell entry 16 running nothing and the item
+being freed, the cube "Red Portal" output with its per-game counter, the quest-record test) are in the toolkit:
+`knowledge/d2r-93847-addresses.md`, *Maps, regions, portals and item spells (build 93847)*.
 
-core-maps hooks both dispatchers. An item whose record (`0x314110`) has pSpell (`+0x94`) 16 never reaches D2R's code:
+What core-maps decides on top of them (PD2's gates, kept here):
 
-- **Check:** the level is `len` (`+0xb0`) through D2R's item calc `0x3b4880` (dataFlag, player, item, calc), as the
-  timed potion handler `0x57ecb0` evaluates it. Then PD2's gates: Hell (game `+0x104`), character level 80+ (stat 12),
-  Rite of Passage done in Hell, standing in Harrogath (109), and no opening yet in this game. Last, a free spot for the
-  portal: the use's own search (the player's xy from `0x34a040`, then `0x517f90`), so a map is never used up for no
-  portal (PD2 places it unchecked). A refusal sends client message 0x15 and keeps the map. D2R's handler sends nothing
-  on a false check (it only logs a telemetry event), so the player sees one message.
-- **Use:** D2R's cube "Red Portal" output `0x5da800` (game, player, key, level, max). It needs town, finds a free spot,
-  makes object 60 to the level through the portal maker `0x432ce0` (with its last argument 1, which lifts the town
-  portal's level whitelist), and adds 1 to the game counter of `key` (`0x5d88b0` on game `+0x1aac8`). With max 1 it
-  refuses once the counter is 1: core-maps' key `'MAPS'` is the one-per-game gate, which [UB2](https://github.com/synpoox/pd2-resurrected/issues/227)'s uber areas share.
-
-**Quest record.** `0x325c50` (record, quest, bit) tests a quest bit (`D2Common\src\QuestRecord\QuestRecord.cpp`). The
-item-use quest checks in `0x4734f0` read a player's record for a difficulty at player data (`0x34b240`) `+0x40 +
-difficulty * 8`. Rite of Passage is quest 39; bit 0 is "done".
+- **Check:** an item whose record has pSpell 16 never reaches D2R's code. The level is `len` through D2R's item calc.
+  Then PD2's gates: Hell, character level 80+, Rite of Passage done in Hell (quest 39, bit 0), standing in Harrogath,
+  and no opening yet in this game. Last, a free spot for the portal, so a map is never used up for no portal (PD2
+  places it unchecked). A refusal sends client message 0x15 and keeps the map; D2R's handler sends nothing on a false
+  check, so the player sees one message.
+- **Use:** D2R's cube "Red Portal" output makes the portal to the level, and its game counter for the key `'MAPS'` with
+  max 1 is the one-per-game gate, which [UB2](https://github.com/synpoox/pd2-resurrected/issues/227)'s uber areas share.
 
 ## The core-rules lists
 

@@ -6,58 +6,20 @@ Sources read 2026-11-18. Web pages are cited by URL; repo files by path. Nothing
 
 ## 1. TCP/IP in D2R 3.x
 
-**Blizzard's game has none.** Blizzard dropped TCP/IP before launch: its beta FAQ said TCP/IP "will not be available in
-the upcoming Beta or the final game" (August 2021, reported by
-https://www.gameinformer.com/2021/08/11/diablo-2-resurrected-open-beta-details-revealed-quietly-removes-peer-to-peer-multiplayer),
-and a community-team post in September 2021 gave the reason as security
-(https://www.diablofans.com/news/49602-diablo-ii-resurrected-console-lobbies-tcp-ip, quoting the Blizzard forum post,
-whose own URL no longer loads). No later patch put it back (unconfirmed beyond the toolkit's own review,
-`d2rAI-toolkit/docs/distribution.md`, *Play modes and policy*).
+Blizzard's game has none (dropped before launch, 2021; no later patch put it back). D2RLoader adds it: an offline
+character, *Multiplayer* beside *Play*, Public, Unlisted/Direct or LAN Only hosting, TCP 4000 by default, a host check
+that loader version, mod, Shared plugins, tables and save format match, and plugin roles (`Client`, `Server`, `Shared`)
+on each side. The generic facts are in the toolkit: `knowledge/d2rloader.md`, *TCP/IP multiplayer through D2RLoader
+(1.3.x)*, and `knowledge/d2rloader-capabilities.md`, *Multiplayer implications*.
 
-**D2RLoader adds it back.** Its TCP/IP page (https://d2rloader.net/tcp-ip.html) and changelog
-(https://d2rloader.net/changelog.html) say:
+Kept here for the decision:
 
-- Turn on *Show TCP/IP Button* (Settings, General), pick an **offline character**, then *Multiplayer* beside *Play*
-  (https://d2rloader.net/docs.html). Battle.net characters are not used.
-- Since 1.2.0-beta (2026-08-30) a Multiplayer screen with *Browse Games* and *Host Game*. Three host modes: **Public**
-  (listed in the browser, filter by mod, difficulty, Terrorized), **Unlisted/Direct** (join by Game ID or address),
-  **LAN Only** (the old behaviour, join by Direct Join). Listed games stay registered by heartbeats, so the browser is a
-  D2RLoader-run listing service; the game itself still runs on the host's PC.
-- **Port TCP 4000** by default, changeable with `game_port`. The loader tries automatic router setup (with
-  NAT-PMP since 1.2.1) and shows a *Hosting status* that says whether outside players can reach the game. Some routers
-  still need a manual port forward; the page gives no steps. Hosting uses IPv4 only (1.2.1-beta).
-- **What must match** (checked by the host before a client enters): loader version, the active mod, Shared plugins,
-  the `ItemStatCost` schema (1.1.0), memory patches, map layout, movement, collision and animation timing data
-  (1.2.1), and the save format (1.3.0). The check "does not make different mods compatible". Clients older than
-  1.2.1-beta cannot join a 1.2.1 host.
-- With mods: the mod is the one started with `-mod <name> -txt` (Reimagined's launcher does exactly this, section 3).
-  The TCP/IP button was hidden for mods that ship a `d2rloader.ini` before alpha-0.4.0's `force_tcpip` option.
-
-**Plugins on each client** (toolkit SDK, `d2rAI-toolkit/third_party/PluginSDK/README.md`, lines 186-203 and 99-120):
-
-- Every plugin sets one role: `Client` (UI, input), `Server` (gameplay rules and saves) or `Shared` (both). "The host
-  performs both roles."
-- `Shared` plugins must match host and client by id, version, plugin ABI, scope and compatibility flags. Client-only
-  plugins are not checked and not recorded in the save.
-- A Shared plugin can list up to 64 config paths under `[d2rl] match`; those values must be equal on both sides.
-- Only the local game or the TCP/IP host may change items; a client sends a plugin message (<= 224 bytes) to the host.
-  A TCP/IP client has no game thread (`d2rAI-toolkit/knowledge/d2rloader-capabilities.md`, *Multiplayer implications*).
-- The plugin network service does not exist on Battle.net (same file).
-
-**Saves.** TCP/IP uses the player's own local offline characters (https://d2rloader.net/tcp-ip.html). Server and Shared
-plugins are written into the character's plugin history; the loader's extended save format is checked in multiplayer
-since 1.3.0 (`d2rAI-toolkit/knowledge/saves.md`, *Loader updates and extended saves*). Saves are on each player's disk,
-so nothing stops an edited character joining (no source claims otherwise).
-
-**Limits and VPNs.**
-
-- Player count per TCP/IP game: **unconfirmed**. No D2RLoader page states it (the toolkit lists it as open,
-  `knowledge/d2rloader-capabilities.md`, *Open*).
+- Player count per TCP/IP game: **unconfirmed** (no D2RLoader page states it).
 - VPN tools are not mentioned by D2RLoader. Reimagined's wiki keeps a *legacy* Radmin VPN page for players whose
   firewall or router blocks the direct route
   (https://github.com/D2R-Reimagined/wiki-content/blob/main/Installation/VPN.md). ZeroTier or Tailscale would work the
   same way (a virtual LAN plus LAN Only or Direct Join) but no source tested them: **unconfirmed**.
-- Windows only for the loader (`d2rAI-toolkit/docs/distribution.md`); consoles: no route.
+- Saves are on each player's disk, so nothing stops an edited character joining (no source claims otherwise).
 
 ## 2. Hosted servers
 

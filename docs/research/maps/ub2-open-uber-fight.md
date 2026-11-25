@@ -28,17 +28,15 @@ The map spell's check and use hooks handle the keys too. A key's `len` in the ub
 
 ### D2R functions
 
-- **Warp:** `0x488180` (game, player, level, 0). In the same act it finds the level's arrival spot through
-  `0x2ef8b0` (the level's warp search in `D2Common\src\Drlg\DrlgWarp.cpp`) and teleports there with `0x491ca0`; else
-  it changes act. D2R's debug "Warping to level..." handler `0x402820` calls it the same way. PD2 instead places an
-  invisible portal object (587) and runs each player through its portal-entry code.
-- **Players:** the game's clients are a list at game `+0x138`, each client's next at `+0x628` (`0x484d90` walks it to
-  find a client by id). `0x484c90` (client, 0) is the client's player.
-- **Pets:** PD2's `0x1037fb10` (flag 0) walks every pet type but 3, `golem`, and kills the hireling (type 7). core-maps
-  walks D2R's pet table (`PetEntry`, `FirstPet`) the same way and removes each pet with `RemovePet`, which kills it.
-  PD2 removes the summons without a death. The merged pettype.txt has 31 rows.
-- **States:** PD2's `0x1037f4a0` with flag 1. Each state that has a stat list is turned off, and the list is detached
-  and freed, as D2R's `RemoveSkillState` does per state.
+The addresses (warp, client list and player, pet table, state removal) are in the toolkit
+`knowledge/d2r-93847-addresses.md`, *Maps, regions, portals and item spells (build 93847)*. PD2 differences kept here:
+
+- **Warp:** PD2 places an invisible portal object (587) and runs each player through its portal-entry code; core-maps
+  warps with D2R's own warp function instead.
+- **Pets:** PD2 walks every pet type but 3, `golem`, and kills the hireling (type 7), without a death. core-maps walks
+  D2R's pet table the same way and removes each pet with `RemovePet`, which kills it. The merged pettype.txt has 31 rows.
+- **States:** PD2 turns off each state that has a stat list, then detaches and frees the list, as D2R's
+  `RemoveSkillState` does per state.
 
 ## Re-entry portals and the area rules on entry ([#346](https://github.com/synpoox/pd2-resurrected/issues/346))
 
@@ -57,19 +55,11 @@ The map spell's check and use hooks handle the keys too. A key's `len` in the ub
 
 ### D2R functions
 
-- **Operate table** `0x23a51c0`: 75 slots of `int fn(args*)`, args = {game, object, player, seed, class id}, indexed
-  by objects.txt `OperateFn` (record `+0x15e`). The dispatcher `0x592c40` skips a null slot, so with core-maps off a
-  grey portal does nothing. D2R's portal operate 15 (`0x58f680`) moves the player next to the linked partner portal,
-  and fails without one: PD2's grey portals have no partner, so the slot-60 function warps with `0x488180`.
-- **Making a portal:** D2R's portal maker `0x432ce0` spawns the object with `0x490410` (2, row, x, y, game, room, 1, 1,
-  0, 0) in the room `0x38dfb0` finds for the spot, sets mode 1 and adds event 1 (the opening) after the row's
-  `+0x9c >> 8` frames. Then `0x435dd0` makes a linked return portal in the target level. core-maps does the first part
-  only and sets the destination with `0x34e9d0`.
-- **Removing an object:** as operate 15 removes a used town portal: `0x2ef4d0` (room, 2, unit id) tells the room's
-  clients, `0x48faa0` (game, unit) frees the unit, `0x2f0530` (room) marks the room changed.
-- **Rooms and units:** `0x2efde0` gives a room and its neighbours, a room's units start at `+0xa8` and go on at unit
-  `+0x160` (as `0x593630` walks them). The game's monsters are 128 lists at game `+0x2630`, by unit id & 0x7f, the next
-  at `+0x158` (`0x48fe80`, `0x4925b0`).
+The operate table, the portal maker, object removal and the room and unit lists are in the toolkit
+`knowledge/d2r-93847-addresses.md`, *Maps, regions, portals and item spells (build 93847)*. PD2 difference kept here:
+with core-maps off a grey portal does nothing (a null operate slot is skipped), and PD2's grey portals have no partner
+portal, so the slot-60 function warps instead of using D2R's portal operate 15. core-maps makes the first part of D2R's
+portal maker only and sets the destination itself.
 
 ## Not yet (later parts of [#227](https://github.com/synpoox/pd2-resurrected/issues/227))
 

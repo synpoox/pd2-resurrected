@@ -1,6 +1,6 @@
 # core-events lane allowlist (#943)
 
-Exact file allowlist of `plugin/core-events/` per lane of the cartographer migration (`docs/cartographer/migration.md`).
+Exact file allowlist of `plugin/core-events/` per lane. The lanes come from the finished Cartographer migration (#942, in git history); the allowlist is still enforced.
 A ticket in a lane edits only its lane's files. `tools/tests/test_core_events_lanes.py` fails when a source file is in no
 lane, in two, or listed here but missing. Lane **S** is Shared: any edit there is a checkpoint reported in the PR.
 

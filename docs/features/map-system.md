@@ -10,7 +10,7 @@ work items are placed on [roadmap.md](../roadmap.md) by [#210](https://github.co
 
 ## The design now (#1303)
 
-[#942](https://github.com/synpoox/pd2-resurrected/issues/942) (merged in [#1058](https://github.com/synpoox/pd2-resurrected/pull/1058)) cut PD2's map items, map stats, tiers and the generated PD2-only map areas: maps are native Cartographer maps (`m01`-`m25`), and `core-events` keeps the map events and uber fights ([ADR 0006](../adr/0006-cartographer-and-core-events.md), [cartographer-migration.md](../cartographer/migration.md)). The owner reversed part of that cut on 2026-11-17 ([#1303](https://github.com/synpoox/pd2-resurrected/issues/1303)): the Cartographer maps get PD2's map progression back, with table edits wherever tables can express it. The sections below `## Scope` describe the older PD2-parity plan; read them for what PD2 does, not for what the port builds.
+[#942](https://github.com/synpoox/pd2-resurrected/issues/942) (merged in [#1058](https://github.com/synpoox/pd2-resurrected/pull/1058)) cut PD2's map items, map stats, tiers and the generated PD2-only map areas: maps are native Cartographer maps (`m01`-`m25`), and `core-events` keeps the map events and uber fights ([ADR 0006](../adr/0006-cartographer-and-core-events.md), the migration plan, in git history). The owner reversed part of that cut on 2026-11-17 ([#1303](https://github.com/synpoox/pd2-resurrected/issues/1303)): the Cartographer maps get PD2's map progression back, with table edits wherever tables can express it. The sections below `## Scope` describe the older PD2-parity plan; read them for what PD2 does, not for what the port builds.
 
 ### Tiers ([#1304](https://github.com/synpoox/pd2-resurrected/issues/1304))
 

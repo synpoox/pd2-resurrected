@@ -1,8 +1,8 @@
-# Cartographer candidate: frozen contracts (#946, epic #942)
+# Cartographer in PD2R: data base and contracts
 
-The native-map base every Wave 1 lane builds on. A change to anything below is a shared change: it needs a checkpoint.
+What PD2R adds on top of Cartographer, a pinned companion (0.1.2, #2197). The generic parts (map item shape, one map per game, how to check a map catalogue in game) are Cartographer's: [d2r-tools `docs/cartographer`](https://github.com/synpoox/d2r-tools/tree/main/docs/cartographer) ([first-map](https://github.com/synpoox/d2r-tools/blob/main/docs/cartographer/first-map.md), [testing](https://github.com/synpoox/d2r-tools/blob/main/docs/cartographer/testing.md)). A change to anything below is a shared change: it needs a checkpoint.
 
-## What ticket 4 ships
+## What PD2R ships
 
 | Piece | Where | Value |
 |---|---|---|
@@ -23,30 +23,20 @@ None of it reads PD2 map items, affixes or recipes. PD2's map rows, code and hoo
 ## Frozen consumer contracts
 
 - **Map icons**: the 60 owner-supplied icons are in `files/data/hd/global/ui/items/misc/pd2/cartoicon_<white|gold|red>_NN(.lowend).sprite` (white 01-20, gold 21-40, red 41-60; 98x98 HD, 49x49 lowend) and as legacy graphics `files/data/global/items/cartoicon_<colour>_NN.dc6` (28x28, units palette, as `cartoicon_white_01.dc6`). A map's misc `invfile` is `cartoicon_<colour>_NN`. A map's `items.json` asset is `pd2/cartoicon_<colour>_NN`, and it needs a copy of `hd/items/misc/pd2/cartoicon_white_01.json` under the same name for its ground model. Maps m01-m25 use 25 of them; the rest are for future maps. The 40 retained PD2 map-item icons (`icemap`, `invmap_*`, ...) were removed (#1587); Imperial Palace Map (unique jewel) uses `cartoicon_red_44`, the other map uniques the stock jewel icon.
-- **Map item**: misc type `t1m`/`t2m`/`t3m` (children of `cmap`), `pSpell 16`, `belt 0`, `useable 1`, `spellicon -1`, `compactsave 0`. A lane adds a map by adding a `maps.txt` row and a misc row (clone `m01`).
-- **Opening**: Harrogath, Hell, red portal, one map per game (Cartographer's rule). No lane changes it.
+- **Map item**: Cartographer's shape ([first-map](https://github.com/synpoox/d2r-tools/blob/main/docs/cartographer/first-map.md)); in PD2R misc type `t1m`/`t2m`/`t3m` (children of `cmap`). A map is a `maps.txt` row plus a misc row (clone `m01`).
+- **Opening**: Harrogath, Hell, red portal; one map per game is Cartographer's rule.
 - **Event link**: [event-link.md](../features/event-link.md) (#944). Metadata on layered stats only.
 - **Reserved ids**: levels 138-144 taken, 145-151 reserved for the private areas below (#947; 152 and up free; never build uber arena replacements: vanilla mini-ubers and D2R Tristram arena with PD2 bosses); stats 564-649 taken, 650 up free (none reserved: the fights keep state in game counters); item type 245 taken; magic affix groups 9201-9205 taken.
 - **Gapless `+` lines**: new ids run on after the current maximum in the `merge/ids-*.tsv` file, one lane at a time.
 
-## Four-lane base and file ownership
+## Id and file rules
 
-| Lane | Owns |
-|---|---|
-| A native maps | `.../cartographer/maps.txt`, `slots.txt`, new `cmap` misc rows, native affix rows and the acquisition pool in its own patch files |
-| B general rules | cube, Almanac, Catalyst recipe: `plugin/core-events/lane-b/`, its own patch files |
-| C map events | `plugin/core-events/lane-c/`, `mapevents.txt` |
-| D ubers | `plugin/core-events/lane-d/` and uber data patches |
-| Shared (serial) | `merge/ids-*.tsv` ids, the committed `misc.txt`, `lvlmaze.txt`, `cartographer.txt`, `plugin/core-events/part_registry.cpp` registration, this file |
-
-`tools/tests/test_core_events_lanes.py` enforces the plugin allowlist.
+`tools/tests/test_core_events_lanes.py` enforces the core-events plugin allowlist ([core-events-lanes.md](core-events-lanes.md)); `tools/tests/test_cartographer_base.py` checks the data base. Shared files (`merge/ids-*.tsv`, the committed `misc.txt`, `lvlmaze.txt`, `cartographer.txt`, `plugin/core-events/part_registry.cpp`, this file) change one PR at a time.
 
 - Appending new affix ids to `merge/ids-magic*.tsv` and `ids-rare*.tsv`: lane A, one PR at a time, always after the current maximum; lanes B, C and D ask lane A (the shared serial role during a checkpoint) instead of appending, so #948 and #949 cannot collide.
 - Uber-key recipes and uber tiers: recipe and tier behavior is lane B (core-rules); the uber-only access, rewards and fights that use them are lane D.
 - Lane A's removal of PD2 map stats must keep `map_force_event` (553): it is the Catalyst marker. The marker needs the func 24 property `map-force-event-l` (#953).
 - Native event progress divides by the built level's real room count, not PD2's 200 (#956).
-
-`tools/tests/test_cartographer_base.py` checks the data base.
 
 ## Known caveats
 
@@ -76,17 +66,6 @@ Reserved levels (appended in `merge/ids-levels.tsv`, so no later PR appends ther
 | 151 | `bitterdepths` | C #960 | 215 (built: Cartographer's Mesa arena from `arenas.txt`, #960; its monsters are the row's `mon*` columns from PD2's Tomb Event Map 198, no spots) |
 
 No bridge is justified (Horazon's #959 needs a second Cartographer map, which a fixed D2R level cannot be: d2r-tools#485; next free id 152). Frozen without a replacement arena: `miniuber1-3` = D2R levels 133-135 (vanilla, `miniubers.cpp`, bindings only), and `tristram` = D2R's Uber Tristram arena 136 with PD2's bosses (`Source::D2RTristram`, target 136; Tristram is now level 136 with no places (#957)). `harrogath` (109) holds the Blood Fountain and the three grey re-entry portals.
-
-Exact file ownership (a lane edits only these for its encounter; lane S owns everything else listed above):
-
-| Encounter | Placement data | Fight modules |
-|---|---|---|
-| Dclone (D #958) | `plugin/placements/dclone.cpp` | `lane-d/*`, `dclone_ai.*` |
-| Rathma/Mendeln (D #961) | `plugin/placements/rathma.cpp` | `lane-d/*`, `rathma*.{cpp,h}` |
-| Lucion, Temple (D #962) | `plugin/placements/lucion.cpp` | `lane-d/*`, `lucion*.{cpp,h}` |
-| Mini-ubers, Tristram (D #955, #957) | `plugin/placements/miniubers.cpp` | `lane-d/*`, `uber_tristram.*`, `prime_minions.*` |
-| Bitter Depths (C #960) | `plugin/placements/bitterdepths.cpp` | `lane-c/*`, `map_events.*` |
-| Access, re-entry (D #951) | `plugin/placements/uber_entry.cpp` | `uber_entry.*`, `uber_scaling.*` |
 
 The placement files need no generated output: nothing in `plugin/` reads `generated/`, `out/` or any DT1/DS1/converter product, and `tools/tests/test_placements.py` checks the files against `merge/ids-levels.tsv` and every consumer lookup.
 

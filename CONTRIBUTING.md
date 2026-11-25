@@ -79,7 +79,7 @@ section and the deviation list, and `SHA256SUMS`. It needs 7-Zip, and a `### <ve
 
 ```bash
 python tools/release_precheck.py   # refuses an out/data with the retired converter's output
-python <toolkit>/release/stage.py --game DIR --extra-plugin "<cartographer.dll>@d2r-tools <commit>"
+python <toolkit>/release/stage.py --game DIR   # Cartographer ships as a pinned companion (companions/manifest.json)
 ```
 
 The `release` workflow (Actions > release > Run workflow) runs the whole build and this script, then publishes a GitHub
