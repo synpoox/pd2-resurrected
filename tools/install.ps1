@@ -143,7 +143,7 @@ if ($Data) {
     }
 }
 
-if ($companionsInstalled) {
+if ($companionsInstalled -and -not $KeepExtras) {
     # Companions the manifest dropped but the toolkit's recorded-file prune never knew (#1920): move, never delete.
     . (Join-Path $PSScriptRoot "stray_companions.ps1")
     Move-UnlistedCompanions -Plugins $plugins -Manifest (Join-Path $Data "companions\manifest.json") `
