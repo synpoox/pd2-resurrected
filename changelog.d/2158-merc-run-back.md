@@ -1,1 +1,1 @@
-- Mercenaries and summons run back to you instead of walking, as in PD2, so they no longer fall far behind (#2158).
+- Run mercenaries and pets back to you when they fall behind, as in PD2 (#2158).

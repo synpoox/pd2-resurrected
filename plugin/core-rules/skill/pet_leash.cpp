@@ -90,7 +90,7 @@ auto PreThink(Game* game, Unit* unit, uint8_t* tick) noexcept -> int32_t {
 	int64_t d2 = -1;
 	int32_t move = leash::MoveNone;
 	bool fighting = false;
-	const uint64_t moved = leash::Leash(g_leash, game, unit, nullptr, owner, WalkRadius, leash::TickModes(tick), g_moves, &d2, &move, &fighting);
+	const uint64_t moved = leash::Leash(g_leash, game, unit, nullptr, owner, WalkRadius, At<uint32_t>(monstats2, Mon2Modes), g_moves, &d2, &move, &fighting);
 	return moved != 0 ? 1 : 0;
 }
 
