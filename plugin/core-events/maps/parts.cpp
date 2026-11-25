@@ -1,5 +1,5 @@
-// Lane C map events: the parts and status counters this lane installs, registered by order (parts.h; #943).
-// A lane adds its parts here, in its own folder, and never edits plugin.cpp. Orders are one global sequence.
+// Map events: the parts and status counters this lane installs, registered by order (parts.h; #943).
+// New parts register here or in a sibling file of this folder and never edit plugin.cpp. Orders are one global sequence.
 #include "part_registry.h"
 
 #include "anya_maps.h"

@@ -1,4 +1,4 @@
-"""Lane B's generic helpers (tc_roll, corruption_roll, cube_ops, lane-b/) include no map-lane header (#949)."""
+"""Lane B's generic helpers (tc_roll, corruption_roll, cube_ops, generic/) include no map-lane header (#949)."""
 import re
 import unittest
 from pathlib import Path
@@ -12,7 +12,7 @@ ALLOWED = {"tc_roll.h", "corruption_roll.h", "cube_ops.h", "pd2_engine.h", "log.
 
 class LaneBSeparation(unittest.TestCase):
     def test_no_map_header_included(self):
-        files = [SRC / n for n in LANE_B] + sorted((SRC / "lane-b").glob("*"))
+        files = [SRC / n for n in LANE_B] + sorted((SRC / "generic").glob("*"))
         for f in files:
             for inc in re.findall(r'#include "([^"]+)"', f.read_text(encoding="utf-8")):
                 self.assertIn(inc, ALLOWED, f"{f.name} includes {inc}")

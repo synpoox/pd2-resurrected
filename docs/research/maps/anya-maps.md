@@ -1,6 +1,6 @@
 # Anya's Hell maps (#1323)
 
-PD2 keeps Malah's scroll and Anya's own rare class item, and in Hell only also puts 3 random T1 maps (item level 99, normal quality) in the player's inventory (on the ground when full). Implemented in `plugin/core-events/lane-c/anya_maps.cpp`, part `anyamaps`.
+PD2 keeps Malah's scroll and Anya's own rare class item, and in Hell only also puts 3 random T1 maps (item level 99, normal quality) in the player's inventory (on the ground when full). Implemented in `plugin/core-events/maps/anya_maps.cpp`, part `anyamaps`.
 
 **Hook:** D2R 93847 `0x546cc0` (A5Q3AnyaGiftExecute, the deferred event queued by the a5q3 handler `0x54d610`). The detour runs the original, then if `game+0x104 == 2` it finds the player (FindUnit; closure `+8` guid, `+0x10` game) and calls QuestCreateItem 3 times with a `t1m` code, item level 99, quality 2, drop flag 1. Each map is picked uniformly from the items rows whose type (items record `+0x12e`, int16 itemtypes row) is the `t1m` itemtypes row; both come from the loaded tables, never a fixed list. Quest 0x25 bit 10 (set before the event is queued) makes it fire once per character per difficulty.
 

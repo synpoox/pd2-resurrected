@@ -139,9 +139,9 @@ modkit_add_plugin(core-events VERSION "${CORE_EVENTS_VERSION}" SOURCES
 	core-events/test_item.cpp
 	core-events/plugin.rc
 )
-# Each lane registers its parts from its own folder (core-events/lane-a .. lane-d, #943): new files there need no edit here.
-file(GLOB CORE_EVENTS_LANE_SOURCES CONFIGURE_DEPENDS core-events/lane-*/*.cpp)
-target_sources(plugin_core_events PRIVATE ${CORE_EVENTS_LANE_SOURCES})
+# Feature folders (maps/, ubers/, generic/) register their parts from there (#943): new files there need no edit here.
+file(GLOB CORE_EVENTS_FOLDER_SOURCES CONFIGURE_DEPENDS core-events/maps/*.cpp core-events/ubers/*.cpp core-events/generic/*.cpp)
+target_sources(plugin_core_events PRIVATE ${CORE_EVENTS_FOLDER_SOURCES})
 target_sources(plugin_core_events PRIVATE ${CORE_PLACEMENT_SOURCES})
 target_include_directories(plugin_core_events PRIVATE core-events)
 target_link_libraries(plugin_core_events PRIVATE core_common)
