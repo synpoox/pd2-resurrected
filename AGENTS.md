@@ -76,6 +76,8 @@ Toolkit paths below are relative to the toolkit checkout (`py -3 tools/toolkit_p
 Pre-approved: run them without asking. Only when a check is due (see Merge gate), run the toolkit `d2r-in-game-testing`
 skill plus `docs/agents/game-check.md` (this repo's differences). Grep `docs/console-commands.md` and toolkit
 `knowledge/cheat-commands.md` for the command you need; don't read them whole.
+Toolkit `knowledge/cheat-commands-all.md` holds commands the slim list lacks: never read it whole,
+grep it for the one command needed and read only those lines.
 
 Fixed rules:
 - Slots: Slot2-5 only. Name the slot every time; never `lock any`.
