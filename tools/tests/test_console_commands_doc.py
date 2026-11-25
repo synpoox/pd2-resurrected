@@ -29,8 +29,9 @@ def sub_command_words():
 class ConsoleCommandsDoc(unittest.TestCase):
     def test_every_plugin_command_is_documented(self):
         found = commands()
-        self.assertEqual(found, ["core-events", "core-rules", "core-ui"], "a plugin registers a command: update this test")
+        self.assertEqual(found, ["core-events", "core-rules", "core-ui", "settings-host"], "a plugin registers a command: update this test")
         for name in found:
+            name = {"settings-host": "aa-settings-host"}.get(name, name)  # the plugin id, not the dir
             self.assertIn(f"`{name}", DOC, f"console command {name} is not in docs/console-commands.md")
 
     def test_every_core_events_word_is_documented(self):
