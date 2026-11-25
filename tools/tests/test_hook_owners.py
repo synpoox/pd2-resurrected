@@ -69,7 +69,7 @@ class HookOwners(unittest.TestCase):
 
     def test_almanac_is_a_use_slot_write_not_a_hook_or_a_listener(self):
         # A right-click raises no ItemInteraction event (Slot4, #975) and Cartographer owns both dispatchers, so the
-        # Almanac is a write of item spell use slot 14, which entry 18 names (item_rules.cpp)
+        # Almanac is a write of item spell use slot 14, which entry 18 names (item/books.cpp)
         self.assertFalse((PLUGIN / "core-events" / "almanac.cpp").exists())
         text = (PLUGIN / "core-rules" / "almanac.cpp").read_text(encoding="utf-8")
         self.assertIn("PatchWriteU64(ItemSpellUseTable", text)
@@ -81,7 +81,7 @@ class HookOwners(unittest.TestCase):
     def test_almanac_use_slot_matches_entry_18_and_stays_in_inventory_only(self):
         engine = (PLUGIN / "common" / "pd2_engine.h").read_text(encoding="utf-8")
         self.assertIn("AlmanacUseSlot = 14", engine)
-        rules = (PLUGIN / "core-rules" / "item_rules.cpp").read_text(encoding="utf-8")
+        rules = (PLUGIN / "core-rules" / "item" / "books.cpp").read_text(encoding="utf-8")
         self.assertIn("{UnlimitedPortalCheck, UnlimitedPortalUse, 1, 0, AlmanacUseSlot, 1}", rules)
         text = (PLUGIN / "core-rules" / "almanac.cpp").read_text(encoding="utf-8")
         self.assertIn("if (where == 0) {", text)

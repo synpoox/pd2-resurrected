@@ -5,7 +5,7 @@ from pathlib import Path
 
 import data_tables
 
-SOURCE = Path(__file__).resolve().parents[2] / "plugin" / "core-rules" / "item_rules.cpp"
+SOURCE = Path(__file__).resolve().parents[2] / "plugin" / "core-rules" / "item" / "curses.cpp"
 
 
 class BossCurseSkill(unittest.TestCase):

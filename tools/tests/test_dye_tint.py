@@ -15,7 +15,7 @@ def rows(name):
 
 class DyeTint(unittest.TestCase):
     def test_stat_id_matches_hook(self):
-        src = (ROOT / "plugin/core-rules/item_rules.cpp").read_text("utf-8")
+        src = (ROOT / "plugin/core-rules/item/shared.h").read_text("utf-8")
         hook = int(re.search(r"StatDye = (\d+);", src).group(1))
         row = next(r for r in rows("itemstatcost.txt") if r["Stat"] == "transform_dye")
         self.assertEqual(int(row["*ID"]), hook)
@@ -26,7 +26,7 @@ class DyeTint(unittest.TestCase):
         self.assertGreater(n, 0)
 
     def test_hd_tint_table_follows_colors_txt(self):
-        src = (ROOT / "plugin/core-rules/item_rules.cpp").read_text("utf-8")
+        src = (ROOT / "plugin/core-rules/item/dye_tint.cpp").read_text("utf-8")
         table = re.search(r"DyeRgb\[21\]\[3\] = \{(.*?)\n\};", src, re.S).group(1)
         codes = re.findall(r"// (\w{4})", table)
         self.assertEqual(codes, [r["Code"] for r in rows("colors.txt")])
