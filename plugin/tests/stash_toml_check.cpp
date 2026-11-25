@@ -7,6 +7,7 @@
 #include <string>
 
 using pd2::stash_toml::WithExtraTabs;
+using pd2::stash_toml::WithStashKey;
 
 static int g_pass = 0, g_fail = 0;
 #define CHECK(name, cond) do { if (cond) { ++g_pass; std::printf("PASS  %s\n", name); } else { ++g_fail; std::printf("FAIL  %s\n", name); } } while (0)
@@ -38,6 +39,11 @@ int main() {
 	CHECK("a spaced header is left to the player", WithExtraTabs("[ d2rcore.stash ]\nx = 1\n", 15).empty());
 	CHECK("an inline table is left to the player", WithExtraTabs("[d2rcore]\nstash = { add_shared_tabs = 0 }\n", 15).empty());
 	CHECK("a comment mentioning stash is no block", !WithExtraTabs("# the stash\n[a]\n", 15).empty());
+	CHECK("a commented set_materials_limit goes live (#2182)", WithStashKey("[d2rcore.stash]\nadd_shared_tabs = 17\n# set_materials_limit = 99\n", "set_materials_limit", 255) ==
+	                                                               "[d2rcore.stash]\nadd_shared_tabs = 17\nset_materials_limit = 255\n");
+	CHECK("a live set_materials_limit of 99 gets 255", WithStashKey("[d2rcore.stash]\nset_materials_limit = 99\n", "set_materials_limit", 255) == "[d2rcore.stash]\nset_materials_limit = 255\n");
+	CHECK("add_shared_tabs is not mistaken for set_materials_limit", WithStashKey("[d2rcore.stash]\nadd_shared_tabs = 17\n", "set_materials_limit", 255) ==
+	                                                                     "[d2rcore.stash]\nset_materials_limit = 255\nadd_shared_tabs = 17\n");
 	std::printf("%d passed, %d failed\n", g_pass, g_fail);
 	return g_fail == 0 ? 0 : 1;
 }

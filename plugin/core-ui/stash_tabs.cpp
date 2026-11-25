@@ -29,6 +29,7 @@
 #include "sig.h"
 #include "stash_affinity.h"
 #include "stash_home.h"
+#include "stash_stack.h"
 #include "stash_toml.h"
 
 #include <D2RLPlugin/lifecycle.h>
@@ -181,7 +182,7 @@ auto PlayerPage(bool right, const char* how) noexcept -> bool {
 
 // #1808: the mod's d2rloader.toml lost its live add_shared_tabs (a rewritten template, a kept old file): put 17 back in it (#1854: 3 stock pages + 17 reach Bossing for Classic/LoD), the
 // loader reads it at game start. A .bak of the file is kept once; the write is a temp file moved over it. Never the game-wide file.
-auto RestoreExtraTabs(const std::wstring& path) noexcept -> bool {
+auto RestoreStashKey(const std::wstring& path, const char* key, int32_t value) noexcept -> bool {
 	std::string text;
 	{
 		FILE* in = nullptr;
@@ -194,7 +195,7 @@ auto RestoreExtraTabs(const std::wstring& path) noexcept -> bool {
 		}
 		std::fclose(in);
 	}
-	const std::string fixed = pd2::stash_toml::WithExtraTabs(text, static_cast<int32_t>(aff::RequiredExtraTabs));
+	const std::string fixed = pd2::stash_toml::WithStashKey(text, key, value);
 	if (fixed.empty()) {
 		return false;  // a stash section we cannot place a key in safely: the player fixes it by hand
 	}
@@ -238,7 +239,7 @@ auto ReadPages(const wchar_t* configPath) noexcept -> uint32_t {
 	}
 	const int32_t extra = mod >= 0 ? mod : all >= 0 ? all : 0;
 	if (mod != -2 && extra < static_cast<int32_t>(aff::RequiredExtraTabs)) {
-		if (RestoreExtraTabs(modToml)) {
+		if (RestoreStashKey(modToml, "add_shared_tabs", static_cast<int32_t>(aff::RequiredExtraTabs))) {
 			g_notice = "Stash tabs restored: Maps and Bossing need add_shared_tabs = 17. Restart Diablo II: Resurrected once to see them.";
 			plog::Warn("stash tabs: add_shared_tabs was %d (%s): wrote add_shared_tabs = %u to the mod's d2rloader.toml (backup .bak); restart D2R once", extra,
 			           mod >= 0 ? "the mod's file" : all >= 0 ? "the game-wide file" : "no live key", aff::RequiredExtraTabs);
@@ -246,6 +247,16 @@ auto ReadPages(const wchar_t* configPath) noexcept -> uint32_t {
 			g_notice = "Maps and Bossing stash tabs are hidden: set add_shared_tabs = 17 in mods/PD2Resurrected/d2rloader/config/d2rloader.toml, then restart.";
 			plog::Warn("stash tabs: could not write add_shared_tabs = %u to the mod's d2rloader.toml (read-only?): set it under [d2rcore.stash] by hand and restart D2R", aff::RequiredExtraTabs);
 		}
+	}
+	// #2182: the Gems, Materials and Runes tabs hold 255 only with set_materials_limit = 255 (#1767); a kept old file has no live key, so they stop at 99
+	const int32_t limitMod = pd2::stash_toml::ReadKey(modToml, "set_materials_limit");
+	const int32_t limitRaw = limitMod >= 0 ? limitMod : pd2::stash_toml::ReadKey(gameToml, "set_materials_limit");
+	if (limitMod != -2 && pd2::stashstack::LimitOf(limitRaw) < pd2::stashstack::TabMax) {
+		const bool fixed = RestoreStashKey(modToml, "set_materials_limit", pd2::stashstack::TabMax);
+		plog::Warn(fixed ? "stash tabs: set_materials_limit was %d: wrote set_materials_limit = 255 to the mod's d2rloader.toml (backup .bak); restart D2R once"
+		                 : "stash tabs: could not write set_materials_limit = 255 to the mod's d2rloader.toml (read-only?): set it under [d2rcore.stash] by hand and restart D2R",
+		           pd2::stashstack::LimitOf(limitRaw));
+		g_notice = g_notice != nullptr ? g_notice : fixed ? "Stash stacks restored: Gems, Materials and Runes hold 255. Restart Diablo II: Resurrected once." : "Gems, Materials and Runes stop at 99: set set_materials_limit = 255 in mods/PD2Resurrected/d2rloader/config/d2rloader.toml, then restart.";
 	}
 	plog::Info("stash tabs: add_shared_tabs = %d from %s", extra, mod >= 0 ? "the mod's d2rloader.toml" : all >= 0 ? "the game-wide d2rloader.toml" : "the loader default (no live key)");
 	return aff::MinStockSharedPages + static_cast<uint32_t>(extra);  // the fewest stock pages (Classic/LoD): below 17 a Bossing tab could sit on a missing page there
