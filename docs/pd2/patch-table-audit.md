@@ -1176,7 +1176,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036b9f0` | item spells (D2Game `+0x107238`, 8 bytes {check, use}) | 13 (+4) | `0x10383ea0` | ported | `plugin/core-rules/almanac.cpp` |
 | `0x1036ba20` | cltdofunc | 8 | `0x103aaf10` | ported | `plugin/core-rules/skill_functions.cpp`: Mind Blast's drawn radius with the stacks, D2R's draw calc call `0x2b30b9` redirected ([#1946](https://github.com/synpoox/pd2-resurrected/issues/1946)) |
 | `0x1036ba20` | cltdofunc | 83 | `0x103ab070` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x1036ba20` | cltdofunc | 94 | `0x103ab180` | unclear | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: not read |
+| `0x1036ba20` | cltdofunc | 94 | `0x103ab180` | missing | [#2231](https://github.com/synpoox/pd2-resurrected/issues/2231) fixes variant 0-3 for the four void knights; D2R `0x222dd0` reads only the S3 component byte, which is 0 for each (one `S3v` each), so all fire the poison missile |
 | `0x1036ba20` | cltdofunc | 97 | `0x103ab280` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | cltdofunc | 98 | `0x103ab470` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | cltdofunc | 100 | `0x103ab580` | ported | `plugin/core-rules/skill_functions.cpp` |
@@ -1200,35 +1200,35 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | cltdofunc | 118 | `0x103ac910` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules.md rows (Find Potion/Item, Lightning Bolt/Fury, Split Throw) |
 | `0x1036ba20` | cltdofunc | 119 | `0x103acb70` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 4 | `0x103ae650` | ported | `plugin/core-rules/skill_functions.cpp` (SrvDoUnsummon, [#1873](https://github.com/synpoox/pd2-resurrected/issues/1873)) |
-| `0x1036ba20` | srvdofunc | 6 | `0x103ae7c0` | unclear | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: its callback `0x1036c920` is not diffed |
+| `0x1036ba20` | srvdofunc | 6 | `0x103ae7c0` | missing | [#2219](https://github.com/synpoox/pd2-resurrected/issues/2219) Slow Missiles (state 87) skips prime evils in callback `0x1036c920` (D2Common #10278); D2R `0x556f70` / `0x559250` has no such test; its PvP skip is cut |
 | `0x1036ba20` | srvdofunc | 8 | `0x103ae930` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): core-rules router (Multiple Shot, Multiple Shot Proc, TraitorBossStunSpear) |
 | `0x1036ba20` | srvdofunc | 23 | `0x103aebf0` | ported | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: vanilla `0x42730` plus phasing `0x10380c50`: `plugin/core-rules/item_rules.cpp` (IR7), the Phasing deviation |
 | `0x1036ba20` | srvdofunc | 25 | `0x103aec40` | ported | `plugin/core-rules/skill_functions.cpp` ([#1870](https://github.com/synpoox/pd2-resurrected/issues/1870)): the caster and every unit aurafilter takes within aurarangecalc; another player, a hireling or a unit with flag `0x80000000` gets half (the issue's reading missed the halving) |
 | `0x1036ba20` | srvdofunc | 39 | `0x103aee00` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 44 | `0x103aee30` | deviation | D2R's srvdo 44 kept, wrapped for PD2's owner write (a monster caster becomes the sentinel's AI owner) ([#1869](https://github.com/synpoox/pd2-resurrected/issues/1869)): PD2 spawns the sentinel 1 subtile toward the target and moves the far path point 1 to 3 subtiles on |
-| `0x1036ba20` | srvdofunc | 45 | `0x103af080` | unclear | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: refuses a monster caster a player owns when its pdata `+0x44` struct `+0xd4 <= +0xd0`; the meaning is not read |
+| `0x1036ba20` | srvdofunc | 45 | `0x103af080` | deviation | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: the refusal is PD2's own trap count (pdata `+0x44` -> `+0xcc`..`+0xd4`) and the trap's owner set to the Shadow; D2R's pet caps stand in, as the docs/deviations.md "Shadow Warrior AI" row |
 | `0x1036ba20` | srvdofunc | 46 | `0x103af1a0` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: a recompile of vanilla |
-| `0x1036ba20` | srvdofunc | 47 | `0x103af270` | unclear | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: calls vanilla `0x94b10` unless the level is in a run-time set (`0x1037c550`) |
+| `0x1036ba20` | srvdofunc | 47 | `0x103af270` | missing | [#2220](https://github.com/synpoox/pd2-resurrected/issues/2220) refuses Cloak of Shadows when the caster's level is in sets `0x105def44` / `0x105e2514` (uber, boss and map levels); D2R `0x56f750` is 1.13c's |
 | `0x1036ba20` | srvdofunc | 48 | `0x103af2f0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W21 gate A (w32-blade-fury.md) |
 | `0x1036ba20` | srvdofunc | 49 | `0x103af450` | ported | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: vanilla `0x91660` plus sumskills, which only Dopplezon has: `plugin/core-rules/summon_ai.cpp` ([#1801](https://github.com/synpoox/pd2-resurrected/issues/1801)) |
 | `0x1036ba20` | srvdofunc | 50 | `0x103af640` | documented | [w29-assassin-finishers](../research/skills/w29-assassin-finishers.md) |
 | `0x1036ba20` | srvdofunc | 51 | `0x103af800` | ported | `plugin/core-rules/skill_functions.cpp`: Mind Blast's radius stacks (PD2's published numbers), damage only and mask `0x8583`: D2R's radius call `0x570801` redirected, its convert call `0x56e5cb` and mask argument `0x57099d` patched ([#1946](https://github.com/synpoox/pd2-resurrected/issues/1946)) |
-| `0x1036ba20` | srvdofunc | 54 | `0x103afac0` | unclear | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: tests stat 191 item_skillonequip, then runs vanilla srvdo 142 (`0x934a0`) |
-| `0x1036ba20` | srvdofunc | 55 | `0x103afb40` | unclear | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: Corpse Explosion rewrite, not diffed |
+| `0x1036ba20` | srvdofunc | 54 | `0x103afac0` | deviation | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: Blade Shield also runs from stat 191 item_skillonequip (Innocence); D2R `0x56f610` needs the skill, as the docs/deviations.md "Skill while equipped" row |
+| `0x1036ba20` | srvdofunc | 55 | `0x103afb40` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: Corpse Explosion follows 1.13c step for step (corpse life, calc1-calc2 %, level cap, calc3 share, halved radius); D2R `0x559dc0` -> `0x55da50` does the same |
 | `0x1036ba20` | srvdofunc | 56 | `0x103afea0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W14's golem count rule, the Golem start deviation |
 | `0x1036ba20` | srvdofunc | 57 | `0x103afee0` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W14's golem count rule, the Golem start deviation |
 | `0x1036ba20` | srvdofunc | 64 | `0x103aff30` | documented | [ir3-combat-stats](../research/items/ir3-combat-stats.md) |
-| `0x1036ba20` | srvdofunc | 71 | `0x103b0080` | unclear | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: Taunt as an area apply (callback `0x1036f280`) with no target lookup; not diffed |
+| `0x1036ba20` | srvdofunc | 71 | `0x103b0080` | missing | [#2221](https://github.com/synpoox/pd2-resurrected/issues/2221) Taunt taunts every unit aurafilter takes within aurarangecalc (callback `0x1036f280`); D2R `0x568ad0` taunts one target |
 | `0x1036ba20` | srvdofunc | 104 | `0x103b0210` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode |
 | `0x1036ba20` | srvdofunc | 112 | `0x103b02d0` | ported | `plugin/core-rules/skill/monster_curse.cpp` ([#2003](https://github.com/synpoox/pd2-resurrected/issues/2003)): one of the 4 Mon curses (rand & 3), stats from the row's aurastatcalcs, where D2R `0x5794b0` cast one of 5 player curses |
 | `0x1036ba20` | srvdofunc | 113 | `0x103b0580` | documented | [core-rules](../features/core-rules.md), [w37-server-rules](../research/pd2/w37-server-rules.md) |
 | `0x1036ba20` | srvdofunc | 114 | `0x103b06c0` | ported | `plugin/core-rules/skill_functions.cpp` (SrvDoRaven, [#2002](https://github.com/synpoox/pd2-resurrected/issues/2002)): calc3 ravens per cast at jittered spots, PD2's hits |
 | `0x1036ba20` | srvdofunc | 115 | `0x103b0930` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode |
-| `0x1036ba20` | srvdofunc | 118 | `0x103b0a50` | unclear | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: reschedules the unit's timer event 12 by skill `+0x15c` |
+| `0x1036ba20` | srvdofunc | 118 | `0x103b0a50` | missing | [#2222](https://github.com/synpoox/pd2-resurrected/issues/2222) after the missiles, moves the caster's Gust (370) cooldown event 12 earlier by Param6 frames; D2R `0x5772d0` has no such step |
 | `0x1036ba20` | srvdofunc | 119 | `0x103b0b90` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): druid-w24.md, skill_functions.cpp |
 | `0x1036ba20` | srvdofunc | 139 | `0x103b0cf0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 143 | `0x103b0df0` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x1036ba20` | srvdofunc | 148 | `0x103b0f00` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: picks the DoomKnightMissile variant per void knight (rows 985/986/1123/1124); Rathma's arena refuses ([#965](https://github.com/synpoox/pd2-resurrected/issues/965)) |
+| `0x1036ba20` | srvdofunc | 148 | `0x103b0f00` | missing | [#2231](https://github.com/synpoox/pd2-resurrected/issues/2231) server half of cltdo 94: fixes variant 0-3 for the four void knights; D2R reads only the S3 component byte, 0 for each (one `S3v` each), so all fire the poison missile |
 | `0x1036ba20` | srvdofunc | 150 | `0x103b1030` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W19 and the Smite deviation |
 | `0x1036ba20` | srvdofunc | 153 | `0x103b1300` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 154 | `0x103b1590` | ported | `plugin/core-rules/skill_functions.cpp` |
