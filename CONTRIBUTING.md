@@ -15,7 +15,7 @@ No Blizzard files or PD2 archives are committed here; the mod's data is, in `fil
 
 Pull requests are welcome. Every PR links its issue: the body opens with `Closes #<n>` (or `Part of #<n>`); open an
 issue first if there is none. Run the tool tests before you push, and add a `changelog.d/<issue>-<slug>.md` fragment (see AGENTS.md) for anything a
-player would notice. Changes that alter gameplay need an in-game check (Hell, a level 90+ character). How agents and
+player would notice. Changes that alter gameplay need an in-game check (Hell, a level 99 character). How agents and
 humans work here: [AGENTS.md](AGENTS.md).
 Contributions are under the MIT license ([LICENSE](LICENSE)).
 
