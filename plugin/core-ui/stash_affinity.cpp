@@ -995,7 +995,7 @@ void SendTabOpen(bool open) noexcept {
 		const uint8_t value = open ? 1 : 0;
 		// a host or single player is not connected, so has no one to tell; a failed send is retried by the next SetTabOpen
 		const net::Result sent = g_network->sendToHost(g_context, g_channel, MessageTabOpen, &value, 1);
-		g_tabDirty = sent != net::Result::Success;
+		g_tabDirty = sent != net::Result::Success && sent != net::Result::WrongRole;  // a host has no host to tell
 		if (g_tabDirty && !g_sendLogged.exchange(true)) {
 			plog::Info("affinity: the tab state was not sent to the host (result %u); retrying", static_cast<uint32_t>(sent));
 		}
@@ -1012,24 +1012,26 @@ void Connect(const D2RL::PluginContext* context, void*) noexcept {
 	}
 }
 
+// The loader gives the client's own events a valid peer too (the host, 2), so the two sides are told apart by what they do:
+// a remote peer's disconnect frees its slot (only the host has slots), and any Connected event sends the tab state, which
+// only a client can (a host gets WrongRole, not an error).
 void OnConnection(const D2RL::PluginContext* context, const net::ConnectionEvent* event, void*) noexcept {
-	if (event->peer != net::InvalidPeerHandle) {  // host side
-		if (event->state == net::ConnectionState::Disconnected) {
-			std::lock_guard<std::mutex> lock(g_peerLock);
-			for (Peer& p : g_peers) {
-				if (p.handle.load() == event->peer) {
-					p.open = false;
-					p.handle = net::InvalidPeerHandle;
-				}
-			}
-		}
-		return;
-	}
 	if (event->state == net::ConnectionState::Connected) {
 		g_connected = true;
 		SendTabOpen(g_open.load());
-	} else if (!g_connected && (event->state == net::ConnectionState::Disconnected ||
-	                            (event->state == net::ConnectionState::Rejected && event->reason == net::RejectionReason::HostUnavailable))) {
+		return;
+	}
+	if (event->state == net::ConnectionState::Disconnected && event->peer != net::InvalidPeerHandle) {
+		std::lock_guard<std::mutex> lock(g_peerLock);
+		for (Peer& p : g_peers) {
+			if (p.handle.load() == event->peer) {
+				p.open = false;
+				p.handle = net::InvalidPeerHandle;
+			}
+		}
+	}
+	if (!g_connected && (event->state == net::ConnectionState::Disconnected ||
+	                     (event->state == net::ConnectionState::Rejected && event->reason == net::RejectionReason::HostUnavailable))) {
 		if (g_connectTries.fetch_add(1) < 600) {
 			g_threads->runOnUiThread(context, Connect, nullptr);
 		}
