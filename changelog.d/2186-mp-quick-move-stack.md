@@ -1,0 +1,1 @@
+- A TCP/IP client's quick-move of a big Maps or Bossing stack now leaves 50 in its inventory.
