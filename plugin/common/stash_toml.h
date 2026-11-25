@@ -67,26 +67,24 @@ static_assert(SectionOf("[d2rcore.other]") == 0);
 static_assert(SectionOf("add_shared_tabs = 3") == -1);
 
 // A line that sets or (after a `#`) comments the key, whatever its value (a string, a sign, hex: all of them are that key's line)
-inline auto IsKeyLine(const char* line) noexcept -> bool {
-	constexpr char Key[] = "add_shared_tabs";
-	while (*line == ' ' || *line == '\t') {
+inline auto IsKeyLine(const char* line, const char* key) noexcept -> bool {
+	const size_t len = std::strlen(key);
+	while (*line == ' ' || *line == '	') {
 		++line;
 	}
-	for (size_t i = 0; i + 1 < sizeof Key; ++i) {
-		if (line[i] != Key[i]) {
-			return false;
-		}
+	if (std::strncmp(line, key, len) != 0) {
+		return false;
 	}
-	const char next = line[sizeof Key - 1];
-	return next == ' ' || next == '\t' || next == '=';
+	const char next = line[len];
+	return next == ' ' || next == '	' || next == '=';
 }
 
-// `text` with `add_shared_tabs = value` live in `[d2rcore.stash]`: a key line there gets the value, else the first commented
-// `# add_shared_tabs ...` line there is made live, else the line is added under the header, else the section is appended.
+// `text` with `<key> = value` live in `[d2rcore.stash]`: a key line there gets the value, else the first commented
+// `# <key> ...` line there is made live, else the line is added under the header, else the section is appended.
 // Every other line, a UTF-8 BOM and the file's line endings stay as they are (the result always ends in a newline).
 // Empty when the text should be fixed by hand: no plain `[d2rcore.stash]` header, yet a line that mentions `stash` (a spaced or
 // dotted header, an inline table), where appending a header could duplicate the section.
-inline auto WithExtraTabs(const std::string& whole, int32_t value) -> std::string {
+inline auto WithStashKey(const std::string& whole, const char* key, int32_t value) -> std::string {
 	const bool bom = whole.compare(0, 3, "\xEF\xBB\xBF") == 0;
 	const std::string text = bom ? whole.substr(3) : whole;
 	std::vector<std::string> lines;  // each without its '\n' (a '\r' stays, so a CRLF file round-trips)
@@ -108,12 +106,12 @@ inline auto WithExtraTabs(const std::string& whole, int32_t value) -> std::strin
 			inStash = section == 1;
 			header = inStash && header == SIZE_MAX ? i : header;
 		} else if (inStash) {
-			if (IsKeyLine(line)) {
+			if (IsKeyLine(line, key)) {
 				liveAt = i;
 			} else if (commentedAt == SIZE_MAX && *first == '#') {
 				for (++first; *first == ' ' || *first == '\t'; ++first) {
 				}
-				if (IsKeyLine(first)) {
+				if (IsKeyLine(first, key)) {
 					commentedAt = i;
 				}
 			}
@@ -123,7 +121,7 @@ inline auto WithExtraTabs(const std::string& whole, int32_t value) -> std::strin
 		return {};
 	}
 	const auto crOf = [&](size_t i) -> std::string { return !lines[i].empty() && lines[i].back() == '\r' ? "\r" : ""; };
-	const std::string live = "add_shared_tabs = " + std::to_string(value);
+	const std::string live = std::string(key) + " = " + std::to_string(value);
 	if (const size_t at = liveAt != SIZE_MAX ? liveAt : commentedAt; at != SIZE_MAX) {
 		lines[at] = live + crOf(at);
 	} else if (header != SIZE_MAX) {
@@ -141,6 +139,10 @@ inline auto WithExtraTabs(const std::string& whole, int32_t value) -> std::strin
 		out += l + "\n";
 	}
 	return out;
+}
+
+inline auto WithExtraTabs(const std::string& whole, int32_t value) -> std::string {
+	return WithStashKey(whole, "add_shared_tabs", value);
 }
 
 // The `key` of the `[d2rcore.stash]` section of `path`: -1 when the file has no live key, -2 when it cannot be read
