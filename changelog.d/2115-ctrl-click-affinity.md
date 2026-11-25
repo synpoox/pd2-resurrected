@@ -1,1 +1,1 @@
-Ctrl+click now sends map and bossing items to their stash tab while the Gems, Materials or Runes tab is selected.
+- Send map and bossing items to their stash tab with Ctrl+click from any tab (#2115).
