@@ -336,6 +336,21 @@ auto Queue(Act act, D2RL::PlayerHandle player, const items::ItemInfo& info, int 
 
 // ---- left click ----
 auto PanelOpen(int id) noexcept -> bool;
+using AtFn = void* (*)(void*, uint64_t*) noexcept;
+constexpr size_t SlotItemAt = 0xc8, SlotLeftClick = 0x100;  // the grid widget's vtable (0x1cf3800): item at cell, left click
+size_t g_hoveredOffset = 0;  // read from the hover-check function at install, never assumed
+using ManagerFn = uint8_t* (*)() noexcept;
+ManagerFn g_manager = nullptr;
+// The item's drop sound for an SDK event: the client unit is the one the grid under the mouse holds at the clicked cell (the SDK handle is
+// not the client unit); 0 when the grid, the cell or its unit id does not match. shortcut: the cell is read as x | y << 32 and checked by unit id.
+auto ClickedItemSound(const D2RL::ItemInteractions::ItemInteractionEvent* event, uint32_t runtimeId) noexcept -> int {
+	if (g_itemSound == nullptr || g_manager == nullptr || g_hoveredOffset == 0) return 0;
+	void* grid = *reinterpret_cast<void**>(g_manager() + g_hoveredOffset);
+	if (grid == nullptr) return 0;
+	uint64_t cell = static_cast<uint32_t>(event->cellX) | static_cast<uint64_t>(static_cast<uint32_t>(event->cellY)) << 32;
+	void* unit = reinterpret_cast<AtFn>((*static_cast<void***>(grid))[SlotItemAt / sizeof(void*)])(grid, &cell);
+	return unit != nullptr && d2r::At<uint32_t>(unit, d2r::rva::UnitIdField) == runtimeId ? g_itemSound(unit) : 0;
+}
 constexpr int PanelStash = 0x18, PanelCube = 0x19;
 auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions::ItemInteractionEvent* event, void*) noexcept
 	-> D2RL::ItemInteractions::Decision {
@@ -355,7 +370,7 @@ auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions
 		return Decision::Continue;
 	}
 	if (quick && pd2::affinity::HomeOf(info.code).category == pd2::affinity::Category::None) return Decision::Continue;
-	if (!Queue(static_cast<Act>(act), player, info, quick ? 0 : SoundIdentify)) return Decision::Continue;
+	if (!Queue(static_cast<Act>(act), player, info, quick ? ClickedItemSound(event, info.runtimeId) : SoundIdentify)) return Decision::Continue;
 	return Decision::Consume;
 }
 
@@ -372,8 +387,6 @@ constexpr int PanelInventory = 1;
 constexpr int AlwaysOpen[] = {0, 20, 28, 29};  // open with only the inventory up (read in game; 28 only in town): HUD panels, no NPC, stash or Cube panel
 auto PanelOpen(int id) noexcept -> bool { return g_panel != nullptr && g_panel(id) != 0; }
 uint8_t* g_panelTable = nullptr;  // the byte-per-panel "is open" table behind g_panel
-using AtFn = void* (*)(void*, uint64_t*) noexcept;
-constexpr size_t SlotItemAt = 0xc8, SlotLeftClick = 0x100;  // the grid widget's vtable (0x1cf3800): item at cell, left click
 constexpr uint8_t RightEntry[] = {0x48, 0x89, 0x54, 0x24, 0x10, 0x53, 0x48, 0x83, 0xec, 0x20};
 // #1774: an inventory item of the RotW stash tabs (Gems, Materials, Runes: misc.txt AdvancedStashStackable) goes to its tab
 // cell, as Ctrl+click puts it. No SDK service reaches those tabs (stash_stacks.cpp), so D2R's own Ctrl+click branch runs: the
@@ -456,13 +469,10 @@ void OnCubeClick(void* widget, uint64_t cell) noexcept { Click(widget, cell, tru
 // the mouse does not), so OnRightClick never runs for a Cube item. The message handler every widget shares sees the message
 // instead: when the mouse is over a grid that holds a Cube item, the bind runs for that grid and cell.
 using MsgFn = void (*)(void*, int64_t*) noexcept;
-using ManagerFn = uint8_t* (*)() noexcept;
 MsgFn g_message = nullptr;
-ManagerFn g_manager = nullptr;
 void* g_rightTarget = nullptr;  // InventoryRightClick's address: the grids are the widgets whose vtable slot SlotRightClick holds it
 constexpr int64_t RightMessage = 0x2d5172cac7c938c;  // the message's name hash (message field +0x88)
 constexpr size_t MessageName = 0x11, MessageData = 0x22, SlotCellAt = 0x98, SlotRightClick = 0x108;
-size_t g_hoveredOffset = 0;  // read from the hover-check function at install, never assumed
 using GateFn = uint8_t (*)() noexcept;
 GateFn g_gate = nullptr;  // D2R's own "input is blocked" check: non-zero means D2R ignores the click
 // The handler compares message[0] with an id it looks up by name hash (the movabs/lea/call at its +0x47/+0x55/+0x74); we repeat that lookup.
