@@ -147,7 +147,7 @@ if ($companionsInstalled) {
     # Companions the manifest dropped but the toolkit's recorded-file prune never knew (#1920): move, never delete.
     . (Join-Path $PSScriptRoot "stray_companions.ps1")
     Move-UnlistedCompanions -Plugins $plugins -Manifest (Join-Path $Data "companions\manifest.json") `
-        -Backup (Join-Path "C:\D2RTestSlotsbackups\stray-plugins-$(Get-Date -Format yyyy-MM-dd)" (Split-Path $Game -Leaf))
+        -Backup (Join-Path "C:\D2RTestSlots\backups\stray-plugins-$(Get-Date -Format yyyy-MM-dd)" (Split-Path $Game -Leaf))
 }
 if (-not $companionsInstalled) { Write-Warning "companions (Cartographer included) were not installed or updated: pass -Data <project with companions/manifest.json>" }
 if ($Cartographer) {
