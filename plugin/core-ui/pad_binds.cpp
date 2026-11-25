@@ -103,8 +103,6 @@ constexpr uint8_t ActivateEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x48, 0x89, 0
 // 93847 0x2cf590 (widget, unused, mode 0 = inventory, 3 = Cube, count): the bulk move D2R's hold-Y calls
 using BulkFn = void (*)(void*, void*, uint8_t, uint8_t) noexcept;
 BulkFn g_bulk = nullptr;
-constexpr size_t WidgetItem = 0x608;
-
 // #1775: Ctrl+click on a stack-tab cell (0x2cf760's Ctrl branch: vtable 0xd8, mode 0) takes one out as a new single into a free
 // inventory cell (stash_stacks.cpp: D2R's withdraw lowers the slot count by one) and never tops up an inventory stack. So the
 // click notes the inventory's items and the slot item's class; the next game updates merge a new item of that class onto the
@@ -121,10 +119,23 @@ struct TopUp {
 	uint32_t classId = 0;
 	uint32_t updates = 0;
 	uint32_t count = 0;
+	uint32_t arrived = 0;  // new singles of the class seen since the take
 	uint32_t ids[MaxCarried] {};  // the inventory's items before the take; a merged-into or tried item joins them
 };
 TopUp g_topUp;
 SRWLOCK g_topUpLock = SRWLOCK_INIT;
+
+// #2185: D2R's bulk take (0x2cf590) is a loop of single withdraws that stops at the first one without a free cell, so one call moves
+// at most (free cells / item size). After a top-up pass has merged the singles, the rest is asked for again (bounded rounds).
+constexpr uint32_t MaxRefillRounds = 50;
+struct Refill {
+	bool active = false;
+	void* widget = nullptr;
+	uint32_t wanted = 0, got = 0, rounds = 0, classId = 0;
+};
+Refill g_refill;  // under g_topUpLock
+void NoteTake(D2RL::PlayerHandle player, void* slotItem) noexcept;
+constexpr size_t WidgetItem = 0x608;
 
 constexpr auto Listed(const uint32_t* ids, uint32_t count, uint32_t id) noexcept -> bool {
 	for (uint32_t i = 0; i < count; ++i) {
@@ -194,6 +205,8 @@ auto Merge(D2RL::PlayerHandle player, const items::ItemInfo& single, const items
 	return true;
 }
 
+void Reissue(const D2RL::PluginContext*, void*) noexcept;
+
 // Game thread: each update until TopUpUpdates pass, a new item of the class merges onto a stack of it
 void TopUpNow(const D2RL::PluginContext*, void*) noexcept {
 	AcquireSRWLockExclusive(&g_topUpLock);
@@ -208,6 +221,7 @@ void TopUpNow(const D2RL::PluginContext*, void*) noexcept {
 			if (Listed(g_topUp.ids, g_topUp.count, single.runtimeId)) {
 				continue;
 			}
+			++g_topUp.arrived;
 			bool merged = false;
 			for (uint32_t j = 0; j < carried.count && !merged; ++j) {
 				const items::ItemInfo& stack = carried.item[j];
@@ -222,6 +236,12 @@ void TopUpNow(const D2RL::PluginContext*, void*) noexcept {
 		g_topUp.on = g_threads->runOnGameThread(g_context, TopUpNow, nullptr) == D2RL::Threads::Result::Success;
 	} else {
 		g_topUp.on = false;
+		if (g_refill.active) {
+			g_refill.got += g_topUp.arrived;
+			// no new item this round, or all of them, or too many rounds: stop (the counts stay as they are)
+			g_refill.active = g_refill.got < g_refill.wanted && g_topUp.arrived > 0 && ++g_refill.rounds <= MaxRefillRounds &&
+			                  g_threads->runOnUiThread(g_context, Reissue, nullptr) == D2RL::Threads::Result::Success;
+		}
 	}
 	ReleaseSRWLockExclusive(&g_topUpLock);
 }
@@ -249,6 +269,63 @@ void NoteTake(D2RL::PlayerHandle player, void* slotItem) noexcept {
 	ReleaseSRWLockExclusive(&g_topUpLock);
 }
 
+// UI thread: ask the slot for what the last round left (the widget can be gone: its item is re-read before every call)
+auto Readable(const void* p, size_t size) noexcept -> bool {
+	MEMORY_BASIC_INFORMATION info {};
+	return p != nullptr && VirtualQuery(p, &info, sizeof info) == sizeof info && info.State == MEM_COMMIT &&
+	       (info.Protect & (PAGE_NOACCESS | PAGE_GUARD)) == 0 &&
+	       static_cast<const char*>(p) + size <= static_cast<const char*>(info.BaseAddress) + info.RegionSize;
+}
+
+void Reissue(const D2RL::PluginContext*, void*) noexcept {
+	AcquireSRWLockExclusive(&g_topUpLock);
+	void* const widget = g_refill.active ? g_refill.widget : nullptr;
+	const uint32_t remaining = g_refill.wanted - g_refill.got, classId = g_refill.classId;
+	ReleaseSRWLockExclusive(&g_topUpLock);
+	void* slotItem = nullptr;
+	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+	D2RL::ItemHandle cursor = D2RL::InvalidItemHandle;
+	int32_t count = 0;
+	if (widget != nullptr && Readable(static_cast<char*>(widget) + WidgetItem, sizeof(void*))) {
+		slotItem = *reinterpret_cast<void**>(static_cast<char*>(widget) + WidgetItem);
+	}
+	if (slotItem != nullptr && g_bulk != nullptr && Readable(slotItem, 0x100) &&
+	    static_cast<uint32_t>(d2r::Engine<int32_t (*)(void*, const char*, int32_t) noexcept>(d2r::sig::UnitClassOf)(slotItem, __FILE__, __LINE__)) == classId &&
+	    g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
+	    g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::NotFound) {
+		count = d2r::Engine<int32_t (*)(d2r::Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(static_cast<d2r::Unit*>(slotItem), 70, 0);
+	}
+	if (count < 1) {
+		AcquireSRWLockExclusive(&g_topUpLock);
+		g_refill.active = false;
+		ReleaseSRWLockExclusive(&g_topUpLock);
+		return;
+	}
+	NoteTake(player, slotItem);
+	g_bulk(widget, nullptr, 0, static_cast<uint8_t>(static_cast<uint32_t>(count) < remaining ? count : remaining));
+}
+
+// #2185: take min(50, count) of the slot's stack (the same take as hold-Y's: mode 0, inventory). It withdraws singles and stops when
+// one has no free cell, so Reissue asks again after the top-up has merged them. False (nothing done) when the count or take is unavailable.
+bool TakeStack(void* widget, void* slotItem, D2RL::PlayerHandle player) noexcept {
+	if (g_bulk == nullptr || d2r::sig::UnitStat.rva == 0 || d2r::sig::UnitClassOf.rva == 0) {
+		return false;
+	}
+	const int32_t count = d2r::Engine<int32_t (*)(d2r::Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(static_cast<d2r::Unit*>(slotItem), 70, 0);
+	if (count < 1) {
+		return false;
+	}
+	const uint32_t wanted = count < 50 ? count : 50;
+	AcquireSRWLockExclusive(&g_topUpLock);
+	g_refill = {.active = true, .widget = widget, .wanted = wanted, .got = 0, .rounds = 1,
+	             .classId = static_cast<uint32_t>(d2r::Engine<int32_t (*)(void*, const char*, int32_t) noexcept>(d2r::sig::UnitClassOf)(
+	                 slotItem, __FILE__, __LINE__))};
+	ReleaseSRWLockExclusive(&g_topUpLock);
+	NoteTake(player, slotItem);
+	g_bulk(widget, nullptr, 0, static_cast<uint8_t>(wanted));
+	return true;
+}
+
 void OnActivateCell(void* widget, uint64_t focus) noexcept {
 	void* const slotItem = *reinterpret_cast<void**>(static_cast<char*>(widget) + WidgetItem);
 	if (g_key != nullptr && slotItem != nullptr && d2r::sig::UnitClassOf.rva != 0 && d2r::sig::UnitStat.rva != 0 && g_key(0x11) != 0 &&
@@ -257,6 +334,9 @@ void OnActivateCell(void* widget, uint64_t focus) noexcept {
 		D2RL::ItemHandle cursor = D2RL::InvalidItemHandle;
 		if (g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
 		    g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::NotFound) {
+			if (TakeStack(widget, slotItem, player)) {
+				return;
+			}
 			NoteTake(player, slotItem);
 		}
 	}
@@ -278,8 +358,8 @@ void OnActivateCell(void* widget, uint64_t focus) noexcept {
 }
 
 // #2180: Shift+right click on a stack-tab cell did nothing: the slot widget's right click (93847 0x2ce2c0, vtable 0x108) only acts with
-// Ctrl held, and the hotkeys' grid hook never sees this widget. With the stash bind on Shift+right, it takes one out as Ctrl+click does
-// (vtable 0xd8, mode 0, with the same inventory top-up). shortcut: one per click, as Ctrl+click; upgrade if a whole-stack take is wanted.
+// Ctrl held, and the hotkeys' grid hook never sees this widget. With the stash bind on Shift+right, it takes up to 50 out as Ctrl+click does
+// (TakeStack, else vtable 0xd8 mode 0 for one, with the same inventory top-up).
 using SlotRightFn = void (*)(void*) noexcept;
 SlotRightFn g_slotRight = nullptr;
 constexpr uint8_t SlotRightEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x18, 0x55, 0x56, 0x57, 0x48, 0x83, 0xec, 0x30};
@@ -293,6 +373,9 @@ void OnSlotRightClick(void* widget) noexcept {
 		D2RL::ItemHandle cursor = D2RL::InvalidItemHandle;
 		if (g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
 		    g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::NotFound) {
+			if (TakeStack(widget, slotItem, player)) {
+				return;
+			}
 			if (d2r::sig::UnitClassOf.rva != 0 && d2r::sig::UnitStat.rva != 0) {
 				NoteTake(player, slotItem);
 			}
