@@ -1,6 +1,7 @@
 """PD2's sequence skills play their body motion (#690, #1166): D2R's HD renderer picks a sequence skill's clip by skill ID."""
 import csv
 import json
+import sys
 import unittest
 from pathlib import Path
 
@@ -46,7 +47,7 @@ class SequenceStates(unittest.TestCase):
         rows = list(csv.reader((FILES / "global/excel/skills.txt").open(encoding="utf-8-sig"), delimiter="\t"))
         ids = {row[0]: int(row[1]) for row in rows[1:]}
         for unit, skill, steps in (("ancientbarb1", "MonWhirlwind", 1), ("ancientbarb3", "Leap Attack Korlic", 4),
-                                  ("roguehire", "DoppleZonStrafe", 1), ("duriel", "MonCharge", 1),
+                                  ("roguehire", "DoppleZonStrafe", 2), ("duriel", "MonCharge", 1),
                                   ("duriel", "MonJab", 1), ("duriel", "MonSmite", 1),
                                   # #2092
                                   ("ancientbarb1", "UberTalicWhirlwind", 1), ("ancientbarb3", "Leap Attack", 4),
@@ -72,6 +73,33 @@ class SequenceStates(unittest.TestCase):
             froms = [g["from"] for g in sm["transitions"]]
             for s in states:
                 self.assertIn(s["stateId"], froms)
+
+    def test_output_matches_the_generator(self):
+        # every committed state machine is exactly what tools/pd2_sequence_states_hd.py writes from D2R's file
+        sys.path.insert(0, str(FILES.parents[1] / "tools"))
+        import pd2_sequence_states_hd as gen
+        if not gen.D2R_DATA.is_dir():
+            self.skipTest(f"no D2R data at {gen.D2R_DATA}")
+        for (kind, unit), spec in gen.STATES.items():
+            with self.subTest(unit):
+                sm = json.loads((gen.D2R_DATA / gen.hd(kind, unit)).read_text("utf-8-sig"))
+                for one in spec if isinstance(spec, list) else [spec]:
+                    sm = gen.build(sm, *one)
+                self.assertEqual((FILES / gen.hd(kind, unit)).read_text("utf-8"), json.dumps(sm, separators=(",", ":")))
+
+    def test_a1_merc_strafe_follow_up(self):
+        # #2156: D2R keys a monster state by (skill, step) only in Cast (7) and SQ (14); other modes key by mode alone
+        # (first state wins), so a skill state there is dead. The merc's Strafe starts in plain Attack1 and each extra
+        # arrow asks for (26, step 1): one Cast-mode state, entered in 0.01 s from every state, itself included.
+        sm = json.loads((FILES / "hd/character/enemy/roguehire/roguehire_state_machine.json").read_text("utf-8"))
+        self.assertFalse([s for s in sm["states"] if s["skillIndex"] != -1 and s["modeId"] not in (7, 14)])
+        attack1 = next(s for s in sm["states"] if s["modeId"] == 4 and s["skillIndex"] == -1)
+        follow = [s for s in sm["states"] if s["skillIndex"] == 26]
+        self.assertEqual([(s["modeId"], s["stepIndex"]) for s in follow], [(7, 1)])
+        self.assertEqual(follow[0]["animationBindings"], attack1["animationBindings"])
+        fid = follow[0]["stateId"]
+        for g in sm["transitions"]:
+            self.assertIn((fid, 0.01), [(i["to"], i["crossfadeSeconds"]) for i in g["settings"]], g["name"])
 
 
 if __name__ == "__main__":
