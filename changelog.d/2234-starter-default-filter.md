@@ -1,1 +1,1 @@
-Ship the builder's Starter loot filter as the default filter.json.
+- Use the builder's Starter loot filter, which shows every drop, as the default filter (#2234).
