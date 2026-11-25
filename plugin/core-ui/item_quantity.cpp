@@ -199,8 +199,6 @@ void InstallTabTooltip(const D2RL::PluginContext* context, char* report, size_t 
 	int32_t raw = -1;
 	pd2::stash_toml::Resolve(context->pluginConfigPath, "set_materials_limit", &raw);
 	g_limit = pd2::stashstack::LimitOf(raw);
-	sigscan::Entry* const sigs[] = {&d2r::sig::UnitStat, &d2r::sig::SetUnitStat};
-	sigscan::Resolve(sigs, 2, context->exeBase, nullptr, 0);
 	// GetMaxStack first: a slot draw hook without it would still show the count
 	const bool ok = d2r::sig::UnitStat.rva != 0 && d2r::sig::SetUnitStat.rva != 0 &&
 	                sigscan::HookBySignature(context, "GetMaxStack", MaxStackPattern, 0, MaxStackEntry, sizeof(MaxStackEntry), MaxStack, &g_maxStack) &&

@@ -141,8 +141,6 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 		std::snprintf(report, size, "FAILED (an item, inventory, thread or lifecycle service is missing)");
 		return;
 	}
-	sigscan::Entry* const sigs[] = {&d2r::sig::SetUnitStat};  // SetQuantity past 50 (#1763); unresolved: stacks stop at 50
-	sigscan::Resolve(sigs, 1, context->exeBase, nullptr, 0);
 	if (!D2RL::HasItemServiceCapability(g_items, items::ItemServiceCapability::SharedStashWrite)) {
 		std::snprintf(report, size, "FAILED (the item service cannot write the shared stash)");
 		return;
