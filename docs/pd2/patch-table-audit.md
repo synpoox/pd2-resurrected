@@ -1176,7 +1176,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036b9f0` | item spells (D2Game `+0x107238`, 8 bytes {check, use}) | 13 (+4) | `0x10383ea0` | ported | `plugin/core-rules/almanac.cpp` |
 | `0x1036ba20` | cltdofunc | 8 | `0x103aaf10` | ported | `plugin/core-rules/skill_functions.cpp`: Mind Blast's drawn radius with the stacks, D2R's draw calc call `0x2b30b9` redirected ([#1946](https://github.com/synpoox/pd2-resurrected/issues/1946)) |
 | `0x1036ba20` | cltdofunc | 83 | `0x103ab070` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x1036ba20` | cltdofunc | 94 | `0x103ab180` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: client twin of srvdo 148: picks the DoomKnightMissile variant per void knight, else the monster's component byte as D2R cltdo 94 (`0x222dd0`) |
+| `0x1036ba20` | cltdofunc | 94 | `0x103ab180` | missing | [#2231](https://github.com/synpoox/pd2-resurrected/issues/2231) fixes variant 0-3 for the four void knights; D2R `0x222dd0` reads only the S3 component byte, which is 0 for each (one `S3v` each), so all fire the poison missile |
 | `0x1036ba20` | cltdofunc | 97 | `0x103ab280` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | cltdofunc | 98 | `0x103ab470` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | cltdofunc | 100 | `0x103ab580` | ported | `plugin/core-rules/skill_functions.cpp` |
@@ -1228,7 +1228,7 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036ba20` | srvdofunc | 119 | `0x103b0b90` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): druid-w24.md, skill_functions.cpp |
 | `0x1036ba20` | srvdofunc | 139 | `0x103b0cf0` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 143 | `0x103b0df0` | ported | `plugin/core-rules/skill_functions.cpp` |
-| `0x1036ba20` | srvdofunc | 148 | `0x103b0f00` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: picks the DoomKnightMissile variant per void knight (rows 985/986/1123/1124); Rathma's arena refuses ([#965](https://github.com/synpoox/pd2-resurrected/issues/965)) |
+| `0x1036ba20` | srvdofunc | 148 | `0x103b0f00` | missing | [#2231](https://github.com/synpoox/pd2-resurrected/issues/2231) server half of cltdo 94: fixes variant 0-3 for the four void knights; D2R reads only the S3 component byte, 0 for each (one `S3v` each), so all fire the poison missile |
 | `0x1036ba20` | srvdofunc | 150 | `0x103b1030` | ported | ported by number ([#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) triage): W19 and the Smite deviation |
 | `0x1036ba20` | srvdofunc | 153 | `0x103b1300` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036ba20` | srvdofunc | 154 | `0x103b1590` | ported | `plugin/core-rules/skill_functions.cpp` |
