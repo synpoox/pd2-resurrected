@@ -81,19 +81,26 @@ constexpr uint8_t PutStash[] = {0x18, 7, 0, 0, 0, 3, 0, 0, 0, 5, 0, 0, 0, 4, 0, 
 constexpr auto RowIs3 = [](uint32_t) { return 3; };
 constexpr auto RowIs4 = [](uint32_t) { return 4; };
 constexpr auto NoRow = [](uint32_t) { return -1; };
+constexpr auto AllCharms = [](uint32_t) { return true; };
+constexpr auto NoCharms = [](uint32_t) { return false; };
 constexpr uint8_t SwapIn[] = {0x1f, 9, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2, 0, 0, 0};
 constexpr uint8_t CtrlDrop[] = {0x5c, 7, 0, 0, 0, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0, 9, 0, 4, 0};
 constexpr auto OnlyId7Row4 = [](uint32_t id) { return id == 7 ? 4 : -1; };
-static_assert(TouchesCharmRows(SwapIn, sizeof SwapIn, OnlyId7Row4) && !TouchesCharmRows(SwapIn, sizeof SwapIn, NoRow));
+static_assert(TouchesCharmRows(SwapIn, sizeof SwapIn, OnlyId7Row4, AllCharms) && !TouchesCharmRows(SwapIn, sizeof SwapIn, NoRow, AllCharms));
 constexpr auto GridMove = [] { auto p = ListOf(0); p.b[1] = 7; for (int i = 5; i < 9; ++i) p.b[i] = 0xff; p.b[0x0d] = 7; return p; }();
 constexpr auto PlayerIdOnly = [] { auto p = ListOf(0); p.b[1] = 7; return p; }();
-static_assert(TouchesCharmRows(GridMove.b, 0x20, OnlyId7Row4));  // 0x60 mode 0: the item at +0x0d
-static_assert(!TouchesCharmRows(PlayerIdOnly.b, 0x20, OnlyId7Row4));  // 0x60 +1 is a player id, never asked
-static_assert(TouchesCharmRows(CtrlDrop, sizeof CtrlDrop, OnlyId7Row4) && !TouchesCharmRows(CtrlDrop, 4, OnlyId7Row4));
-static_assert(TouchesCharmRows(TakeIt, sizeof TakeIt, RowIs4) && !TouchesCharmRows(TakeIt, sizeof TakeIt, RowIs3));
-static_assert(!TouchesCharmRows(TakeIt, sizeof TakeIt, NoRow) && !TouchesCharmRows(TakeIt, 4, RowIs4));
-static_assert(TouchesCharmRows(PutLow, sizeof PutLow, NoRow) && !TouchesCharmRows(PutHigh, sizeof PutHigh, NoRow));
-static_assert(!TouchesCharmRows(PutStash, sizeof PutStash, NoRow) && !TouchesCharmRows(PutLow, 16, NoRow));
+static_assert(TouchesCharmRows(GridMove.b, 0x20, OnlyId7Row4, AllCharms));  // 0x60 mode 0: the item at +0x0d
+static_assert(!TouchesCharmRows(PlayerIdOnly.b, 0x20, OnlyId7Row4, AllCharms));  // 0x60 +1 is a player id, never asked
+static_assert(TouchesCharmRows(CtrlDrop, sizeof CtrlDrop, OnlyId7Row4, AllCharms) && !TouchesCharmRows(CtrlDrop, 4, OnlyId7Row4, AllCharms));
+static_assert(TouchesCharmRows(TakeIt, sizeof TakeIt, RowIs4, AllCharms) && !TouchesCharmRows(TakeIt, sizeof TakeIt, RowIs3, AllCharms));
+static_assert(!TouchesCharmRows(TakeIt, sizeof TakeIt, NoRow, AllCharms) && !TouchesCharmRows(TakeIt, 4, RowIs4, AllCharms));
+static_assert(TouchesCharmRows(PutLow, sizeof PutLow, NoRow, AllCharms) && !TouchesCharmRows(PutHigh, sizeof PutHigh, NoRow, AllCharms));
+static_assert(!TouchesCharmRows(PutLow, sizeof PutLow, NoRow, NoCharms));  // a non-charm put stays allowed (#2181)
+constexpr auto CursorIs9 = [](uint32_t id) { return id == 9; };  // SwapIn: cursor id 9, stored id 7
+static_assert(TouchesCharmRows(SwapIn, sizeof SwapIn, OnlyId7Row4, CursorIs9));  // a charm swapped onto a non-charm in the rows (#2181)
+static_assert(!TouchesCharmRows(SwapIn, sizeof SwapIn, OnlyId7Row4, NoCharms));  // non-charms both ways: allowed
+static_assert(!TouchesCharmRows(TakeIt, sizeof TakeIt, RowIs4, NoCharms));  // a non-charm take stays allowed
+static_assert(!TouchesCharmRows(PutStash, sizeof PutStash, NoRow, AllCharms) && !TouchesCharmRows(PutLow, 16, NoRow, AllCharms));
 namespace aff = pd2::affinity;
 // the Maps and Bossing tabs refuse a drop that is not the item's own cell (#1726)
 constexpr auto Own = [](uint32_t code, uint32_t shown, uint32_t page, int32_t x, int32_t y) {
@@ -308,12 +315,17 @@ void Load(void* player) noexcept {
 }
 
 sigscan::Entry* const Sigs[] = {&d2r::sig::FindUnit, &d2r::sig::ItemPage, &d2r::sig::UnitPackedXY, &d2r::sig::UnitClassOf,
-                                &d2r::sig::ItemRecord, &d2r::sig::UnitDataFlag, &d2r::sig::UnitInventory, &d2r::sig::UnitStat};
+                                &d2r::sig::ItemRecord, &d2r::sig::UnitDataFlag, &d2r::sig::UnitInventory, &d2r::sig::UnitStat, &d2r::sig::ItemIsType};
 
 // 93847 0x4f2fa0, int (game, player, message, size): the server's client-message dispatch (PlrMsg handler table by id)
 using DispatchFn = int (*)(void*, void*, const uint8_t*, int) noexcept;
 DispatchFn g_dispatch = nullptr;
 constexpr uint8_t DispatchEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x48, 0x89, 0x6c, 0x24, 0x10, 0x48, 0x89, 0x74, 0x24, 0x20};
+
+// charm family (itemtypes parents are walked); a non-charm in the charm rows stays movable (#2181)
+auto IsCharm(Unit* item) noexcept -> bool {
+	return item != nullptr && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::sig::ItemIsType)(item, d2r::rva::ItemTypeCharm) != 0;
+}
 
 // the top row of a stored inventory-grid item of the local player, -1 for anything else (a cursor, stash or cube item, none)
 auto RowOf(void* game, uint32_t id) noexcept -> int {
@@ -473,7 +485,8 @@ auto OnMessage(void* game, void* player, const uint8_t* message, int size) noexc
 		return 0;
 	}
 	if (local && g_locked.load(std::memory_order_relaxed) && size > 0 &&
-	    TouchesCharmRows(message, static_cast<size_t>(size), [game](uint32_t id) noexcept { return RowOf(game, id); })) {
+	    TouchesCharmRows(message, static_cast<size_t>(size), [game](uint32_t id) noexcept { return RowOf(game, id); },
+	                    [game](uint32_t id) noexcept { return IsCharm(UnitOf(game, id)); })) {
 		++g_refused;
 		plog::Info("inventory lock: refused charm-row message 0x%02x (%d bytes)", message[0], size);
 		return 0;

@@ -1,0 +1,1 @@
+- The inventory lock now locks only charms in the charm rows; other items there stay movable.
