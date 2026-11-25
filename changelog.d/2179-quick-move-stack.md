@@ -1,0 +1,1 @@
+- Ctrl+click or Shift+right-click on a big stack in the Maps or Bossing tab now moves 50 to the inventory.
