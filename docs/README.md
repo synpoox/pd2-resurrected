@@ -17,15 +17,12 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 
 - [linux.md](linux.md) — playing on Linux with Wine/Proton and Lutris
 
-## Cartographer migration (done in #1058; historical plans and live contracts)
+## Cartographer in PD2R (migration done in #1058)
 
 Cartographer itself (how it works, its tables, reverse engineering) is documented in d2r-tools: `docs/cartographer/` and `docs/reverse-engineering/cartographer/`. Only what this mod decided is kept here.
 
-- [cartographer/contracts.md](cartographer/contracts.md) — Cartographer candidate: frozen contracts (#946, epic #942)
-- [cartographer/core-events-lanes.md](cartographer/core-events-lanes.md) — core-events lane allowlist (#943)
-- [cartographer/migration-spec.md](cartographer/migration-spec.md) — Migration spec: problem statement and scope
-- [cartographer/migration.md](cartographer/migration.md) — Cartographer migration plan — revised scope
-- [cartographer/native-check.md](cartographer/native-check.md) — Native catalogue check (#952, lane A)
+- [cartographer/contracts.md](cartographer/contracts.md) — What PD2R ships on Cartographer, and its id and file rules
+- [cartographer/core-events-lanes.md](cartographer/core-events-lanes.md) — core-events lane allowlist (enforced by a test)
 
 ## Features and rule lists
 
