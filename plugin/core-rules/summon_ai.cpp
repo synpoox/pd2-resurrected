@@ -49,9 +49,10 @@ std::atomic<uint32_t> g_leashCalls {0};
 std::atomic<uint32_t> g_moves[6] {};
 
 // PD2's leash (0x10360d40), for the ShadowMaster think's two calls and the Shadow Warrior think's one: non-zero once moved
-auto Pd2Leash(Game* game, Unit* pet, Unit* target, Unit* owner, int32_t radius) noexcept -> uint64_t {
+// (the AI tick: both ShadowMaster calls pass the think's tick as the leash's sixth argument)
+auto Pd2Leash(Game* game, Unit* pet, Unit* target, Unit* owner, int32_t radius, const void* tick) noexcept -> uint64_t {
 	++g_leashCalls;
-	return leash::Leash(g_leash, game, pet, target, owner, radius, g_moves);
+	return leash::Leash(g_leash, game, pet, target, owner, radius, leash::TickModes(tick), g_moves);
 }
 
 auto SummonLeash(Game* game, Unit* pet, Unit* target, Unit* owner, int32_t flag, void* tick, int32_t a7,
@@ -60,7 +61,7 @@ auto SummonLeash(Game* game, Unit* pet, Unit* target, Unit* owner, int32_t flag,
 	if (from != g_leashReturn[0] && from != g_leashReturn[1]) {
 		return g_leashOriginal(game, pet, target, owner, flag, tick, a7, radius);
 	}
-	return Pd2Leash(game, pet, target, owner, radius);
+	return Pd2Leash(game, pet, target, owner, radius, tick);
 }
 
 // --- Shadow Warrior (monai row 105, #1800) ---------------------------------------------------------------------------
@@ -268,7 +269,7 @@ auto ShadowWarriorThink(Game* game, Unit* pet, Tick* tick) noexcept -> void {
 	}
 	// no target drop for distance: PD2 keeps the target and lets its leash decide
 	Unit* target = d2r::At<Unit*>(tick, TickTarget);
-	if (Pd2Leash(game, pet, target, owner, 6) != 0) {
+	if (Pd2Leash(game, pet, target, owner, 6, tick) != 0) {
 		return;
 	}
 	void* ownerLeft = g_sw.leftSkill(owner);

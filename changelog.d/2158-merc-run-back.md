@@ -1,0 +1,1 @@
+- Run mercenaries and pets back to you when they fall behind, as in PD2 (#2158).

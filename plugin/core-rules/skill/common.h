@@ -44,7 +44,21 @@ static_assert(Move(1155, true, false) == MoveNone && Move(1156, true, false) == 
 static_assert(Move(0x900, true, false) == MoveWarp && Move(5, false, false) == MoveAside);
 static_assert(Move(100, false, true) == MoveWander && Move(100, true, true) == MoveNone);
 
-using MoverFn = uint64_t (*)(d2r::Game*, d2r::Unit* owner, d2r::Unit* pet, int32_t kind, int32_t, int32_t, uint8_t radius) noexcept;
+// Both PD2 leashes walk back through 0x103569d0 in mode 15 (run) when the pet's monstats2 modes (+0xf0) have bit 15
+// (mRN), else mode 2 (walk). D2R's mover runs kind 1 when its fifth argument is non-zero (0x5bc940's run calls).
+// The AI tick holds the pet's monstats2 record at +0x30.
+constexpr int TickMonStats2 = 0x30, Mon2Modes = 0xf0;
+constexpr uint32_t ModeRun = 1u << 15;  // D2R's mode bit table 0x1d996d0 holds 1 << mode
+constexpr auto RunArg(int32_t move, uint32_t modes) noexcept -> int32_t {
+	return move == MoveBack && (modes & ModeRun) != 0 ? 1 : 0;
+}
+static_assert(RunArg(MoveBack, ModeRun | 4) == 1 && RunArg(MoveBack, 4) == 0 && RunArg(MoveWarp, ModeRun) == 0);
+inline auto TickModes(const void* tick) noexcept -> uint32_t {
+	const uint8_t* monstats2 = tick != nullptr ? d2r::At<const uint8_t*>(tick, TickMonStats2) : nullptr;
+	return monstats2 != nullptr ? d2r::At<uint32_t>(monstats2, Mon2Modes) : 0;
+}
+
+using MoverFn = uint64_t (*)(d2r::Game*, d2r::Unit* owner, d2r::Unit* pet, int32_t kind, int32_t run, int32_t, uint8_t radius) noexcept;
 using PathTargetFn = d2r::Unit* (*)(d2r::Game*, d2r::Unit*) noexcept;
 using IsDeadFn = int32_t (*)(d2r::Unit*) noexcept;
 // D2R's AI target search (0x595f80, 1.13c +0xb1bc0): (game, unit, out distance block, out flag block); it probes a path
@@ -92,9 +106,10 @@ inline auto Dist2(d2r::Unit* a, d2r::Unit* b) noexcept -> int64_t {
 }
 
 // PD2's leash: non-zero once the pet moved. `moves` counts each kind (6 entries); `lastD2`, `lastMove` and
-// `lastFighting` get the distance, the kind picked and whether the 3.2 limit applied.
+// `lastFighting` get the distance, the kind picked and whether the 3.2 limit applied. `modes`: the pet's monstats2 modes
+// (TickModes), for PD2's run back.
 inline auto Leash(const Engine& engine, d2r::Game* game, d2r::Unit* pet, d2r::Unit* target, d2r::Unit* owner, int32_t radius,
-                  std::atomic<uint32_t>* moves, int64_t* lastD2 = nullptr, int32_t* lastMove = nullptr,
+                  uint32_t modes, std::atomic<uint32_t>* moves, int64_t* lastD2 = nullptr, int32_t* lastMove = nullptr,
                   bool* lastFighting = nullptr) noexcept -> uint64_t {
 	// PD2 leashes only a player's pet
 	if (game == nullptr || pet == nullptr || owner == nullptr || d2r::At<int32_t>(owner, d2r::rva::UnitType) != 0) {
@@ -134,8 +149,9 @@ inline auto Leash(const Engine& engine, d2r::Game* game, d2r::Unit* pet, d2r::Un
 		return 0;
 	}
 	// shortcut: PD2 walks back with its own mover (0x10356a40) and measures to the owner's path end while the owner
-	// moves; D2R's mover kinds and the owner's position stand in. Upgrade if pets lag a running owner.
-	return engine.mover(game, owner, pet, move, 0, 0, static_cast<uint8_t>(move == MoveWarp ? 0 : radius));
+	// moves; D2R's mover kinds and the owner's position stand in (running back as PD2 does). Upgrade if pets still lag
+	// a running owner.
+	return engine.mover(game, owner, pet, move, RunArg(move, modes), 0, static_cast<uint8_t>(move == MoveWarp ? 0 : radius));
 }
 
 }  // namespace leash
