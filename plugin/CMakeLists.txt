@@ -282,3 +282,15 @@ add_executable(almanac_identify_check EXCLUDE_FROM_ALL tests/almanac_identify_ch
 target_include_directories(almanac_identify_check PRIVATE core-ui)
 target_link_libraries(almanac_identify_check PRIVATE core_common)
 core_options(almanac_identify_check)
+
+# Under build.ps1 -Tests (MODKIT_BUILD_TESTS=ON) every *_check program is built and run by ctest; otherwise they stay out of `all` (#1949).
+if(MODKIT_BUILD_TESTS)
+	enable_testing()
+	foreach(_t event_link_check event_roll_check line_spread_check stash_toml_check rathma_split_check map_stack_check
+			map_boss_tier_check invader_art_check test_cmd_check pad_modifier_check stash_stack_check log_once_check
+			corruption_lines_check monster_count_check item_price_check parry_roll_check shrine_rules_check
+			parts_uses_check almanac_identify_check)
+		set_property(TARGET ${_t} PROPERTY EXCLUDE_FROM_ALL OFF)
+		add_test(NAME ${_t} COMMAND ${_t})
+	endforeach()
+endif()
