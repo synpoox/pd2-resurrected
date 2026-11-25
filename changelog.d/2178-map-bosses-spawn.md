@@ -1,1 +1,1 @@
-Map Bosses spawn again with the Bind and Summon plugin installed.
+- Fixed map Bosses not spawning since the Bind and Summon plugin was bundled.
