@@ -69,14 +69,14 @@ static_assert(SectionOf("add_shared_tabs = 3") == -1);
 // A line that sets or (after a `#`) comments the key, whatever its value (a string, a sign, hex: all of them are that key's line)
 inline auto IsKeyLine(const char* line, const char* key) noexcept -> bool {
 	const size_t len = std::strlen(key);
-	while (*line == ' ' || *line == '	') {
+	while (*line == ' ' || *line == '\t') {
 		++line;
 	}
 	if (std::strncmp(line, key, len) != 0) {
 		return false;
 	}
 	const char next = line[len];
-	return next == ' ' || next == '	' || next == '=';
+	return next == ' ' || next == '\t' || next == '=';
 }
 
 // `text` with `<key> = value` live in `[d2rcore.stash]`: a key line there gets the value, else the first commented
