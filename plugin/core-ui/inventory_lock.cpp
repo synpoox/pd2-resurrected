@@ -1,4 +1,4 @@
-﻿// Lock Inventory (#1578). The padlock is two ButtonWidgets at one spot in the HD and legacy inventory layouts, InventoryLock
+// Lock Inventory (#1578). The padlock is two ButtonWidgets at one spot in the HD and legacy inventory layouts, InventoryLock
 // (unlocked art) and InventoryLockOn (locked); a frame watch shows only the one matching the lock, because this loader's
 // widget service cannot set a toggle button's state (the controller layout keeps one button, for the pad focus, under a
 // locked-art image the watch shows, #1675). Their click message (PanelManager:OpenPanel:core-ui/InventoryLock,
@@ -96,6 +96,10 @@ static_assert(TouchesCharmRows(TakeIt, sizeof TakeIt, RowIs4, AllCharms) && !Tou
 static_assert(!TouchesCharmRows(TakeIt, sizeof TakeIt, NoRow, AllCharms) && !TouchesCharmRows(TakeIt, 4, RowIs4, AllCharms));
 static_assert(TouchesCharmRows(PutLow, sizeof PutLow, NoRow, AllCharms) && !TouchesCharmRows(PutHigh, sizeof PutHigh, NoRow, AllCharms));
 static_assert(!TouchesCharmRows(PutLow, sizeof PutLow, NoRow, NoCharms));  // a non-charm put stays allowed (#2181)
+constexpr auto CursorIs9 = [](uint32_t id) { return id == 9; };  // SwapIn: cursor id 9, stored id 7
+static_assert(TouchesCharmRows(SwapIn, sizeof SwapIn, OnlyId7Row4, CursorIs9));  // a charm swapped onto a non-charm in the rows (#2181)
+static_assert(!TouchesCharmRows(SwapIn, sizeof SwapIn, OnlyId7Row4, NoCharms));  // non-charms both ways: allowed
+static_assert(!TouchesCharmRows(TakeIt, sizeof TakeIt, RowIs4, NoCharms));  // a non-charm take stays allowed
 static_assert(!TouchesCharmRows(PutStash, sizeof PutStash, NoRow, AllCharms) && !TouchesCharmRows(PutLow, 16, NoRow, AllCharms));
 namespace aff = pd2::affinity;
 // the Maps and Bossing tabs refuse a drop that is not the item's own cell (#1726)
@@ -323,11 +327,11 @@ auto IsCharm(Unit* item) noexcept -> bool {
 	return item != nullptr && d2r::Engine<int32_t (*)(Unit*, int32_t) noexcept>(d2r::sig::ItemIsType)(item, d2r::rva::ItemTypeCharm) != 0;
 }
 
-// the top row of a stored inventory-grid charm of the local player, -1 for anything else (a cursor, stash or cube item, none)
+// the top row of a stored inventory-grid item of the local player, -1 for anything else (a cursor, stash or cube item, none)
 auto RowOf(void* game, uint32_t id) noexcept -> int {
 	Unit* item = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit)(static_cast<Game*>(game), 4, id);
 	if (item == nullptr || d2r::At<int32_t>(item, d2r::rva::UnitMode) != 0 ||
-	    d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::sig::ItemPage)(item) != 0 || !IsCharm(item)) {
+	    d2r::Engine<uint8_t (*)(Unit*) noexcept>(d2r::sig::ItemPage)(item) != 0) {
 		return -1;
 	}
 	return static_cast<int>(d2r::Engine<uint32_t (*)(Unit*) noexcept>(d2r::sig::UnitPackedXY)(item) >> 16);
