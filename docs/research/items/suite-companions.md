@@ -123,3 +123,9 @@ not covered and stays IR5's.
 - Add core-rules and unported rows: "Ethereal bonus 25% (PD2's ApplyEthereal `0x2fb710`)", IR8; "Weapons lose durability
   at half the rate (wiki)", IR8 or IR2 approximated.
 - Skill on cast's approximated row moves from P12's trigger to Cast Triggers' (IR2).
+
+## Expected log line: Progressive Affixes at `0x373890`
+
+Progressive Affixes logs `Plugin safety-check patch failed at RVA 0x373890`. This is expected and harmless. core-rules' SDK
+hook on `ItemIsType` (`plugin/core-rules/item/item_prices.cpp`) sits at that address, so the companion's own patch finds
+changed bytes and composes through the loader-owned hook instead. Don't chase it during a test.
