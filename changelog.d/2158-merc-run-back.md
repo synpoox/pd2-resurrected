@@ -1,0 +1,1 @@
+- Mercenaries and summons run back to you instead of walking, as in PD2, so they no longer fall far behind (#2158).
