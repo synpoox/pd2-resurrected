@@ -1,6 +1,6 @@
 """One owner per hook site, beside a standalone Cartographer (#945).
 
-Cartographer (d2r-tools, not modified) installs inline hooks on the cube executor and on both item spell dispatchers.
+Cartographer (d2r-tools, not modified) installs inline hooks on both item spell dispatchers (since 0.1.2 not on the cube executor).
 Two plugins cannot own one entry (d2rAI-toolkit knowledge/engine-re.md), so PD2's plugins keep off those entries:
 core-rules owns the cube executor; Cartographer (0.1.2) no longer hooks it.
 Cartographer owns the item spell dispatchers and core-events hooks neither (#964); the Almanac writes use slot 14 of the item spell
@@ -90,10 +90,14 @@ class HookOwners(unittest.TestCase):
     @unittest.skipUnless(os.environ.get("CARTOGRAPHER_SRC"), "set CARTOGRAPHER_SRC to Cartographer's src folder")
     def test_cartographers_entries_are_ours(self):
         sigs = (Path(os.environ["CARTOGRAPHER_SRC"]) / "core" / "part_signatures.h").read_text(encoding="utf-8")
-        for part, name in (("CubeExec", "CubeExecutor"), ("ItemSpellUse", "ItemSpellUse"), ("ItemSpellCheck", "ItemSpellCheck")):
+        for part, name in (("ItemSpellUse", "ItemSpellUse"), ("ItemSpellCheck", "ItemSpellCheck")):
             sig = re.search(part + r'\s*=\s*"([^"]+)"', sigs).group(1).split()
             want = entry(name)
             self.assertEqual([int(b, 16) for b in sig[:len(want)]], want, part)
+        self.assertIsNone(re.search(r"CubeExec", sigs))  # the part was renamed CubeTransmute
+        cube = re.search(r'CubeTransmute\s*=\s*"([^"]+)"', sigs).group(1).split()
+        want = entry("CubeExecutor")
+        self.assertNotEqual([t.upper() for t in cube[:len(want)]], [f"{b:02X}" for b in want])  # stays off core-rules' cube executor entry
 
 
 if __name__ == "__main__":

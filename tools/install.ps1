@@ -75,6 +75,7 @@ if ($moved) {
     }
 }
 
+$companionsInstalled = $false
 if ($Data) {
     $Data = (Resolve-Path $Data).Path
     # files/data holds the committed tables (ADR 0007); a leftover generated/data would be copied over them by modkit build.
@@ -117,6 +118,7 @@ if ($Data) {
                 try {
                     py -3 -c "import sys; sys.path.insert(0, sys.argv[1]); from pathlib import Path; from release.companions import overlay; overlay(Path('.'), Path(sys.argv[2]), prune=True)" $Toolkit $root
                     if ($LASTEXITCODE -ne 0) { throw "companions overlay failed ($LASTEXITCODE)" }
+                    $companionsInstalled = $true
                 } finally { Pop-Location }
             }
         } else {
@@ -128,21 +130,23 @@ if ($Data) {
                 try {
                     py -3 (Join-Path $Toolkit "release\companions.py") install --game $Game
                     if ($LASTEXITCODE -ne 0) { throw "companions install failed ($LASTEXITCODE)" }
+                    $companionsInstalled = $true
                 } finally { Pop-Location }
             }
         }
     } finally { Pop-Location }
-    if ($Cartographer) {
-        if (-not (Test-Path $Cartographer)) { throw "$Cartographer missing" }
-        $dst = Join-Path $root "d2rloader\plugins"
-        New-Item -ItemType Directory -Force $dst | Out-Null
-        Copy-Item $Cartographer $dst -Force
-        Write-Output "installed cartographer.dll (override) -> $dst"
-    }
     foreach ($f in $saved.Keys) {
         $info = Get-Content $f -Raw | ConvertFrom-Json
         $info.savepath = $saved[$f]
         [IO.File]::WriteAllText($f, ($info | ConvertTo-Json))  # UTF-8 without a BOM, as modkit writes it
         Write-Output "savepath kept: $($saved[$f]) in $f"
     }
+}
+
+if (-not $companionsInstalled) { Write-Warning "companions (Cartographer included) were not installed or updated: pass -Data <project with companions/manifest.json>" }
+if ($Cartographer) {
+    if (-not (Test-Path $Cartographer)) { throw "$Cartographer missing" }
+    New-Item -ItemType Directory -Force $plugins | Out-Null
+    Copy-Item $Cartographer $plugins -Force
+    Write-Output "installed cartographer.dll (override) -> $plugins"
 }
