@@ -1,0 +1,1 @@
+- The stash now holds up to 25,000,000 gold, as in PD2 (#2118).
