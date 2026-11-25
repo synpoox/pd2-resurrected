@@ -46,7 +46,7 @@ class SequenceStates(unittest.TestCase):
         rows = list(csv.reader((FILES / "global/excel/skills.txt").open(encoding="utf-8-sig"), delimiter="\t"))
         ids = {row[0]: int(row[1]) for row in rows[1:]}
         for unit, skill, steps in (("ancientbarb1", "MonWhirlwind", 1), ("ancientbarb3", "Leap Attack Korlic", 4),
-                                  ("roguehire", "DoppleZonStrafe", 1), ("duriel", "MonCharge", 1),
+                                  ("roguehire", "DoppleZonStrafe", 2), ("duriel", "MonCharge", 1),
                                   ("duriel", "MonJab", 1), ("duriel", "MonSmite", 1),
                                   # #2092
                                   ("ancientbarb1", "UberTalicWhirlwind", 1), ("ancientbarb3", "Leap Attack", 4),
@@ -72,6 +72,15 @@ class SequenceStates(unittest.TestCase):
             froms = [g["from"] for g in sm["transitions"]]
             for s in states:
                 self.assertIn(s["stateId"], froms)
+
+    def test_a1_merc_strafe_pair(self):
+        # #2156: the A1 merc's Strafe (26) plays a first and a follow-up attack state, like the player's
+        sm = json.loads((FILES / "hd/character/enemy/roguehire/roguehire_state_machine.json").read_text("utf-8"))
+        states = sorted((s for s in sm["states"] if s["modeId"] == 4 and s["skillIndex"] == 26), key=lambda s: s["stepIndex"])
+        self.assertEqual([s["stepIndex"] for s in states], [0, 1])
+        froms = [g["from"] for g in sm["transitions"]]
+        for s in states:
+            self.assertIn(s["stateId"], froms)
 
 
 if __name__ == "__main__":

@@ -8,7 +8,9 @@ the skill runs while the body plays no clip. Each new state copies a D2R state w
   Blade Dance (452, seq 10) <- Whirlwind (151, seq 10): the only Assassin state on sequence 10, a claw spin clip.
   Talic's MonWhirlwind (495) <- Whirlwind (151): D2R's Talic spins with Whirlwind (#1858).
   Korlic's Leap Attack Korlic (602) <- MonLeapAttack (367): D2R's Korlic leaps with MonLeapAttack, four steps (#1858).
-  Decoy's DoppleZonStrafe (557) <- the rogue's Attack1 (mode 4), looped: D2R's rogue has no sequence state (#1964).
+  Decoy's DoppleZonStrafe (557) <- the rogue's Attack1 (mode 4): D2R's rogue has no sequence state (#1964). With the A1
+    merc's Strafe (26) it gets the player's Strafe pair (#2156): a first state and a follow-up state (step 1) that
+    restarts the clip with a 0.01 s blend and loops to itself, one quick draw per arrow.
   Duriel's MonCharge (486), MonJab (484), MonSmite (485) <- Charge (107), Jab (10), Smite (97): D2R's Duriel (#2083).
   #2092, every other monster whose PD2 skill sits on a sequence D2R keys on a vanilla skill (vanilla source state):
     Blunderbore MonSmite <- Smite; Scarab, Crusher lancer MonJab <- Jab; Siege Beast, Reanimated Horde, Claw Viper
@@ -57,8 +59,10 @@ STATES = {
                                 mon(579, 151, "UberTalicWhirlwind")],
     ("enemy", "ancientbarb3"): [(MONSTER_SEQUENCE_MODE, 602, 367, "Skill_LeapAttackKorlic", "_leapattackkorlic"),
                                 mon(143, 367, "UberLeapAttack")],
-    # Decoy (dopplezonnew) draws the rogue merc's model; its Strafe sequence repeats A1 frames
-    ("enemy", "roguehire"): (MONSTER_SEQUENCE_MODE, 557, -1, "Seq_DoppleZonStrafe", "_dopplestrafe", 4),
+    # Decoy (dopplezonnew) draws the rogue merc's model; its Strafe sequence repeats A1 frames, and the A1 merc's Strafe
+    # (26, plain attack mode 4) gets the same pair (#2156)
+    ("enemy", "roguehire"): [(MONSTER_SEQUENCE_MODE, 557, -1, "Seq_DoppleZonStrafe", "_dopplestrafe", 4, True),
+                             (4, 26, -1, "Strafe", "_strafe", 4, True)],
     ("enemy", "duriel"): [
         (MONSTER_SEQUENCE_MODE, 486, 107, "Ability_MONCHARGE_Sequence", "_moncharge"),
         (MONSTER_SEQUENCE_MODE, 484, 10, "Ability_MONJAB_Sequence", "_monjab"),
@@ -87,10 +91,12 @@ STATES = {
 }
 
 
-def build(sm: dict, mode: int, new_skill: int, src_skill: int, name: str, suffix: str, src_mode: int | None = None) -> dict:
+def build(sm: dict, mode: int, new_skill: int, src_skill: int, name: str, suffix: str, src_mode: int | None = None,
+          pair: bool = False) -> dict:
     """A copy of every state of src_skill in src_mode (one per step) as a `mode` state under new_skill, wired like its source.
 
-    A source from another mode (a plain attack) becomes a looping sequence state."""
+    A source from another mode (a plain attack) becomes a looping sequence state.
+    pair: add the player Strafe's follow-up (step 1) beside the first state: each arrow restarts the clip, blended in 0.01 s."""
     sm = copy.deepcopy(sm)
     src_mode = mode if src_mode is None else src_mode
     srcs = [s for s in sm["states"] if s["modeId"] == src_mode and s["skillIndex"] == src_skill]
@@ -105,7 +111,7 @@ def build(sm: dict, mode: int, new_skill: int, src_skill: int, name: str, suffix
         state = copy.deepcopy(src)
         state.update(stateId=next_id + k, modeId=mode, skillIndex=new_skill,
                      _name=name if len(srcs) == 1 else f"{name}_{src['stepIndex']}")
-        if src_mode != mode:
+        if src_mode != mode and not pair:
             state["loopCount"] = 0
         sm["states"].append(state)
     owns = []
@@ -123,7 +129,34 @@ def build(sm: dict, mode: int, new_skill: int, src_skill: int, name: str, suffix
         own = copy.deepcopy(g)
         own.update(**{"from": new_ids[g["from"]], "name": g["name"] + suffix})
         sm["transitions"].append(own)
+    if pair:
+        add_follow_up(sm, next_id, name, suffix)
     return sm
+
+
+def add_follow_up(sm: dict, first_id: int, name: str, suffix: str) -> None:
+    """Amazon Strafe_FollowUpAttack: the first state's clip as step 1, entered from every state a first state is,
+    in 0.01 s from the first state, itself and the states a plain attack blends quickly into."""
+    first = next(s for s in sm["states"] if s["stateId"] == first_id)
+    fid = max(s["stateId"] for s in sm["states"]) + 1
+    follow = copy.deepcopy(first)
+    follow.update(stateId=fid, stepIndex=1, _name=name + "_FollowUp")
+    sm["states"].append(follow)
+    own = next(g for g in sm["transitions"] if g["from"] == first_id)
+    for g in sm["transitions"]:
+        for item in list(g["settings"]):
+            if item["to"] == first_id:
+                new = copy.deepcopy(item)
+                new.update(to=fid, name=item["name"] + "_followup", crossfadeSeconds=0.01)
+                g["settings"].append(new)
+    follow_group = copy.deepcopy(own)
+    follow_group.update(**{"from": fid, "name": own["name"] + "_followup"})
+    sm["transitions"].append(follow_group)
+    for g, to_first in ((own, False), (follow_group, True)):
+        g["settings"] = [i for i in g["settings"] if i["to"] not in (first_id, fid)]
+        g["settings"].append({"type": "AnimationTransitionItem", "name": g["name"] + "_follow", "crossfadeSeconds": 0.01, "to": fid})
+        if to_first:
+            g["settings"].append({"type": "AnimationTransitionItem", "name": g["name"] + "_first", "crossfadeSeconds": 0.2, "to": first_id})
 
 
 def main() -> None:
