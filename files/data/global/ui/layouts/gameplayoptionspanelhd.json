@@ -687,38 +687,37 @@
                                     "fields": {
                                         "text": "Item Roll Ranges",
                                         "style": "$StyleSettingsText"
-                                    }
-                                },
-                                {
-                                    "type": "ButtonWidget",
-                                    "name": "item-roll-ranges/display_always_show_ranges:off",
-                                    "fields": {
-                                        "rect": "$OptionsToggleRect",
-                                        "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
-                                        "normalFrame": 0,
-                                        "pressedFrame": 1,
-                                        "hoveredFrame": 3,
-                                        "disabledFrame": 2,
-                                        "sound": "cursor_menu_select_hd",
-                                        "focusIndicatorPadding": "$OptionsToggleFocusIndicatorPadding",
-                                        "focusIndicatorFilename": "$OptionsToggleFocusIndicatorFilename",
-                                        "onClickMessage": "PanelManager:OpenPanel:aa-settings-host/item-roll-ranges/display_always_show_ranges"
                                     },
                                     "children": [
                                         {
-                                            "type": "ImageWidget",
-                                            "name": "item-roll-ranges/display_always_show_ranges:on",
-                                            "fields": {
-                                                "rect": {
-                                                    "x": 0,
-                                                    "y": 0
-                                                },
-                                                "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
-                                                "frame": 4,
-                                                "visible": false
-                                            }
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
                                         }
                                     ]
+                                },
+                                {
+                                    "type": "DropdownListWidget",
+                                    "name": "item-roll-ranges:display_always_show_ranges",
+                                    "fields": {
+                                        "rect": "$OptionsDropDownRect",
+                                        "background/rect": "$OptionsDropDownBackgroundRect",
+                                        "background/leftCapOffset": "$OptionsDropDownLeftCapOffset",
+                                        "background/rightCapOffset": "$OptionsDropDownRightCapOffset",
+                                        "pressedFrame": 1,
+                                        "disabledFrame": 2,
+                                        "hoveredFrame": 3,
+                                        "focusIndicatorFilename": "$OptionsDropDownFocusIndicatorFilename",
+                                        "states": [
+                                            "Hold Ctrl / RT",
+                                            "Always Show"
+                                        ],
+                                        "onUpdateMessage": "PanelManager:OpenPanel:aa-settings-host",
+                                        "text/style": "$StyleSettingsCarousel",
+                                        "text/style": {
+                                            "pointSize": "$MediumFontSize"
+                                        },
+                                        "textColor": "$FontColorLightGold"
+                                    }
                                 }
                             ]
                         },
@@ -1195,7 +1194,13 @@
                                     "fields": {
                                         "text": "Prioritize Portals",
                                         "style": "$StyleSettingsText"
-                                    }
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
                                 },
                                 {
                                     "type": "ButtonWidget",
@@ -1240,7 +1245,13 @@
                                     "fields": {
                                         "text": "Prioritize Stash",
                                         "style": "$StyleSettingsText"
-                                    }
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
                                 },
                                 {
                                     "type": "ButtonWidget",
@@ -1285,7 +1296,13 @@
                                     "fields": {
                                         "text": "Prioritize Chests",
                                         "style": "$StyleSettingsText"
-                                    }
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
                                 },
                                 {
                                     "type": "ButtonWidget",
@@ -1330,7 +1347,13 @@
                                     "fields": {
                                         "text": "Target Snapping",
                                         "style": "$StyleSettingsText"
-                                    }
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
                                 },
                                 {
                                     "type": "ButtonWidget",
@@ -1375,7 +1398,13 @@
                                     "fields": {
                                         "text": "Reticle Overlay",
                                         "style": "$StyleSettingsText"
-                                    }
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
                                 },
                                 {
                                     "type": "ButtonWidget",
@@ -1407,6 +1436,102 @@
                                             }
                                         }
                                     ]
+                                }
+                            ]
+                        },
+                        {
+                            "type": "TableRowWidget",
+                            "name": "Row controller-qol-updates/aim_ground_reticle_color",
+                            "children": [
+                                {
+                                    "type": "TextBoxWidget",
+                                    "name": "controller-qol-updates/aim_ground_reticle_color:text",
+                                    "fields": {
+                                        "text": "Ground Reticle Color",
+                                        "style": "$StyleSettingsText"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "DropdownListWidget",
+                                    "name": "controller-qol-updates:aim_ground_reticle_color",
+                                    "fields": {
+                                        "rect": "$OptionsDropDownRect",
+                                        "background/rect": "$OptionsDropDownBackgroundRect",
+                                        "background/leftCapOffset": "$OptionsDropDownLeftCapOffset",
+                                        "background/rightCapOffset": "$OptionsDropDownRightCapOffset",
+                                        "pressedFrame": 1,
+                                        "disabledFrame": 2,
+                                        "hoveredFrame": 3,
+                                        "focusIndicatorFilename": "$OptionsDropDownFocusIndicatorFilename",
+                                        "states": [
+                                            "Ice Blue",
+                                            "Gold",
+                                            "Emerald",
+                                            "White",
+                                            "Crimson",
+                                            "Violet"
+                                        ],
+                                        "onUpdateMessage": "PanelManager:OpenPanel:aa-settings-host",
+                                        "text/style": "$StyleSettingsCarousel",
+                                        "text/style": {
+                                            "pointSize": "$MediumFontSize"
+                                        },
+                                        "textColor": "$FontColorLightGold"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "type": "TableRowWidget",
+                            "name": "Row controller-qol-updates/aim_lock_reticle_color",
+                            "children": [
+                                {
+                                    "type": "TextBoxWidget",
+                                    "name": "controller-qol-updates/aim_lock_reticle_color:text",
+                                    "fields": {
+                                        "text": "Lock Reticle Color",
+                                        "style": "$StyleSettingsText"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "DropdownListWidget",
+                                    "name": "controller-qol-updates:aim_lock_reticle_color",
+                                    "fields": {
+                                        "rect": "$OptionsDropDownRect",
+                                        "background/rect": "$OptionsDropDownBackgroundRect",
+                                        "background/leftCapOffset": "$OptionsDropDownLeftCapOffset",
+                                        "background/rightCapOffset": "$OptionsDropDownRightCapOffset",
+                                        "pressedFrame": 1,
+                                        "disabledFrame": 2,
+                                        "hoveredFrame": 3,
+                                        "focusIndicatorFilename": "$OptionsDropDownFocusIndicatorFilename",
+                                        "states": [
+                                            "Gold",
+                                            "Crimson",
+                                            "Emerald",
+                                            "Ice Blue",
+                                            "White",
+                                            "Orange"
+                                        ],
+                                        "onUpdateMessage": "PanelManager:OpenPanel:aa-settings-host",
+                                        "text/style": "$StyleSettingsCarousel",
+                                        "text/style": {
+                                            "pointSize": "$MediumFontSize"
+                                        },
+                                        "textColor": "$FontColorLightGold"
+                                    }
                                 }
                             ]
                         },
@@ -1774,176 +1899,41 @@
                                     "fields": {
                                         "text": "Loot Filter Profile",
                                         "style": "$StyleSettingsText"
-                                    }
-                                },
-                                {
-                                    "type": "ButtonWidget",
-                                    "name": "pyre-lootfilter/pyre-lootfilter_selected_filter",
-                                    "fields": {
-                                        "filename": "FrontEnd/HD/Final/FrontEnd_ButtonSmall",
-                                        "pressedFrame": 1,
-                                        "disabledFrame": 2,
-                                        "hoveredFrame": 3,
-                                        "sound": "cursor_select",
-                                        "focusIndicatorFilename": "Controller/HoverImages/FrontEndButtonSmall_Hover",
-                                        "onClickMessage": "PanelManager:OpenPanel:aa-settings-host/pyre-lootfilter/pyre-lootfilter_selected_filter"
                                     },
                                     "children": [
                                         {
-                                            "type": "TextBoxWidget",
-                                            "name": "pyre-lootfilter/pyre-lootfilter_selected_filter=None (Off)",
-                                            "fields": {
-                                                "rect": {
-                                                    "x": 0,
-                                                    "y": 0,
-                                                    "width": 366,
-                                                    "height": 93
-                                                },
-                                                "text": "Off",
-                                                "style": {
-                                                    "fontColor": "$LightButtonTextColor",
-                                                    "pointSize": "$MediumFontSize",
-                                                    "alignment": {
-                                                        "h": "center",
-                                                        "v": "center"
-                                                    }
-                                                },
-                                                "visible": false
-                                            }
-                                        },
-                                        {
-                                            "type": "TextBoxWidget",
-                                            "name": "pyre-lootfilter/pyre-lootfilter_selected_filter=PD2R Starter",
-                                            "fields": {
-                                                "rect": {
-                                                    "x": 0,
-                                                    "y": 0,
-                                                    "width": 366,
-                                                    "height": 93
-                                                },
-                                                "text": "Starter",
-                                                "style": {
-                                                    "fontColor": "$LightButtonTextColor",
-                                                    "pointSize": "$MediumFontSize",
-                                                    "alignment": {
-                                                        "h": "center",
-                                                        "v": "center"
-                                                    }
-                                                },
-                                                "visible": false
-                                            }
-                                        },
-                                        {
-                                            "type": "TextBoxWidget",
-                                            "name": "pyre-lootfilter/pyre-lootfilter_selected_filter=PD2R Regular",
-                                            "fields": {
-                                                "rect": {
-                                                    "x": 0,
-                                                    "y": 0,
-                                                    "width": 366,
-                                                    "height": 93
-                                                },
-                                                "text": "Regular",
-                                                "style": {
-                                                    "fontColor": "$LightButtonTextColor",
-                                                    "pointSize": "$MediumFontSize",
-                                                    "alignment": {
-                                                        "h": "center",
-                                                        "v": "center"
-                                                    }
-                                                },
-                                                "visible": false
-                                            }
-                                        },
-                                        {
-                                            "type": "TextBoxWidget",
-                                            "name": "pyre-lootfilter/pyre-lootfilter_selected_filter=PD2R Strict",
-                                            "fields": {
-                                                "rect": {
-                                                    "x": 0,
-                                                    "y": 0,
-                                                    "width": 366,
-                                                    "height": 93
-                                                },
-                                                "text": "Strict",
-                                                "style": {
-                                                    "fontColor": "$LightButtonTextColor",
-                                                    "pointSize": "$MediumFontSize",
-                                                    "alignment": {
-                                                        "h": "center",
-                                                        "v": "center"
-                                                    }
-                                                },
-                                                "visible": false
-                                            }
-                                        },
-                                        {
-                                            "type": "TextBoxWidget",
-                                            "name": "pyre-lootfilter/pyre-lootfilter_selected_filter=PD2R Very strict",
-                                            "fields": {
-                                                "rect": {
-                                                    "x": 0,
-                                                    "y": 0,
-                                                    "width": 366,
-                                                    "height": 93
-                                                },
-                                                "text": "Very strict",
-                                                "style": {
-                                                    "fontColor": "$LightButtonTextColor",
-                                                    "pointSize": "$MediumFontSize",
-                                                    "alignment": {
-                                                        "h": "center",
-                                                        "v": "center"
-                                                    }
-                                                },
-                                                "visible": false
-                                            }
-                                        },
-                                        {
-                                            "type": "TextBoxWidget",
-                                            "name": "pyre-lootfilter/pyre-lootfilter_selected_filter=PD2R Endgame",
-                                            "fields": {
-                                                "rect": {
-                                                    "x": 0,
-                                                    "y": 0,
-                                                    "width": 366,
-                                                    "height": 93
-                                                },
-                                                "text": "Endgame",
-                                                "style": {
-                                                    "fontColor": "$LightButtonTextColor",
-                                                    "pointSize": "$MediumFontSize",
-                                                    "alignment": {
-                                                        "h": "center",
-                                                        "v": "center"
-                                                    }
-                                                },
-                                                "visible": false
-                                            }
-                                        },
-                                        {
-                                            "type": "TextBoxWidget",
-                                            "name": "pyre-lootfilter/pyre-lootfilter_selected_filter=?",
-                                            "fields": {
-                                                "rect": {
-                                                    "x": 0,
-                                                    "y": 0,
-                                                    "width": 366,
-                                                    "height": 93
-                                                },
-                                                "text": "Custom",
-                                                "style": {
-                                                    "fontColor": "$LightButtonTextColor",
-                                                    "pointSize": "$MediumFontSize",
-                                                    "alignment": {
-                                                        "h": "center",
-                                                        "v": "center"
-                                                    }
-                                                },
-                                                "visible": false
-                                            }
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
                                         }
                                     ]
+                                },
+                                {
+                                    "type": "DropdownListWidget",
+                                    "name": "pyre-lootfilter:pyre-lootfilter_selected_filter",
+                                    "fields": {
+                                        "rect": "$OptionsDropDownRect",
+                                        "background/rect": "$OptionsDropDownBackgroundRect",
+                                        "background/leftCapOffset": "$OptionsDropDownLeftCapOffset",
+                                        "background/rightCapOffset": "$OptionsDropDownRightCapOffset",
+                                        "pressedFrame": 1,
+                                        "disabledFrame": 2,
+                                        "hoveredFrame": 3,
+                                        "focusIndicatorFilename": "$OptionsDropDownFocusIndicatorFilename",
+                                        "states": [
+                                            "Off",
+                                            "Starter",
+                                            "Regular",
+                                            "Strict",
+                                            "Very strict",
+                                            "Endgame"
+                                        ],
+                                        "onUpdateMessage": "PanelManager:OpenPanel:aa-settings-host",
+                                        "text/style": "$StyleSettingsCarousel",
+                                        "text/style": {
+                                            "pointSize": "$MediumFontSize"
+                                        },
+                                        "textColor": "$FontColorLightGold"
+                                    }
                                 }
                             ]
                         },
@@ -1957,7 +1947,13 @@
                                     "fields": {
                                         "text": "Minimap Icons",
                                         "style": "$StyleSettingsText"
-                                    }
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
                                 },
                                 {
                                     "type": "ButtonWidget",
@@ -2002,7 +1998,13 @@
                                     "fields": {
                                         "text": "Drop Sounds",
                                         "style": "$StyleSettingsText"
-                                    }
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
                                 },
                                 {
                                     "type": "ButtonWidget",
@@ -2047,7 +2049,13 @@
                                     "fields": {
                                         "text": "3D Drop Audio",
                                         "style": "$StyleSettingsText"
-                                    }
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
                                 },
                                 {
                                     "type": "ButtonWidget",
@@ -2092,7 +2100,13 @@
                                     "fields": {
                                         "text": "Auto-Show Items",
                                         "style": "$StyleSettingsText"
-                                    }
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
                                 },
                                 {
                                     "type": "ButtonWidget",
@@ -2137,7 +2151,13 @@
                                     "fields": {
                                         "text": "Ctrl Shows Hidden Items",
                                         "style": "$StyleSettingsText"
-                                    }
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
                                 },
                                 {
                                     "type": "ButtonWidget",
@@ -2182,7 +2202,13 @@
                                     "fields": {
                                         "text": "Auto-Reload Filter",
                                         "style": "$StyleSettingsText"
-                                    }
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
                                 },
                                 {
                                     "type": "ButtonWidget",

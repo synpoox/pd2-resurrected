@@ -1,1 +1,1 @@
-- Pick the loot filter and its toggles in Options > Gameplay > Loot Filter (#2237).
+- Pick the loot filter, Item Roll Ranges and Controller QOL options in Options > Gameplay (#2237).

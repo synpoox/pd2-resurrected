@@ -10,11 +10,16 @@ int main() {
 	const std::string row = RowName("pyre-lootfilter", "pyre-lootfilter_selected_filter");
 	check("row name is plugin/key", row == "pyre-lootfilter/pyre-lootfilter_selected_filter");
 	check("toggle buttons", ToggleWidget("a/b", true) == "a/b:on" && ToggleWidget("a/b", false) == "a/b:off");
-	check("option button", OptionWidget("a/b", "PD2R Starter") == "a/b=PD2R Starter");
-	check("click steps on", NextIndex(0, 6) == 1 && NextIndex(4, 6) == 5);
-	check("click wraps from the last", NextIndex(5, 6) == 0);
-	check("an index out of range goes to the first", NextIndex(-1, 6) == 0 && NextIndex(9, 6) == 0);
-	check("no or one option stays at 0", NextIndex(0, 0) == 0 && NextIndex(0, 1) == 0);
+	const Dropdown* loot = FindDropdown("pyre-lootfilter/pyre-lootfilter_selected_filter");
+	check("the loot filter has a dropdown", loot != nullptr && loot->count == 6 && FindDropdown("a/b") == nullptr);
+	check("a label maps to its state", StateOf(*loot, "None (Off)") == 0 && StateOf(*loot, "PD2R Endgame") == 5);
+	check("an unknown label has none", StateOf(*loot, "my own filter") == -1);
+	check("a stem-suffixed label maps", StateOf(*loot, "PD2R Starter (pd2r-starter)") == 1 && StateOf(*loot, "PD2R Starter (Legacy)") == -1);
+	const std::vector<std::string> pyre = {"None (Off)", "PD2R Endgame", "PD2R Starter (Legacy)", "PD2R Starter (pd2r-starter)"};
+	check("a pick finds the owner's option", OptionOf(*loot, 1, pyre) == 3 && OptionOf(*loot, 5, pyre) == 1 && OptionOf(*loot, 0, pyre) == 0);
+	check("a pick with no option", OptionOf(*loot, 2, pyre) == -1 && OptionOf(*loot, -1, pyre) == -1);
+	const Dropdown* ranges = FindDropdown("item-roll-ranges/display_always_show_ranges");
+	check("roll ranges has two states", ranges != nullptr && StateOf(*ranges, "Always Show") == 1);
 	std::printf(fail == 0 ? "all passed\n" : "%d failed\n", fail);
 	return fail == 0 ? 0 : 1;
 }
