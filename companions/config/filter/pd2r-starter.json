@@ -1,5 +1,5 @@
 {
-  "name": "PD2R Regular",
+  "name": "PD2R Starter",
   "version": 3,
   "rules": [
     {
@@ -473,16 +473,7 @@
             "gfg",
             "gfr",
             "gfw",
-            "skf"
-          ]
-        }
-      }
-    },
-    {
-      "hide": {
-        "ruleName": "Gems: Hide",
-        "conditions": {
-          "code": [
+            "skf",
             "gcv",
             "gcy",
             "gcb",
@@ -1423,7 +1414,7 @@
       }
     },
     {
-      "hide": {
+      "show": {
         "ruleName": "White bases: Plain normal bases",
         "conditions": {
           "rarity": [
@@ -1435,7 +1426,7 @@
       }
     },
     {
-      "hide": {
+      "show": {
         "ruleName": "White bases: Inferior items",
         "conditions": {
           "rarity": "inferior"
@@ -1507,7 +1498,7 @@
       }
     },
     {
-      "hide": {
+      "show": {
         "ruleName": "Rare, crafted & magic gear: Magic normal gear",
         "conditions": {
           "rarity": "magic",
@@ -1526,21 +1517,6 @@
             "mp5",
             "hp4",
             "mp4",
-            "tsc",
-            "isc",
-            "tbk",
-            "ibk",
-            "key",
-            "gld"
-          ]
-        }
-      }
-    },
-    {
-      "hide": {
-        "ruleName": "Potions & misc: Hide",
-        "conditions": {
-          "code": [
             "hp1",
             "hp2",
             "hp3",
@@ -1550,12 +1526,18 @@
             "vps",
             "yps",
             "wms",
+            "tsc",
+            "isc",
+            "tbk",
+            "ibk",
+            "key",
             "aqv",
             "aqv2",
             "aqv3",
             "cqv",
             "cqv2",
-            "cqv3"
+            "cqv3",
+            "gld"
           ]
         }
       }
@@ -1565,11 +1547,12 @@
     "format": "pd2r-filter-builder",
     "version": 1,
     "settings": {
-      "name": "PD2R Regular",
-      "level": 1,
+      "name": "PD2R Starter",
+      "level": 0,
       "overrides": {},
       "itemOverrides": {},
       "baseOptions": {},
+      "goldMin": 0,
       "theme": "resurrected",
       "styleEdits": {},
       "rarityEdits": {},
