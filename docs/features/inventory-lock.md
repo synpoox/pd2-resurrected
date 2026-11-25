@@ -2,7 +2,7 @@
 
 PD2's Lock Inventory ([#1578](https://github.com/synpoox/pd2-resurrected/issues/1578)): a padlock at the bottom right of the
 inventory panel. Locked, clicks, Ctrl/Shift clicks and the pad cannot put an item on, take it off or swap it on the player's or
-the mercenary's body slots. Click it again to unlock. Weapon swap (W) still works: it changes no item. The lock also covers the charm rows, inventory rows 5-8
+the mercenary's body slots. Click it again to unlock. Weapon swap (W) still works: it changes no item. The lock also covers charms in the charm rows, inventory rows 5-8
 ([#1727](https://github.com/synpoox/pd2-resurrected/issues/1727)): no taking an item out of them and no putting one in.
 
 ## How it works
@@ -30,7 +30,7 @@ the mercenary's body slots. Click it again to unlock. Weapon swap (W) still work
 - **Charm rows.** The same hook drops, while locked, the messages that take an item out of inventory rows 5-8 or swap one out:
   0x19 (take it), 0x5c (Ctrl+click drop), 0x1f (swap with the cursor item, so a tall item dropped above row 5 onto a charm is
   refused too), and the list forms 0x22 and 0x60, each when a stored inventory item they name has its top row in rows 5-8
-  (`TouchesCharmRows`; 0x22 at +1 and +5, 0x60 at +5 and +0x0d, offsets read in Ghidra; neither was seen in game). It also drops 0x18 (put the cursor item on a free cell) aimed at rows 5-8.
+  (`TouchesCharmRows`; 0x22 at +1 and +5, 0x60 at +5 and +0x0d, offsets read in Ghidra; neither was seen in game). It also drops 0x18 (put the cursor item on a free cell) aimed at rows 5-8. Only charms count (item type charm, parents walked): a potion, gem or other item in rows 5-8 stays movable, and only a charm put is refused (#2181).
   Our own Shift+right-click (stash) and Ctrl+Shift+right-click (Cube) hotkeys refuse the same items (log `hotkeys: ... refused:
   inventory lock`), as they never reach the dispatch. The log says `inventory lock: refused charm-row message 0x..`.
 - **PD2.** `ProjectDiablo.dll` keeps `equipment_lock` in its settings and sends it to the server (packet 0x5c); its wrappers of

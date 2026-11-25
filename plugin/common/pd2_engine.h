@@ -91,6 +91,7 @@ inline constexpr uint8_t SocketFillerModsEntry[] = {0x48, 0x89, 0x5c, 0x24, 0x20
 inline constexpr uint64_t UnitItemData = 0x34a500;  // (item) -> item data, null for a non-item
 inline constexpr int ItemDataFlags = 0x18;          // uint32 item flags
 inline constexpr uint32_t ItemFlagCompactSave = 0x200000;
+inline constexpr int ItemTypeCharm = 13;  // itemtypes row char, the parent of every charm type
 inline constexpr int ItemTypeGem = 0x14, ItemTypeRune = 0x4b;
 
 // Drlg room offsets (D2Common Drlg, read for Rathma's stage spawns, UB5, #525); the toolkit has the level and room-at

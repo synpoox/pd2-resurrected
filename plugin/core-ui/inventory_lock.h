@@ -47,8 +47,10 @@ constexpr auto ChangesEquipment(const uint8_t* packet, size_t size) noexcept -> 
 constexpr auto ReadU32(const uint8_t* p) noexcept -> uint32_t {
 	return p[0] | p[1] << 8 | p[2] << 16 | uint32_t(p[3]) << 24;
 }
-template <class RowOf>
-constexpr auto TouchesCharmRows(const uint8_t* packet, size_t size, RowOf rowOf) noexcept -> bool {
+// rowOf(id) is the grid row of a stored charm, -1 for anything else (a non-charm stays movable, #2181); isCharm(id) says whether
+// the cursor item of a 0x18 put is a charm.
+template <class RowOf, class IsCharm>
+constexpr auto TouchesCharmRows(const uint8_t* packet, size_t size, RowOf rowOf, IsCharm isCharm) noexcept -> bool {
 	if (packet == nullptr || size == 0) {
 		return false;
 	}
@@ -61,7 +63,7 @@ constexpr auto TouchesCharmRows(const uint8_t* packet, size_t size, RowOf rowOf)
 	case 0x60:  // +1 is a player id, not an item
 		return inRows(5) || inRows(0x0d);
 	case 0x18:
-		return size >= 17 && ReadU32(packet + 13) == 0 && ReadU32(packet + 9) >= uint32_t(d2r::CharmFirstRow) && ReadU32(packet + 9) < 8;
+		return size >= 17 && isCharm(ReadU32(packet + 1)) && ReadU32(packet + 13) == 0 && ReadU32(packet + 9) >= uint32_t(d2r::CharmFirstRow) && ReadU32(packet + 9) < 8;
 	default:
 		return false;
 	}
