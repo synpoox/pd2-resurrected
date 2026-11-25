@@ -155,8 +155,8 @@ constexpr const char* SellablePattern =
 using D2RL::DataTables::MakeFourCC;
 // PD2's item types by itemtypes code, as D2R keys it: the first three are always refused, `t5m` when unique, the rest are the
 // throwing types whose stackable items still sell
-constexpr uint32_t TypeCodes[] = {MakeFourCC('g', 'e', 'm', ' '),      MakeFourCC('r', 'u', 'n', 'e'), MakeFourCC('r', 'u', 'n', 'g'),
-                                  MakeFourCC('t', '5', 'm', ' '),      MakeFourCC('t', 'p', 'o', 't'), MakeFourCC('t', 'k', 'n', 'i'),
+constexpr uint32_t TypeCodes[] = {MakeFourCC('g', 'e', 'm', ' '), MakeFourCC('r', 'u', 'n', 'e'), MakeFourCC('r', 'u', 'n', 'g'),
+                                  MakeFourCC('t', '5', 'm', ' '), MakeFourCC('t', 'p', 'o', 't'), MakeFourCC('t', 'k', 'n', 'i'),
                                   MakeFourCC('t', 'a', 'x', 'e'), MakeFourCC('j', 'a', 'v', 'e'), MakeFourCC('t', 'h', 'r', 'o'),
                                   MakeFourCC('m', 'i', 's', 'l'), MakeFourCC('a', 'j', 'a', 'v')};
 constexpr size_t TypeGem = 0, TypeRune = 1, TypeRung = 2, TypeT5m = 3, TypeFirstThrowing = 4;
