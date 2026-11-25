@@ -45,4 +45,4 @@ jobs:
       - name: Plugins build and checks
         # #1949: the C++ plugins compile here (a merge that duplicates a definition went green); -Tests also runs the plugin/tests checks via ctest
         if: ${{ env.FORK != 'true' }}
-        run: powershell -ExecutionPolicy Bypass -File pluginuild.ps1 -Tests
+        run: powershell -ExecutionPolicy Bypass -File plugin\build.ps1 -Tests
