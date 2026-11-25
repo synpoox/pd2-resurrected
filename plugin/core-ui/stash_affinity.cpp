@@ -556,7 +556,8 @@ auto Route(D2RL::PlayerHandle player, items::ItemInfo item) noexcept -> bool {
 // #2179: a stack past WithdrawMax that came into the inventory by a quick-move (Ctrl+click, Shift+right click) is not a hand
 // take: WithdrawMax of it must stay in the inventory, not on the cursor. The cursor cannot be moved by the SDK, so the
 // rest is made as a new stack (createItem; these currencies and boss parts carry no rolls) and sent home, and the source
-// is cut to WithdrawMax. False with everything put back when a step fails: Withdraw's cursor split then runs.
+// is cut to WithdrawMax. False with everything put back when a step fails: Withdraw's cursor split then runs. True also when
+// a failed undo left a state that could not be restored (logged), so the cursor split never runs on top of it.
 uint32_t g_handTaken = 0;  // game thread: the stack TakeOut moved last (a hand take, whose piece belongs on the cursor)
 auto QuickWithdraw(D2RL::PlayerHandle player, const items::ItemInfo& item, int32_t had) noexcept -> bool {
 	const items::ItemCreateSpec spec {.structSize = items::ItemCreateSpecSize,
@@ -574,10 +575,22 @@ auto QuickWithdraw(D2RL::PlayerHandle player, const items::ItemInfo& item, int32
 	if (g_items->createItem(g_context, player, &spec, &made) != items::Result::Success) {
 		return false;
 	}
+	// Put back without making or losing items: the source first, the new stack only once the source reads back `had`; a
+	// failed destroy leaves the new stack, so the source gives up what it holds. A state that cannot be put back is logged
+	// and counts as handled (true), so the cursor split never runs on top of it.
 	const auto undo = [&] {
-		SetQuantity(player, item.handle, had);
-		g_items->destroyItem(g_context, player, made, items::SocketedItemPolicy::RejectIfNotEmpty);
-		return false;
+		const bool source = SetQuantity(player, item.handle, had) == items::Result::Success && Quantity(item.handle) == had;
+		if (source && g_items->destroyItem(g_context, player, made, items::SocketedItemPolicy::RejectIfNotEmpty) == items::Result::Success) {
+			return false;
+		}
+		const int32_t kept = Quantity(made);
+		if (source && kept > 0 && SetQuantity(player, item.handle, had - kept) == items::Result::Success) {
+			plog::Warn("affinity: %08x x%d: the new stack could not be removed; the source holds %d, the new stack %d", item.code, had, had - kept, kept);
+		} else {
+			plog::Error("affinity: %08x x%d: quick take could not be undone (source %d, new stack %d)", item.code, had,
+			            Quantity(item.handle), kept);
+		}
+		return true;
 	};
 	if (SetQuantity(player, made, had - aff::WithdrawMax) != items::Result::Success ||
 	    SetQuantity(player, item.handle, aff::WithdrawMax) != items::Result::Success) {
@@ -588,7 +601,7 @@ auto QuickWithdraw(D2RL::PlayerHandle player, const items::ItemInfo& item, int32
 		return undo();
 	}
 	ResendCursor(player, item.runtimeId);  // the client still draws the old count: send the cut stack again
-	Route(player, rest);  // a full page leaves the rest in the inventory, where the next pass splits it as a hand take
+	Route(player, rest);  // a rest that cannot go home stays in the inventory with a new runtimeId; the next pass cuts it into 50s here again
 	return true;
 }
 
@@ -602,7 +615,9 @@ void Withdraw(D2RL::PlayerHandle player, const Noted& noted) noexcept {
 		return;
 	}
 	const int32_t had = Quantity(item.handle);
-	if (noted.runtimeId != g_handTaken && had > aff::WithdrawMax && aff::HomeOf(item.code).category != aff::Category::None &&
+	const bool hand = noted.runtimeId == g_handTaken;
+	if (hand) g_handTaken = 0;  // one hand take: the stack put back home and quick-moved later is not one
+	if (!hand && had > aff::WithdrawMax && aff::HomeOf(item.code).category != aff::Category::None &&
 	    QuickWithdraw(player, item, had)) {
 		return;
 	}
