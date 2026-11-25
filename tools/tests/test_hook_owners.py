@@ -1,8 +1,8 @@
 """One owner per hook site, beside a standalone Cartographer (#945).
 
-Cartographer (d2r-tools, not modified) installs inline hooks on the cube executor and on both item spell dispatchers.
+Cartographer (d2r-tools, not modified) installs inline hooks on both item spell dispatchers (since 0.1.2 not on the cube executor).
 Two plugins cannot own one entry (d2rAI-toolkit knowledge/engine-re.md), so PD2's plugins keep off those entries:
-core-rules owns the cube executor and Cartographer's optional stamping part is turned off by a signatures.txt row;
+core-rules owns the cube executor; Cartographer (0.1.2) no longer hooks it.
 Cartographer owns the item spell dispatchers and core-events hooks neither (#964); the Almanac writes use slot 14 of the item spell
 handler table (no hook, no listener). CARTOGRAPHER_SRC (a d2r-tools plugins/cartographer/src checkout) adds a check against Cartographer's own
 signatures; without it that test is skipped.
@@ -87,25 +87,17 @@ class HookOwners(unittest.TestCase):
         self.assertIn("if (where == 0) {", text)
         self.assertNotIn("where == 0 || where == d2r::rva::CubePageCube", text)
 
-    @unittest.skipUnless(TOOLKIT_RVAS.is_dir(), "d2rAI-toolkit not found (set D2R_TOOLKIT)")
-    def test_signatures_row_turns_off_only_cartographers_cube_stamping(self):
-        rows = [r.split("\t") for r in (ROOT / "companions" / "cartographer" / "signatures.txt").read_text(encoding="utf-8").splitlines()]
-        self.assertEqual(rows[0], ["Part", "Signature"])
-        self.assertEqual([r[0] for r in rows[1:]], ["CubeExec"])
-        want = entry("CubeExecutor")
-        bytes_ = [int(b, 16) for b in rows[1][1].split()]
-        # Cartographer requires an override to keep the built-in entry bytes (the hook is written for them)...
-        self.assertEqual(bytes_[:len(want)], want)
-        # ...and the tail matches no code, so the part finds nothing and stays off
-        self.assertNotEqual(bytes_[len(want):len(want) + 5], [0xB8, 0xF8, 0x16, 0x00, 0x00])
-
     @unittest.skipUnless(os.environ.get("CARTOGRAPHER_SRC"), "set CARTOGRAPHER_SRC to Cartographer's src folder")
     def test_cartographers_entries_are_ours(self):
         sigs = (Path(os.environ["CARTOGRAPHER_SRC"]) / "core" / "part_signatures.h").read_text(encoding="utf-8")
-        for part, name in (("CubeExec", "CubeExecutor"), ("ItemSpellUse", "ItemSpellUse"), ("ItemSpellCheck", "ItemSpellCheck")):
+        for part, name in (("ItemSpellUse", "ItemSpellUse"), ("ItemSpellCheck", "ItemSpellCheck")):
             sig = re.search(part + r'\s*=\s*"([^"]+)"', sigs).group(1).split()
             want = entry(name)
             self.assertEqual([int(b, 16) for b in sig[:len(want)]], want, part)
+        self.assertIsNone(re.search(r"CubeExec", sigs))  # the part was renamed CubeTransmute
+        cube = re.search(r'CubeTransmute\s*=\s*"([^"]+)"', sigs).group(1).split()
+        want = entry("CubeExecutor")
+        self.assertNotEqual([t.upper() for t in cube[:len(want)]], [f"{b:02X}" for b in want])  # stays off core-rules' cube executor entry
 
 
 if __name__ == "__main__":

@@ -1,12 +1,9 @@
 {
-  "_note": "Pinned companion plugins (issue #15). sha256 from each release's SHA256SUMS (a `commit` entry: of the file at that commit, the repo has no releases). Our settings for a companion are in companions/config/, copied over the zip's. files: zip path -> path in the installed mod folder. Bump one companion per PR, after the coexistence check. Pyre Stash Search carries the mod's own add_shared_tabs (17: core-ui's reserved stash affinity pages, #1553), since loader_settings exist per entry only.",
+  "_note": "Pinned companion plugins (issue #15). sha256 from each release's SHA256SUMS (a `commit` entry: of the file at that commit; a `url` entry: of the download). Our settings for a companion are in companions/config/, copied over the zip's. files: zip path -> path in the installed mod folder. Bump one companion per PR, after the coexistence check. Pyre Stash Search carries the mod's own add_shared_tabs (17: core-ui's reserved stash affinity pages, #1553), since loader_settings exist per entry only.",
   "config": [
     "companions/config/",
     "companions/filter.json"
   ],
-  "project_files": {
-    "companions/cartographer/signatures.txt": "{mod}.mpq/data/global/excel/d2rloader/cartographer/signatures.txt"
-  },
   "companions": [
     {
       "name": "Pyre Loot Filter",
@@ -137,6 +134,16 @@
       "sha256": "b3a0f58cece53201426feb561c99cd34e2aeb29d9e196a2cd2f9e10b673b1715",
       "files": {
         "for d2rloader/mercenary drop on hire/d2rl-mercenary-drop-on-hire.dll": "d2rloader/plugins/d2rl-mercenary-drop-on-hire.dll"
+      }
+    },
+    {
+      "name": "Cartographer",
+      "repo": "synpoox/d2r-tools",
+      "tag": "release-2026.11.25.1",
+      "asset": "cartographer-0.1.2.zip",
+      "sha256": "e3ff0c5f09df90c3c3ec3af62a9c66adc6376196fe49c664d9746b5d359cb9cc",
+      "files": {
+        "cartographer.dll": "d2rloader/plugins/cartographer.dll"
       }
     },
     {
