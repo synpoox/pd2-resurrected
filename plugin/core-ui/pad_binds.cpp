@@ -131,7 +131,7 @@ constexpr uint32_t MaxRefillRounds = 50;
 struct Refill {
 	bool active = false;
 	void* widget = nullptr;
-	uint32_t wanted = 0, got = 0, rounds = 0;
+	uint32_t wanted = 0, got = 0, rounds = 0, classId = 0;
 };
 Refill g_refill;  // under g_topUpLock
 void NoteTake(D2RL::PlayerHandle player, void* slotItem) noexcept;
@@ -270,19 +270,27 @@ void NoteTake(D2RL::PlayerHandle player, void* slotItem) noexcept {
 }
 
 // UI thread: ask the slot for what the last round left (the widget can be gone: its item is re-read before every call)
+auto Readable(const void* p, size_t size) noexcept -> bool {
+	MEMORY_BASIC_INFORMATION info {};
+	return p != nullptr && VirtualQuery(p, &info, sizeof info) == sizeof info && info.State == MEM_COMMIT &&
+	       (info.Protect & (PAGE_NOACCESS | PAGE_GUARD)) == 0 &&
+	       static_cast<const char*>(p) + size <= static_cast<const char*>(info.BaseAddress) + info.RegionSize;
+}
+
 void Reissue(const D2RL::PluginContext*, void*) noexcept {
 	AcquireSRWLockExclusive(&g_topUpLock);
 	void* const widget = g_refill.active ? g_refill.widget : nullptr;
-	const uint32_t remaining = g_refill.wanted - g_refill.got;
+	const uint32_t remaining = g_refill.wanted - g_refill.got, classId = g_refill.classId;
 	ReleaseSRWLockExclusive(&g_topUpLock);
 	void* slotItem = nullptr;
 	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
 	D2RL::ItemHandle cursor = D2RL::InvalidItemHandle;
 	int32_t count = 0;
-	if (widget != nullptr && !IsBadReadPtr(static_cast<char*>(widget) + WidgetItem, sizeof(void*))) {
+	if (widget != nullptr && Readable(static_cast<char*>(widget) + WidgetItem, sizeof(void*))) {
 		slotItem = *reinterpret_cast<void**>(static_cast<char*>(widget) + WidgetItem);
 	}
-	if (slotItem != nullptr && g_bulk != nullptr && !IsBadReadPtr(slotItem, 0x100) &&
+	if (slotItem != nullptr && g_bulk != nullptr && Readable(slotItem, 0x100) &&
+	    static_cast<uint32_t>(d2r::Engine<int32_t (*)(void*, const char*, int32_t) noexcept>(d2r::sig::UnitClassOf)(slotItem, __FILE__, __LINE__)) == classId &&
 	    g_inventory->getLocalPlayer(g_context, &player) == D2RL::Inventory::Result::Success &&
 	    g_inventory->getCursorItem(g_context, player, &cursor) == D2RL::Inventory::Result::NotFound) {
 		count = d2r::Engine<int32_t (*)(d2r::Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(static_cast<d2r::Unit*>(slotItem), 70, 0);
@@ -309,7 +317,9 @@ bool TakeStack(void* widget, void* slotItem, D2RL::PlayerHandle player) noexcept
 	}
 	const uint32_t wanted = count < 50 ? count : 50;
 	AcquireSRWLockExclusive(&g_topUpLock);
-	g_refill = {.active = true, .widget = widget, .wanted = wanted, .got = 0, .rounds = 1};
+	g_refill = {.active = true, .widget = widget, .wanted = wanted, .got = 0, .rounds = 1,
+	             .classId = static_cast<uint32_t>(d2r::Engine<int32_t (*)(void*, const char*, int32_t) noexcept>(d2r::sig::UnitClassOf)(
+	                 slotItem, __FILE__, __LINE__))};
 	ReleaseSRWLockExclusive(&g_topUpLock);
 	NoteTake(player, slotItem);
 	g_bulk(widget, nullptr, 0, static_cast<uint8_t>(wanted));
