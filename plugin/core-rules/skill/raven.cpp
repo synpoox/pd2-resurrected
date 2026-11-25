@@ -144,7 +144,7 @@ auto SrvDoRaven(Game* game, Unit* unit, int32_t skillId, int32_t level) noexcept
 // The creator call first: alone it only passes through (no cast is set). False when either is refused.
 
 // The creator call first: alone it only passes through (no cast is set). False when either is refused.
-auto InstallRavenCount(const D2RL::PluginContext* context) noexcept -> bool {
+auto PatchRavenCount(const D2RL::PluginContext* context) noexcept -> bool {
 	uint64_t entry = 0, call = 0;
 	if (d2r::sig::SrvDoTable.state != sigscan::State::Ok ||
 	    sigscan::ScanUnique(context->exeBase, SrvDoRavenEntry, 0, &entry) != 1 ||
@@ -167,7 +167,7 @@ auto InstallRavenCount(const D2RL::PluginContext* context) noexcept -> bool {
 
 auto InstallRaven(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
 	size_t used = std::strlen(report);
-	const bool raven = InstallRavenCount(context);
+	const bool raven = PatchRavenCount(context);
 	plog::Info("raven: pd2 count %s", raven ? "on" : "FAILED (srvdo 114 signature, creator call or slot)");
 	used = std::strlen(report);
 	if (used < reportSize) {
