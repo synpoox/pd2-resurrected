@@ -42,7 +42,7 @@ test, and that part is unchanged in PD2.
 
 ## core-rules
 
-`plugin/core-rules/missile_functions.cpp`: sdo 47 (`SrvDoBlessedHammer`) and cdo 80 (`CltDoBlessedHammer`) do the steps
+`plugin/core-rules/missile/`: sdo 47 (`SrvDoBlessedHammer`) and cdo 80 (`CltDoBlessedHammer`) do the steps
 above with D2R's functions: `PathSetCollisionMask`, then `MissileSrvDoDefault` / `MissileCltDoDefault`, and on the
 server 2 -> 1 while `MissileSrvFrames` is above 0. No deviation from PD2.
 

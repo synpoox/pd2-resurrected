@@ -75,7 +75,7 @@ wraps the index (docs/pd2/origin-bugs.md).
 ## core-rules
 
 `SrvHitBladeFragment` (shit 69), `CltHitBladeFragment` (chit 68) and `SrvDmgBladeFragment` (dmg 19) in
-`plugin/core-rules/missile_functions.cpp`; the wall bounce is one template both halves run. Deviations (approximated,
+`plugin/core-rules/missile/`; the wall bounce is one template both halves run. Deviations (approximated,
 docs/deviations.md):
 
 - The split fragments are created on the server only: D2R's send of a missile to a client is not found (1.13c's room

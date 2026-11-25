@@ -50,6 +50,14 @@ modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/plugin.cpp
 	core-rules/skill_functions.cpp
 	core-rules/missile_functions.cpp
+	core-rules/missile/amazon.cpp
+	core-rules/missile/bounce.cpp
+	core-rules/missile/client_hits.cpp
+	core-rules/missile/fragments.cpp
+	core-rules/missile/hit_effects.cpp
+	core-rules/missile/potions.cpp
+	core-rules/missile/return_missiles.cpp
+	core-rules/missile/summons.cpp
 	core-rules/item_rules.cpp
 	core-rules/item/ormus.cpp
 	core-rules/item/strikes.cpp
