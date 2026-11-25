@@ -3,9 +3,9 @@
 // PD2 sends deposit and withdraw (1.13c D2Game +0xd14a2) to its own copy 0x103999f0, whose deposit clamps stat 15
 // (goldbank) at 25,000,000 and whose withdraw clamps stat 14 at #10049. D2R's bank cap is 93847 0x34b310
 // (`mov eax, 2500000; ret`): every bank-gold user calls it (deposit and the stash moves in 0x4ba580, the client's deposit
-// limit), so its immediate becomes 25,000,000. One more 2,500,000 is inline: the shared-stash page check in D2Client
-// SCmd.cpp 0x133610 (`cmp eax, 0x2625a0; jg` reject), so a page over 2,500,000 would be refused; it is raised first, and
-// the cap only after it, so the game never makes gold it then refuses. No SDK service reaches either: byte patches.
+// limit), so its immediate becomes 25,000,000. One more 2,500,000 is inline: the client's shared stash save write in
+// D2Client SCmd.cpp 0x133610 (`cmp eax, 0x2625a0; jg`), so with a page over 2,500,000 the shared stash file would not be
+// saved; it is raised first, and the cap only after it, so the game never makes gold it then cannot save. No SDK service reaches either: byte patches.
 #include "common.h"
 #include "registry.h"
 
