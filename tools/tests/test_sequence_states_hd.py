@@ -1,6 +1,7 @@
 """PD2's sequence skills play their body motion (#690, #1166): D2R's HD renderer picks a sequence skill's clip by skill ID."""
 import csv
 import json
+import sys
 import unittest
 from pathlib import Path
 
@@ -72,6 +73,19 @@ class SequenceStates(unittest.TestCase):
             froms = [g["from"] for g in sm["transitions"]]
             for s in states:
                 self.assertIn(s["stateId"], froms)
+
+    def test_output_matches_the_generator(self):
+        # every committed state machine is exactly what tools/pd2_sequence_states_hd.py writes from D2R's file
+        sys.path.insert(0, str(FILES.parents[1] / "tools"))
+        import pd2_sequence_states_hd as gen
+        if not gen.D2R_DATA.is_dir():
+            self.skipTest(f"no D2R data at {gen.D2R_DATA}")
+        for (kind, unit), spec in gen.STATES.items():
+            with self.subTest(unit):
+                sm = json.loads((gen.D2R_DATA / gen.hd(kind, unit)).read_text("utf-8-sig"))
+                for one in spec if isinstance(spec, list) else [spec]:
+                    sm = gen.build(sm, *one)
+                self.assertEqual((FILES / gen.hd(kind, unit)).read_text("utf-8"), json.dumps(sm, separators=(",", ":")))
 
     def test_a1_merc_strafe_follow_up(self):
         # #2156: D2R keys a monster state by (skill, step) only in Cast (7) and SQ (14); other modes key by mode alone

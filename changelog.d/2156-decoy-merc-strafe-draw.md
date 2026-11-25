@@ -1,1 +1,1 @@
-- The Decoy's and Act 1 mercenary's Strafe now play a quick bow draw per arrow (#2156).
+- The Act 1 mercenary's Strafe restarts her bow draw for each extra arrow (#2156).
