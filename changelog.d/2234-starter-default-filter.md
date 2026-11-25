@@ -1,1 +1,1 @@
-- Use the builder's Starter loot filter, which shows every drop, as the default filter (#2234).
+- Ship all five loot filter strictness levels, with Starter active by default (#2234).
