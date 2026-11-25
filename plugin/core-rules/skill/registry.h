@@ -65,8 +65,6 @@ constexpr Table MissileSrvDmg {"pSrvDmgFunc", d2r::rva::MissileSrvDmgTable, d2r:
 constexpr Table MissileCltHit {"pCltHitFunc", d2r::rva::MissileCltHitTable, d2r::rva::MissileCltHitSlots,
                                d2r::rva::MissileCltHitFirstFree};
 
-
-
 // A skills.txt function slot (PD2R_SLOT): written by InstallSkillFunctions in `order`, the report's order.
 struct SlotEntry {
 	int order;
@@ -109,10 +107,24 @@ struct RouteRegistrar {
 #define PD2R_CAT(a, b) PD2R_CAT2(a, b)
 
 // Bottom of a rule file, after the Install function. The extern declaration lets the macro name the global function.
-#define PD2R_RULE(fn, order)                                                                                  	auto fn(const D2RL::PluginContext*, char*, size_t) noexcept -> bool;                                      	namespace {                                                                                               	const pd2r::RuleRegistrar pd2rRegistrar_##fn {#fn, order, &fn};                                           	}
+#define PD2R_RULE(fn, order) \
+	auto fn(const D2RL::PluginContext*, char*, size_t) noexcept -> bool; \
+	namespace { \
+	const pd2r::RuleRegistrar pd2rRegistrar_##fn {#fn, order, &fn}; \
+	}
 // A rule that installs several parts: `tried` of them, the function returns how many worked.
-#define PD2R_RULE_N(fn, order, tried)                                                                         	auto fn(const D2RL::PluginContext*, char*, size_t) noexcept -> int;                                       	namespace {                                                                                               	const pd2r::RuleRegistrar pd2rRegistrar_##fn {#fn, order, &fn, tried};                                    	}
+#define PD2R_RULE_N(fn, order, tried) \
+	auto fn(const D2RL::PluginContext*, char*, size_t) noexcept -> int; \
+	namespace { \
+	const pd2r::RuleRegistrar pd2rRegistrar_##fn {#fn, order, &fn, tried}; \
+	}
 // A skills.txt function slot: `table` is a pd2r::skills::Table name, `fn` a cast function pointer.
-#define PD2R_SLOT(order, table, slot, fn, label)                                                              	namespace {                                                                                               	const pd2r::skills::SlotRegistrar PD2R_CAT(pd2rSlot_, __COUNTER__) {order, pd2r::skills::table, slot, fn, label}; 	}
+#define PD2R_SLOT(order, table, slot, fn, label) \
+	namespace { \
+	const pd2r::skills::SlotRegistrar PD2R_CAT(pd2rSlot_, __COUNTER__) {order, pd2r::skills::table, slot, fn, label}; \
+	}
 // A srvdofunc 190 route: skill id -> do function (`order` unique).
-#define PD2R_ROUTE(order, skillId, fn)                                                                        	namespace {                                                                                               	const pd2r::skills::RouteRegistrar PD2R_CAT(pd2rRoute_, __COUNTER__) {order, skillId, fn};                	}
+#define PD2R_ROUTE(order, skillId, fn) \
+	namespace { \
+	const pd2r::skills::RouteRegistrar PD2R_CAT(pd2rRoute_, __COUNTER__) {order, skillId, fn}; \
+	}

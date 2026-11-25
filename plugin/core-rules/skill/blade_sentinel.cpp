@@ -265,7 +265,7 @@ namespace {
 
 // The monster-caster owner: row 102's init, then srvdo 44, each slot checked against D2R's function found by
 // signature. The init first: alone it is inert (no caster is ever remembered). False when either is refused.
-auto InstallSentinelOwner(const D2RL::PluginContext* context) noexcept -> bool {
+auto PatchSentinelOwner(const D2RL::PluginContext* context) noexcept -> bool {
 	if (SrvDoBladeSentinelD2R.state != sigscan::State::Ok || AiInitBladeCreeper.state != sigscan::State::Ok ||
 	    d2r::sig::SrvDoTable.state != sigscan::State::Ok || d2r::sig::AiTable.state != sigscan::State::Ok) {
 		return false;
@@ -282,7 +282,7 @@ auto InstallSentinelOwner(const D2RL::PluginContext* context) noexcept -> bool {
 // Finds D2R's think and the owner call in it, then registers the think on row 102; false (nothing written) on a miss
 
 // Finds D2R's think and the owner call in it, then registers the think on row 102; false (nothing written) on a miss
-auto InstallBladeSentinel(const D2RL::PluginContext* context) noexcept -> bool {
+auto PatchBladeSentinel(const D2RL::PluginContext* context) noexcept -> bool {
 	if (AiBladeCreeper.state != sigscan::State::Ok) {
 		return false;
 	}
@@ -318,8 +318,8 @@ auto InstallBladeSentinelRules(const D2RL::PluginContext* context, char* report,
 	if (LeapArc.state != sigscan::State::Ok) {
 		plog::Info("skills: signature %s %s, leap arc keeps D2R's timing", LeapArc.name, sigscan::StateText(LeapArc.state));
 	}
-	const bool sentinel = InstallBladeSentinel(context);
-	const bool sentinelOwner = sentinel && InstallSentinelOwner(context);
+	const bool sentinel = PatchBladeSentinel(context);
+	const bool sentinelOwner = sentinel && PatchSentinelOwner(context);
 	used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used,
