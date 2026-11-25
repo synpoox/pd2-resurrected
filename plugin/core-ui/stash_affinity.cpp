@@ -15,8 +15,12 @@
 // not see the pad's quick-move. Why not a hook: the SDK's moves, edits and inventory reads cover it; only the stack
 // count is read natively, through the SDK's editNativeItem.
 //
-// shortcut: a TCP/IP client has no game thread (runOnGameThread is Unavailable), so routing and the base swap run in
-// single player and on the host only; upgrade with a plugin message to the host if online play needs it.
+// A TCP/IP client has no game thread, so routing and the base swap run in single player and on the host only. The one
+// remote part is the quick-move withdraw (#2186): a client tells the host when its Maps or Bossing tab opens or closes
+// (a private channel), and with it open the host watches that peer's own inventory (getPeerPlayer) for a new stack past
+// WithdrawMax and cuts it as for its own player (QuickWithdraw); counts are read on the server, never sent by the client.
+// shortcut: a remote player's deposits are not routed home and its Maps tab shows no base (its maps go to their storage
+// row); upgrade by sending the shown base to the host.
 // shortcut: no chat line when a page is full (the item just comes back to the inventory, and the log says why); add
 // one with a string if players miss it.
 // A quick-moved currency or boss part tops its cell's stack up to its cap, as a hand drop does (#1758, #1771); the rest
@@ -33,11 +37,13 @@
 #include <D2RLPlugin/inventory.h>
 #include <D2RLPlugin/item.h>
 #include <D2RLPlugin/lifecycle_events.h>
+#include <D2RLPlugin/network.h>
 #include <D2RLPlugin/threads.h>
 
 #include <atomic>
 #include <cstdint>
 #include <cstdio>
+#include <mutex>
 
 namespace stash_affinity {
 
@@ -86,6 +92,25 @@ struct Pass {
 	int32_t at[2][aff::PageWidth][aff::PageWidth] {};  // Maps, Bossing page: row, column -> index in reserved; -1 empty, -2 used
 };
 Pass g_pass;
+
+// Remote players (host only; #2186): each client's peer, whether its Maps or Bossing tab is open, and the inventory
+// stacks last seen. handle and open are set by network callbacks; the lists are the game thread's.
+namespace net = D2RL::Network;
+constexpr uint16_t ChannelId = 1, MessageTabOpen = 1;
+constexpr uint64_t ChannelToken = 0x5044325232313836ull;  // "PD2R2186"; client and host must match
+constexpr int MaxPeers = 16;
+struct Peer {
+	std::atomic<net::PeerHandle> handle {net::InvalidPeerHandle};
+	std::atomic<bool> open {false};
+	net::PeerHandle seen = net::InvalidPeerHandle;  // the handle the lists belong to (game thread only)
+	NotedList noted, kept;
+};
+Peer g_peers[MaxPeers];
+std::mutex g_peerLock;  // slot claims and releases
+const D2RL::NetworkService* g_network = nullptr;
+net::ChannelHandle g_channel = net::InvalidChannelHandle;
+std::atomic<bool> g_connected {false};
+std::atomic<int> g_connectTries {0};
 
 std::atomic<uintptr_t> g_generation {0};
 uintptr_t g_seen = 0;  // the watch generation g_noted belongs to (game thread only)
@@ -773,6 +798,83 @@ void Tidy(D2RL::PlayerHandle player) noexcept {
 	}
 }
 
+void ResetPass() noexcept {
+	g_pass.foundCount = 0;
+	g_pass.reservedCount = 0;
+	for (auto& page : g_pass.used) {
+		for (uint32_t& row : page) {
+			row = 0;
+		}
+	}
+	for (auto& page : g_pass.at) {
+		for (auto& row : page) {
+			for (int32_t& cell : row) {
+				cell = -1;
+			}
+		}
+	}
+}
+
+// Host, game thread (#2186): a remote player with its tab open has its new stacks past WithdrawMax cut by QuickWithdraw
+// (the cursor split of Withdraw is a hand take, which a remote player does not report). The host's Maps view is not
+// theirs: g_shown is 0 for the pass, so a map goes to its storage row.
+void UpdatePeers() noexcept {
+	if (g_network == nullptr) {
+		return;
+	}
+	D2RL::PlayerHandle local = D2RL::InvalidPlayerHandle;
+	g_inventory->getLocalPlayer(g_context, &local);
+	for (Peer& peer : g_peers) {
+		const net::PeerHandle handle = peer.handle.load();
+		if (handle != peer.seen) {  // a new peer, or a slot reused: runtime ids of the last one mean nothing here
+			peer.seen = handle;
+			peer.noted.count = peer.kept.count = 0;
+		}
+		D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
+		if (handle == net::InvalidPeerHandle ||
+		    g_network->getPeerPlayer(g_context, g_channel, handle, &player) != net::Result::Success || player == local) {
+			continue;  // the host's own in-process connection is the local player, handled by Update
+		}
+		NotedList now;
+		if (g_inventory->forEachInventoryItem(g_context, player, &InventoryOnly, NoteInventory, &now) != D2RL::Inventory::Result::Success) {
+			continue;
+		}
+		NotedList big, kept, noted;
+		for (uint32_t j = 0; j < now.count; ++j) {
+			const Noted& n = now.item[j];
+			if (Listed(peer.kept, n.runtimeId)) {
+				kept.item[kept.count++] = n;
+			} else if (!Listed(peer.noted, n.runtimeId) && aff::StackCap(n.code) > aff::WithdrawMax && aff::Stacks(n.code) &&
+			           Quantity(n.handle) > aff::WithdrawMax) {
+				if (!peer.open.load()) {
+					continue;
+				}
+				big.item[big.count++] = n;
+			}
+			noted.item[noted.count++] = n;
+		}
+		peer.kept = kept;
+		peer.noted = noted;
+		if (big.count == 0) {
+			continue;
+		}
+		ResetPass();
+		if (g_inventory->forEachInventoryItem(g_context, player, &StashOnly, ReadStash, &g_pass) != D2RL::Inventory::Result::Success) {
+			continue;
+		}
+		const uint32_t shown = g_shown;
+		g_shown = 0;
+		for (uint32_t i = 0; i < big.count; ++i) {
+			items::ItemInfo item {.structSize = items::ItemInfoSize};
+			if (g_items->getItemInfo(g_context, big.item[i].handle, &item) == items::Result::Success &&
+			    !QuickWithdraw(player, item, Quantity(item.handle)) && peer.kept.count < MaxNoted) {
+				peer.kept.item[peer.kept.count++] = big.item[i];  // not tried again while it stays
+			}
+		}
+		g_shown = shown;
+	}
+}
+
 void Update(const D2RL::PluginContext*, void* user) noexcept {
 	const auto generation = reinterpret_cast<uintptr_t>(user);
 	if (generation != g_generation.load()) {
@@ -791,6 +893,7 @@ void Update(const D2RL::PluginContext*, void* user) noexcept {
 		g_shown = 0;
 	}
 	const uint32_t update = ++g_updates;
+	UpdatePeers();
 	D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
 	if (g_inventory->getLocalPlayer(g_context, &player) != D2RL::Inventory::Result::Success) {
 		g_noted.count = 0;
@@ -836,20 +939,7 @@ void Update(const D2RL::PluginContext*, void* user) noexcept {
 	if (g_pass.gone.count == 0 && !swap && !tidy && big.count == 0) {
 		return;
 	}
-	g_pass.foundCount = 0;
-	g_pass.reservedCount = 0;
-	for (auto& page : g_pass.used) {
-		for (uint32_t& row : page) {
-			row = 0;
-		}
-	}
-	for (auto& page : g_pass.at) {
-		for (auto& row : page) {
-			for (int32_t& cell : row) {
-				cell = -1;
-			}
-		}
-	}
+	ResetPass();
 	if (g_inventory->forEachInventoryItem(g_context, player, &StashOnly, ReadStash, &g_pass) != D2RL::Inventory::Result::Success) {
 		return;
 	}
@@ -872,9 +962,88 @@ void Update(const D2RL::PluginContext*, void* user) noexcept {
 	}
 }
 
+// Host: a client names its tab state (1 byte). The first message of a peer claims a slot.
+void OnHostMessage(const D2RL::PluginContext*, net::ChannelHandle, net::PeerHandle peer, uint16_t id, const void* data,
+                   uint32_t size, void*) noexcept {
+	if (id != MessageTabOpen || size != 1 || peer == net::InvalidPeerHandle) {
+		return;
+	}
+	const bool open = *static_cast<const uint8_t*>(data) != 0;
+	std::lock_guard<std::mutex> lock(g_peerLock);
+	Peer* slot = nullptr;
+	for (Peer& p : g_peers) {
+		if (p.handle.load() == peer) {
+			slot = &p;
+			break;
+		}
+		if (slot == nullptr && p.handle.load() == net::InvalidPeerHandle) {
+			slot = &p;
+		}
+	}
+	if (slot != nullptr) {
+		slot->open = open;
+		slot->handle = peer;
+	}
+}
+
+void OnClientMessage(const D2RL::PluginContext*, net::ChannelHandle, uint16_t, const void*, uint32_t, void*) noexcept {}
+
+void SendTabOpen(bool open) noexcept {
+	if (g_network != nullptr && g_connected.load()) {
+		const uint8_t value = open ? 1 : 0;
+		g_network->sendToHost(g_context, g_channel, MessageTabOpen, &value, 1);  // a host or single player has no one to tell
+	}
+}
+
+void Connect(const D2RL::PluginContext* context, void*) noexcept {
+	if (g_network == nullptr || g_channel == net::InvalidChannelHandle) {
+		return;
+	}
+	const net::Result result = g_network->connectToHost(context, g_channel);
+	if ((result == net::Result::Busy || result == net::Result::Unavailable) && g_connectTries.fetch_add(1) < 600) {
+		g_threads->runOnUiThread(context, Connect, nullptr);  // a TCP client gets Busy until the host's transport packet arrives
+	}
+}
+
+void OnConnection(const D2RL::PluginContext* context, const net::ConnectionEvent* event, void*) noexcept {
+	if (event->peer != net::InvalidPeerHandle) {  // host side
+		if (event->state == net::ConnectionState::Disconnected) {
+			std::lock_guard<std::mutex> lock(g_peerLock);
+			for (Peer& p : g_peers) {
+				if (p.handle.load() == event->peer) {
+					p.open = false;
+					p.handle = net::InvalidPeerHandle;
+				}
+			}
+		}
+		return;
+	}
+	if (event->state == net::ConnectionState::Connected) {
+		g_connected = true;
+		SendTabOpen(g_open.load());
+	} else if (!g_connected && (event->state == net::ConnectionState::Disconnected ||
+	                            (event->state == net::ConnectionState::Rejected && event->reason == net::RejectionReason::HostUnavailable))) {
+		if (g_connectTries.fetch_add(1) < 600) {
+			g_threads->runOnUiThread(context, Connect, nullptr);
+		}
+	} else if (event->state == net::ConnectionState::Disconnected) {
+		g_connected = false;
+	}
+}
+
 void __cdecl StartWatch(const D2RL::PluginContext* context, const D2RL::Lifecycle::GameplayEvent*, void*) noexcept {
 	const uintptr_t generation = ++g_generation;
 	g_stopped = false;
+	{
+		std::lock_guard<std::mutex> lock(g_peerLock);  // a new game: the host makes it before any client joins
+		for (Peer& p : g_peers) {
+			p.open = false;
+			p.handle = net::InvalidPeerHandle;
+		}
+	}
+	g_connected = false;
+	g_connectTries = 0;
+	Connect(context, nullptr);
 	if (const auto queued = g_threads->runOnGameThread(context, Update, reinterpret_cast<void*>(generation));
 	    queued != D2RL::Threads::Result::Success) {
 		plog::Info("affinity: no game thread (%u): routing runs in single player and on the host only", static_cast<uint32_t>(queued));
@@ -896,7 +1065,9 @@ void ShowBase(uint32_t code) noexcept {
 }
 
 void SetTabOpen(bool open, uint32_t page) noexcept {
-	g_open.store(open);
+	if (g_open.exchange(open) != open) {
+		SendTabOpen(open);
+	}
 	g_viewPage.store(open ? page : 0);
 }
 
@@ -996,6 +1167,18 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	if (!D2RL::HasItemServiceCapability(g_items, items::ItemServiceCapability::SharedStashWrite)) {
 		std::snprintf(report, size, "FAILED (the item service cannot write the shared stash)");
 		return;
+	}
+	const net::ChannelRegistration channel {.structSize = net::ChannelRegistrationSize,
+	                                        .localChannelId = ChannelId,
+	                                        .compatibilityToken = ChannelToken,
+	                                        .hostMessage = OnHostMessage,
+	                                        .clientMessage = OnClientMessage,
+	                                        .connectionState = OnConnection};
+	if (context->QueryService(&g_network) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasNetworkServiceField(g_network, D2RL::NetworkServiceRequiredSize) ||
+	    g_network->registerChannel(context, &channel, &g_channel) != net::Result::Success) {
+		g_network = nullptr;
+		plog::Info("affinity: no network channel; a remote player's quick-move is not cut to 50");
 	}
 	const D2RL::Lifecycle::GameplayEventListener listener {.structSize = D2RL::Lifecycle::GameplayEventListenerSize,
 	                                                       .kind = D2RL::Lifecycle::GameplayEventKind::LocalPlayerReady,

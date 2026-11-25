@@ -1,0 +1,1 @@
+- A TCP/IP client's Ctrl+click or Shift+right-click on a big Maps or Bossing stack now moves 50 to its inventory.
