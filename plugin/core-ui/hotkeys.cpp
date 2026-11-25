@@ -336,16 +336,16 @@ auto Queue(Act act, D2RL::PlayerHandle player, const items::ItemInfo& info, int 
 
 // ---- left click ----
 auto PanelOpen(int id) noexcept -> bool;
-constexpr int PanelStash = 0x18, PanelCube = 0x19;
+constexpr int PanelStash = 0x18;
 auto __cdecl OnActivate(const D2RL::PluginContext*, const D2RL::ItemInteractions::ItemInteractionEvent* event, void*) noexcept
 	-> D2RL::ItemInteractions::Decision {
 	using D2RL::ItemInteractions::Decision;
 	if (event->inputSource != D2RL::ItemInteractions::InputSource::KeyboardMouse) return Decision::Continue;
 	int act = Match(event->modifiers, false);
 	// #2115: D2R's Ctrl+click quick-move does nothing for a map or bossing item while a Gems/Materials/Runes tab is up (no grid to
-	// land in), so the affinity watch never saw it move. With the stash up and the Cube shut, send it home as the stash bind does.
+	// land in), so the affinity watch never saw it move. With the stash up, send it home as the stash bind does.
 	const bool quick = act < 0 && event->modifiers == ModifierBit(Modifier::Control) && event->container == items::ItemContainer::Inventory &&
-	                   PanelOpen(PanelStash) && !PanelOpen(PanelCube);
+	                   PanelOpen(PanelStash);
 	if (quick) act = static_cast<int>(Act::Stash);
 	if (act < 0 || static_cast<Act>(act) == Act::Drop) return Decision::Continue;
 	items::ItemInfo info {.structSize = items::ItemInfoSize};
