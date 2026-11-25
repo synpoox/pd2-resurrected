@@ -605,4 +605,9 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	              right ? "" : "; right-click binds off");
 }
 
+auto StashBindIsShiftRight() noexcept -> bool {
+	const Bind& b = g_binds[static_cast<int>(Act::Stash)];
+	return b.on && b.right && b.mods == ModifierBit(Modifier::Shift);
+}
+
 }  // namespace hotkeys
