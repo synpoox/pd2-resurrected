@@ -341,12 +341,14 @@ constexpr size_t SlotItemAt = 0xc8, SlotLeftClick = 0x100;  // the grid widget's
 size_t g_hoveredOffset = 0;  // read from the hover-check function at install, never assumed
 using ManagerFn = uint8_t* (*)() noexcept;
 ManagerFn g_manager = nullptr;
+constexpr size_t SlotRightClick = 0x108;
+void* g_rightTarget = nullptr;  // InventoryRightClick's address: the grids are the widgets whose vtable slot SlotRightClick holds it
 // The item's drop sound for an SDK event: the client unit is the one the grid under the mouse holds at the clicked cell (the SDK handle is
 // not the client unit); 0 when the grid, the cell or its unit id does not match. shortcut: the cell is read as x | y << 32 and checked by unit id.
 auto ClickedItemSound(const D2RL::ItemInteractions::ItemInteractionEvent* event, uint32_t runtimeId) noexcept -> int {
 	if (g_itemSound == nullptr || g_manager == nullptr || g_hoveredOffset == 0) return 0;
 	void* grid = *reinterpret_cast<void**>(g_manager() + g_hoveredOffset);
-	if (grid == nullptr) return 0;
+	if (grid == nullptr || (*static_cast<void***>(grid))[SlotRightClick / sizeof(void*)] != g_rightTarget) return 0;  // only a grid has this slot
 	uint64_t cell = static_cast<uint32_t>(event->cellX) | static_cast<uint64_t>(static_cast<uint32_t>(event->cellY)) << 32;
 	void* unit = reinterpret_cast<AtFn>((*static_cast<void***>(grid))[SlotItemAt / sizeof(void*)])(grid, &cell);
 	return unit != nullptr && d2r::At<uint32_t>(unit, d2r::rva::UnitIdField) == runtimeId ? g_itemSound(unit) : 0;
@@ -470,9 +472,8 @@ void OnCubeClick(void* widget, uint64_t cell) noexcept { Click(widget, cell, tru
 // instead: when the mouse is over a grid that holds a Cube item, the bind runs for that grid and cell.
 using MsgFn = void (*)(void*, int64_t*) noexcept;
 MsgFn g_message = nullptr;
-void* g_rightTarget = nullptr;  // InventoryRightClick's address: the grids are the widgets whose vtable slot SlotRightClick holds it
 constexpr int64_t RightMessage = 0x2d5172cac7c938c;  // the message's name hash (message field +0x88)
-constexpr size_t MessageName = 0x11, MessageData = 0x22, SlotCellAt = 0x98, SlotRightClick = 0x108;
+constexpr size_t MessageName = 0x11, MessageData = 0x22, SlotCellAt = 0x98;
 using GateFn = uint8_t (*)() noexcept;
 GateFn g_gate = nullptr;  // D2R's own "input is blocked" check: non-zero means D2R ignores the click
 // The handler compares message[0] with an id it looks up by name hash (the movabs/lea/call at its +0x47/+0x55/+0x74); we repeat that lookup.
