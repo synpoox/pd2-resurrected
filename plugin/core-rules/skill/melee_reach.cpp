@@ -132,6 +132,13 @@ auto Growth(Unit* unit, Unit* target, Owner owner) noexcept -> int32_t {
 	return owner == Owner::Player ? g_meleeRange(unit) / 2 + (Moving(target) ? 1 : 0) : 0;
 }
 
+constexpr int32_t SkillSacrifice = 96;
+
+auto OnSacrifice(Unit* unit) noexcept -> bool {
+	void* current = d2r::Engine<void* (*)(Unit*) noexcept>(d2r::sig::CurrentSkill)(unit);
+	return current != nullptr && pd2r::skills::UnitSkillIdOf(current) == SkillSacrifice;
+}
+
 auto Reach(Unit* unit, Unit* target, int32_t range, int32_t* reach) noexcept -> int32_t {
 	if (unit == nullptr || target == nullptr) {
 		return g_reach(unit, target, range, reach);
@@ -140,7 +147,10 @@ auto Reach(Unit* unit, Unit* target, int32_t range, int32_t* reach) noexcept -> 
 	const int32_t growth = Growth(unit, target, owner);
 	const bool roll = reinterpret_cast<uint64_t>(_ReturnAddress()) == g_rollReturn;
 	// PD2's roll: its last arg + 2 + growth instead of UnitReach + last arg, then 0x103049f0's growth on top
-	const int32_t widened = roll ? range - d2r::Engine<RangeFn>(d2r::sig::UnitReach)(unit) + 2 + growth * 2 : range + growth;
+	// Sacrifice (srvst 29) passes reach extra 1 to its roll (PD2 0x103b61a0); D2R's 0x565240 passes 0
+	const int32_t extra = roll && owner == Owner::Player && OnSacrifice(unit) ? 1 : 0;
+	const int32_t widened =
+	    roll ? range - d2r::Engine<RangeFn>(d2r::sig::UnitReach)(unit) + 2 + growth * 2 + extra : range + growth;
 	const int32_t in = g_reach(unit, target, widened, reach);
 	return in;
 }
