@@ -51,6 +51,18 @@ modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/skill_functions.cpp
 	core-rules/missile_functions.cpp
 	core-rules/item_rules.cpp
+	core-rules/item/ormus.cpp
+	core-rules/item/strikes.cpp
+	core-rules/item/crushing_blow.cpp
+	core-rules/item/curses.cpp
+	core-rules/item/equip.cpp
+	core-rules/item/replenish.cpp
+	core-rules/item/books.cpp
+	core-rules/item/patches.cpp
+	core-rules/item/charms.cpp
+	core-rules/item/thunk_hooks.cpp
+	core-rules/item/dye_tint.cpp
+	core-rules/item/map_items.cpp
 	core-rules/gold_pickup.cpp
 	core-rules/merc_rules.cpp
 	core-rules/socket_rules.cpp
