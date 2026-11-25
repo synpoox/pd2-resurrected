@@ -282,3 +282,14 @@ add_executable(almanac_identify_check EXCLUDE_FROM_ALL tests/almanac_identify_ch
 target_include_directories(almanac_identify_check PRIVATE core-ui)
 target_link_libraries(almanac_identify_check PRIVATE core_common)
 core_options(almanac_identify_check)
+
+# Under build.ps1 -Tests (MODKIT_BUILD_TESTS=ON) every *_check program is built and run by ctest; otherwise they stay out of `all` (#1949).
+if(MODKIT_BUILD_TESTS)
+	enable_testing()
+	get_property(_all DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+	list(FILTER _all INCLUDE REGEX "_check$")
+	foreach(_t ${_all})
+		set_property(TARGET ${_t} PROPERTY EXCLUDE_FROM_ALL OFF)
+		add_test(NAME ${_t} COMMAND ${_t})
+	endforeach()
+endif()

@@ -42,3 +42,7 @@ jobs:
         run: py -3 -m unittest discover -s tools/tests -v
       - name: Ruff
         run: py -3 -m ruff check tools
+      - name: Plugins build and checks
+        # #1949: the C++ plugins compile here (a merge that duplicates a definition went green); -Tests also runs the plugin/tests checks via ctest
+        if: ${{ env.FORK != 'true' }}
+        run: powershell -ExecutionPolicy Bypass -File plugin\build.ps1 -Tests
