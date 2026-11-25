@@ -129,4 +129,4 @@ widget service with `setText` (D2RLoader 1.4.0).
 
 TCP/IP clients ([#2186](https://github.com/synpoox/pd2-resurrected/issues/2186)): a client has no game thread, so it only tells the host over a private plugin channel (one byte, tab open or closed) when its Maps or Bossing tab opens or closes. With the tab open the host reads that peer's own inventory (`getPeerPlayer`) each update and cuts a new stack past 50 as for its own player (`QuickWithdraw`): 50 stay, the rest goes home on the peer's own stash. Counts are read on the server, never sent. A remote player's map goes to its storage row (the shown base is not sent).
 
-Not yet: a chat line when a page is full; routing a remote player's deposits home, the base swap for a remote player, and the Gems/Materials/Runes tab top-up (`TopUpNow`) for a remote player (host and single player only).
+Not yet: a chat line when a page is full; routing a remote player's deposits home, the base swap for a remote player, the Gems/Materials/Runes tab top-up (`TopUpNow`) for a remote player, and the tidy pass, the hand-drop merge (`StackNow`) and the hand-take split (`TakeOut`) (all host and single player only).

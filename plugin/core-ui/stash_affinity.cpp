@@ -110,6 +110,7 @@ std::mutex g_peerLock;  // slot claims and releases
 const D2RL::NetworkService* g_network = nullptr;
 net::ChannelHandle g_channel = net::InvalidChannelHandle;
 std::atomic<bool> g_connected {false};
+std::atomic<bool> g_tabDirty {false}, g_sendLogged {false};  // the last tab state did not reach the host
 std::atomic<int> g_connectTries {0};
 
 std::atomic<uintptr_t> g_generation {0};
@@ -830,6 +831,10 @@ void UpdatePeers() noexcept {
 			peer.seen = handle;
 			peer.noted.count = peer.kept.count = 0;
 		}
+		if (!peer.open.load()) {  // closed: nothing is cut; the stacks already held count as new when it opens, as for the host
+			peer.noted.count = peer.kept.count = 0;
+			continue;
+		}
 		D2RL::PlayerHandle player = D2RL::InvalidPlayerHandle;
 		if (handle == net::InvalidPeerHandle ||
 		    g_network->getPeerPlayer(g_context, g_channel, handle, &player) != net::Result::Success || player == local) {
@@ -846,9 +851,6 @@ void UpdatePeers() noexcept {
 				kept.item[kept.count++] = n;
 			} else if (!Listed(peer.noted, n.runtimeId) && aff::StackCap(n.code) > aff::WithdrawMax && aff::Stacks(n.code) &&
 			           Quantity(n.handle) > aff::WithdrawMax) {
-				if (!peer.open.load()) {
-					continue;
-				}
 				big.item[big.count++] = n;
 			}
 			noted.item[noted.count++] = n;
@@ -991,7 +993,12 @@ void OnClientMessage(const D2RL::PluginContext*, net::ChannelHandle, uint16_t, c
 void SendTabOpen(bool open) noexcept {
 	if (g_network != nullptr && g_connected.load()) {
 		const uint8_t value = open ? 1 : 0;
-		g_network->sendToHost(g_context, g_channel, MessageTabOpen, &value, 1);  // a host or single player has no one to tell
+		// a host or single player is not connected, so has no one to tell; a failed send is retried by the next SetTabOpen
+		const net::Result sent = g_network->sendToHost(g_context, g_channel, MessageTabOpen, &value, 1);
+		g_tabDirty = sent != net::Result::Success;
+		if (g_tabDirty && !g_sendLogged.exchange(true)) {
+			plog::Info("affinity: the tab state was not sent to the host (result %u); retrying", static_cast<uint32_t>(sent));
+		}
 	}
 }
 
@@ -1065,7 +1072,7 @@ void ShowBase(uint32_t code) noexcept {
 }
 
 void SetTabOpen(bool open, uint32_t page) noexcept {
-	if (g_open.exchange(open) != open) {
+	if (g_open.exchange(open) != open || g_tabDirty.load()) {
 		SendTabOpen(open);
 	}
 	g_viewPage.store(open ? page : 0);
