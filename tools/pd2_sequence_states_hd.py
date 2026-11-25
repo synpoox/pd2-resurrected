@@ -24,14 +24,15 @@ the skill runs while the body plays no clip. Each new state copies a D2R state w
   PD2-only units with no vanilla state (Warlord of Blood, Leoric map boss, Dark Temple boss, uber Madawc, ...) stay as they are.
 The skill ids are merged skills.txt rows (tools/tests/test_sequence_states_hd.py checks them by name).
 
-    py -3 tools/pd2_sequence_states_hd.py [--d2r D2R_DATA_ROOT]   (default: the toolkit's 95032 cache)
+    py -3 tools/pd2_sequence_states_hd.py [--d2r D2R_DATA_ROOT]   (default: the toolkit's cache, pd2_table.D2R_DATA)
 """
 from __future__ import annotations
 
 import argparse
 import copy
 import json
-import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pd2_table
@@ -42,7 +43,24 @@ ROOT = Path(__file__).resolve().parent.parent
 def hd(kind: str, unit: str) -> Path:
     return Path("hd") / "character" / kind / unit / f"{unit}_state_machine.json"
 
-D2R_DATA = Path(os.environ.get("MODKIT_CACHE") or pd2_table.toolkit(ROOT) / "d2r-data") / "95032" / "data"
+D2R_DATA = pd2_table.D2R_DATA
+
+
+def read_state_machine(d2r: Path, kind: str, unit: str) -> dict:
+    """The unit's D2R state machine; a default `modkit fetch` skips per-unit folders, so fetch the missing one."""
+    path = d2r / hd(kind, unit)
+    if not path.exists():
+        cmd = [sys.executable, "-m", "modkit", "fetch", "--prefix", f"data/{hd(kind, unit).as_posix()}"]
+        try:
+            subprocess.run(cmd, cwd=pd2_table.toolkit(ROOT), check=True)
+        except (subprocess.CalledProcessError, OSError, ValueError) as e:
+            sys.exit(f"missing {path}; fetching it failed ({e}). Run from the toolkit root: {' '.join(cmd[1:])}")
+        if not path.exists():
+            sys.exit(f"fetched, but {path} is still missing: modkit fetch fills pd2_table.D2R_DATA's build (or MODKIT_CACHE), "
+                     "not a custom --d2r. Point --d2r at that cache or set MODKIT_CACHE.")
+    return json.loads(path.read_text("utf-8-sig"))
+
+
 PLAYER_SEQUENCE_MODE = 18
 MONSTER_SEQUENCE_MODE = 14
 MONSTER_CAST_MODE = 7
@@ -176,7 +194,7 @@ def main() -> None:
     for (kind, unit), spec in STATES.items():
         if a.only and unit not in a.only:
             continue
-        sm = json.loads((a.d2r / hd(kind, unit)).read_text("utf-8-sig"))
+        sm = read_state_machine(a.d2r, kind, unit)
         out = a.out / hd(kind, unit)
         out.parent.mkdir(parents=True, exist_ok=True)
         for one in spec if isinstance(spec, list) else [spec]:
