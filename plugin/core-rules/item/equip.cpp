@@ -71,9 +71,10 @@ constexpr uint32_t ItemSkillCallAt = 13;
 constexpr const char* StatOwnerCall =
     "e8 ?? ?? ?? ?? 44 0f b6 f8 84 c0 74 0f 33 d2 48 8b ce e8 ?? ?? ?? ?? 48 3b c7 74";
 constexpr uint32_t StatOwnerCallAt = 18;
-// The client's stat callback (0xfd1c0) entry, D2RCore's `jmp [rip+x]` and the body that follows
-constexpr const char* ClientStatCallbackEntry =
-    "ff 25 ?? ?? ?? ?? 90 90 90 53 56 41 57 48 83 ec 30 48 89 7c 24 58 48 8b ca 41 8b f9";
+// Where the client's stat callback (0xfd1c0) is registered (0xfede6): `lea r8,[rip+disp]` hands out its address. Scanned there,
+// not at its entry, which another plugin's inline hook would change.
+constexpr const char* ClientStatCallbackRegistration = "45 33 c9 4c 8d 05 ?? ?? ?? ?? 33 d2 48 8b ce e8";
+constexpr uint32_t ClientStatCallbackDispAt = 6;  // the lea's disp32; the next instruction starts at +10
 using ItemSkillFn = void* (*)(Unit*, uint32_t, int32_t, int32_t, int32_t, int32_t) noexcept;
 ItemSkillFn g_itemSkill = nullptr;
 Unit* (*g_statOwner)(Unit*, void*) noexcept = nullptr;
@@ -157,12 +158,14 @@ auto EquipStatCallback(Game* game, Unit* unit, Unit* item, uint64_t statLayer, i
 auto FindZeroChargeSkills(const D2RL::PluginContext* context) noexcept -> bool {
 	uint64_t call = 0;
 	uint64_t owner = 0;
-	uint64_t client = 0;
+	uint64_t registration = 0;
 	if (sigscan::ScanUnique(context->exeBase, ItemSkillCall, ItemSkillCallAt, &call) != 1 ||
 	    sigscan::ScanUnique(context->exeBase, StatOwnerCall, StatOwnerCallAt, &owner) != 1 ||
-	    sigscan::ScanUnique(context->exeBase, ClientStatCallbackEntry, 0, &client) != 1) {
+	    sigscan::ScanUnique(context->exeBase, ClientStatCallbackRegistration, 0, &registration) != 1) {
 		return false;
 	}
+	const uint64_t client =
+		registration + 10 + *reinterpret_cast<const int32_t*>(context->exeBase + registration + ClientStatCallbackDispAt);
 	const auto target = [&](uint64_t rva) -> uint64_t {
 		const uint64_t site = context->exeBase + rva;
 		return *reinterpret_cast<const uint8_t*>(site) == 0xe8 ? site + 5 + *reinterpret_cast<const int32_t*>(site + 1) : 0;

@@ -433,8 +433,6 @@ void Install(const D2RL::PluginContext* context, char* report, size_t size) noex
 	} else {
 		plog::Warn("padbinds: stack tab RB + A and the Ctrl+click top-up are off (signature not found)");
 	}
-	sigscan::Entry* const sigs[] = {&d2r::sig::UnitClassOf, &d2r::sig::UnitStat};  // the top-up's class and count reads (#1775)
-	sigscan::Resolve(sigs, 2, context->exeBase, nullptr, 0);
 	uint64_t key = 0;
 	if (sigscan::ScanUnique(context->exeBase, "48 83 ec 28 ff 15 ?? ?? ?? ?? c1 e8 0f", 0, &key) == 1) {
 		g_key = reinterpret_cast<KeyFn>(context->exeBase + key);
