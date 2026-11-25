@@ -35,7 +35,7 @@ Keep Cartographer standalone and PD2-neutral, core-rules for general rules and c
 | Alpha saves | Same savepath, no compatibility gate or migration tool |
 | Test scope | Single-player only; no multiplayer claim |
 
-The former 26-ticket draft is superseded. The replacement has [25 work items](migration-tickets.md), awaiting breakdown approval before publication. No child issues have been published.
+The former 26-ticket draft is superseded. The replacement's 25 work items were published as the child issues of [#942](https://github.com/synpoox/pd2-resurrected/issues/942) (the draft file is gone; the issues hold the content).
 
 ## Inspected implementation and retained dependencies
 

@@ -1,5 +1,7 @@
 # Native catalogue check (#952, lane A)
 
+> Historical: a one-off game check from the migration (2026-11-15). Slot numbers 202-207 became 138-143 (see [contracts.md](contracts.md)).
+
 Game check of the five native Cartographer maps (m01-m05), 2026-11-15, Slot4, Hell, TESTPAL (level 99), build of
 `cartographer-migration` (d929925, then b6aec9b for the second pass). Images: `issue-assets` branch, `952/`. Image names (s4, m3-in, b1, ...) are screenshot labels, not item codes.
 

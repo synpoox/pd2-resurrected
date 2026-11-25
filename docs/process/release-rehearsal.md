@@ -7,9 +7,9 @@ level 95+ characters). Nothing was tagged, uploaded or released.
 
 `python <toolkit>/release/stage.py --game <D2R> --version 0.3.0-rc.1 --out <dir> --extra-plugin
 "<cartographer.dll>@d2r-tools <sha>"` stages the mod folder and hands it to the toolkit's `package_release.py`
-(`<toolkit>` is the d2rAI-toolkit checkout, found with its `tools/toolkit_path.py`). Cartographer is not pinned: a
-release ships the latest build, passed with `--extra-plugin`. The stager fails only when the file is missing, and records
-`cartographer: d2r-tools <sha>, sha256 <hash>` at the end of the release notes (the source after `@` is optional).
+(`<toolkit>` is the d2rAI-toolkit checkout, found with its `tools/toolkit_path.py`). That was the rehearsal as run, when
+Cartographer was passed in with `--extra-plugin`; it is a pinned companion now (see *Cartographer* below). The stager
+recorded `cartographer: d2r-tools <sha>, sha256 <hash>` at the end of the release notes.
 
 | | main (0.2.0-alpha) | candidate (0.3.0-rc.1) |
 |---|---|---|

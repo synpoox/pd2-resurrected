@@ -1,3 +1,5 @@
+> Historical: the spec for the Cartographer migration, built and merged in [#1058](https://github.com/synpoox/pd2-resurrected/pull/1058) ([#942](https://github.com/synpoox/pd2-resurrected/issues/942)). Kept for the reasoning; current state is in [ADR 0006](../adr/0006-cartographer-and-core-events.md) and the code.
+
 ## Problem Statement
 
 PD2 Resurrected needs to replace core-maps with Cartographer without losing the PD2 map-event and uber fights already rewritten for the port. Keeping PD2's map-item, tier, affix and crafting systems would add compatibility work the owner has explicitly removed from scope.
