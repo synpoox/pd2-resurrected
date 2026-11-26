@@ -47,7 +47,7 @@ class SequenceStates(unittest.TestCase):
         rows = list(csv.reader((FILES / "global/excel/skills.txt").open(encoding="utf-8-sig"), delimiter="\t"))
         ids = {row[0]: int(row[1]) for row in rows[1:]}
         for unit, skill, steps in (("ancientbarb1", "MonWhirlwind", 1), ("ancientbarb3", "Leap Attack Korlic", 4),
-                                  ("roguehire", "DoppleZonStrafe", 2), ("duriel", "MonCharge", 1),
+                                  ("duriel", "MonCharge", 1),
                                   ("duriel", "MonJab", 1), ("duriel", "MonSmite", 1),
                                   # #2092
                                   ("ancientbarb1", "UberTalicWhirlwind", 1), ("ancientbarb3", "Leap Attack", 4),
@@ -88,7 +88,7 @@ class SequenceStates(unittest.TestCase):
                 self.assertEqual((FILES / gen.hd(kind, unit)).read_text("utf-8"), json.dumps(sm, separators=(",", ":")))
 
     def test_decoy_strafe_rollback(self):
-        # #2156: use the working Strafe rollback without changing the two-arrow sequence.
+        # #2156: match the mercenary native attack mode and rollback.
         with (FILES / "global/excel/skills.txt").open(encoding="utf-8-sig", newline="") as f:
             skills = {row["skill"]: row for row in csv.DictReader(f, delimiter="\t")}
         decoy = skills["DoppleZonStrafe"]
@@ -97,7 +97,15 @@ class SequenceStates(unittest.TestCase):
         self.assertEqual((decoy["calc1"], decoy["calc3"]), ("2", "2"))
         sm = json.loads((FILES / "hd/character/enemy/roguehire/roguehire_state_machine.json").read_text("utf-8"))
         self.assertEqual([(s["modeId"], s["stepIndex"]) for s in sm["states"] if s["skillIndex"] == 557],
-                         [(14, 0), (14, 1)])
+                         [(7, 1)])
+        with (FILES / "global/excel/monstats.txt").open(encoding="utf-8-sig", newline="") as f:
+            monsters = {row["Id"]: row for row in csv.DictReader(f, delimiter="\t")}
+        self.assertEqual(monsters["dopplezonnew"]["Sk1mode"], "A1")
+        follow = next(s for s in sm["states"] if s["skillIndex"] == 557)
+        attack = next(s for s in sm["states"] if s["modeId"] == 4 and s["skillIndex"] == -1)
+        self.assertEqual(follow["animationBindings"], attack["animationBindings"])
+        for group in sm["transitions"]:
+            self.assertIn((follow["stateId"], 0.01), [(i["to"], i["crossfadeSeconds"]) for i in group["settings"]])
 
     def test_a1_merc_strafe_follow_up(self):
         # #2156: D2R keys a monster state by (skill, step) only in Cast (7) and SQ (14); other modes key by mode alone

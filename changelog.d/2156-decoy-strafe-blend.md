@@ -1,1 +1,1 @@
-Give Decoy Strafe the same animation-frame rollback as normal Strafe.
+Use native Attack1 Strafe playback and frame rollback for Decoy's bow animation.
