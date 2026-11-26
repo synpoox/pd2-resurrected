@@ -1,1 +1,0 @@
-- Ctrl+click or Shift+right-click on a Gems, Materials or Runes stack now takes up to 50.

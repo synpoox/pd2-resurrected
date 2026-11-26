@@ -1,1 +1,0 @@
-- Add the Semi strict and Ultra strict loot filters and retune all levels, Resurrected theme (#2245).

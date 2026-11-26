@@ -1,1 +1,0 @@
-- Melee attacks reach as far as in PD2 again (the reach rule was switched off).

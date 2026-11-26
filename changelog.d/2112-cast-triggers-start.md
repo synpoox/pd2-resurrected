@@ -1,1 +1,0 @@
-- Fixed Cast Triggers (skill on cast and on block) not starting on D2R 3.4 (#2112).

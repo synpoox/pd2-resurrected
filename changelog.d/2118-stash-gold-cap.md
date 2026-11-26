@@ -1,1 +1,0 @@
-- Raise the stash gold cap to 25,000,000; all shared stash pages share one pool, as in PD2 (#2118).
