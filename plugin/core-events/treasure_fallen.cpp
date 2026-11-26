@@ -2,9 +2,8 @@
 // the monster's treasure class once for each 10% of life lost while it is hit (n counts them), and its death step
 // (0x10378d10) drops the rest, 9 - n times, so the stock death drop makes it 10 rolls in all. D2R does neither: one roll.
 //
-// Think: class 962 (treasurefallenMap) on monai row 6 runs the per-10% drop, then D2R's own Fallen think. PD2's flee
-// from the player is not ported (docs/deviations.md). D2R's think keeps its own state in AI param 0, so n lives in a small
-// table here, per game and unit. Death: a monster-death listener drops 9 - n more and clears the slot.
+// Think: class 962 (treasurefallenMap) on monai row 6 runs the per-10% drop, then walks away from players (#2218).
+// n lives in a small table here, per game and unit. Death: a monster-death listener drops 9 - n more and clears the slot.
 // Both drops go through D2R's MonsterTcDrop. PD2 passes no killer; D2R's drop reads one for the quality roll, so the
 // killer is a player (the tick's target or the nearest one) and no player means no drop.
 // D2R's Fallen think is found by a signature of its own (an entry here, not a d2r::sig one); the part is off without it.
@@ -102,6 +101,29 @@ void CheckGame(Game* game) noexcept {
 	g_frame = frame;
 }
 
+// Walk a short step away from the nearest living player, never enter an attack mode.
+// PD2 uses a 2-4 cell step; use 3 and retry on the next think if blocked.
+void Flee(Game* game, Unit* unit) noexcept {
+	using namespace d2r::rva;
+	Unit* player = ai_common::NearestPlayer(game, unit, ai_common::LevelOf(unit));
+	int32_t x = 0, y = 0, px = 0, py = 0;
+	d2r::UnitXY(unit, &x, &y);
+	if (player != nullptr) {
+		d2r::UnitXY(player, &px, &py);
+	}
+	const int32_t dx = x - px, dy = y - py;
+	if (player == nullptr || dx * dx + dy * dy >= 100) {
+		d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(d2r::sig::AiIdle)(game, unit, 10);
+		return;
+	}
+	const int32_t ax = dx < 0 ? -dx : dx, ay = dy < 0 ? -dy : dy;
+	const int32_t span = ax > ay ? ax : ay;
+	const int32_t tx = x + (span != 0 ? 3 * dx / span : 3);
+	const int32_t ty = y + (span != 0 ? 3 * dy / span : 0);
+	d2r::Engine<void (*)(Unit*, int32_t, int32_t, int32_t) noexcept>(d2r::sig::AiStepBeforeWalk)(unit, 1, 0, 0);
+	d2r::Engine<void (*)(Game*, Unit*, int32_t, int32_t) noexcept>(d2r::sig::WalkToSpot)(game, unit, tx, ty);
+}
+
 void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	using namespace d2r::rva;
 	CheckGame(game);
@@ -120,7 +142,7 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 			}
 		}
 	}
-	ai_registry::Vanilla(FallenRow)(game, unit, tick);
+	Flee(game, unit);
 }
 
 void OnDeath(const D2RL::PluginContext*, const D2RL::Lifecycle::MonsterDeathEvent* event, void*) noexcept {
@@ -188,7 +210,7 @@ auto InstallTreasureFallen(const D2RL::PluginContext* context, char* report, siz
 		std::snprintf(report, reportSize, "off: monster-death listener refused");
 		return 0;
 	}
-	std::snprintf(report, reportSize, "Treasure Fallen: a drop per 10%% of life lost, the rest on death (monai %d think)", FallenRow);
+	std::snprintf(report, reportSize, "Treasure Fallen: a drop per 10%% of life lost, the rest on death; flees (monai %d think)", FallenRow);
 	return 1;
 }
 

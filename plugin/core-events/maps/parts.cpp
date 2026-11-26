@@ -122,7 +122,10 @@ PartReg r240(240, "anyamaps", InstallAnyamapsPart, AnyamapsUses);
 CountersReg c240(240, AnyaMapsCounters);
 PartReg r160(160, "guardianai", InstallGuardianaiPart);
 PartReg r170(170, "wanderer", InstallWandererPart, WandererUses);
-PartReg r180(180, "treasurefallen", InstallTreasureFallenPart);
+sigscan::Entry* const TreasureFallenUses[] = {
+	&d2r::sig::AiIdle, &d2r::sig::WalkToSpot, &d2r::sig::AiStepBeforeWalk, &d2r::sig::RecordOffsets,
+};
+PartReg r180(180, "treasurefallen", InstallTreasureFallenPart, TreasureFallenUses);
 PartReg r190(190, "invaders", InstallInvadersPart);
 PartReg r195(195, "invaderart", InstallInvaderartPart);
 PartReg r250(250, "mapbosstc", InstallMapBossTcPart, MapBossTcUses);
