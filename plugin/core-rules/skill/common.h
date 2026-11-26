@@ -288,9 +288,26 @@ auto VanillaSlot(uint64_t table, int slot) noexcept -> Fn {
 
 // PD2's Find guard: a corpse whose owner is a player (a summon or minion) can't be searched. D2R's unowned units
 // carry id 0 or -1 here; both pass.
-inline auto OwnedByPlayer(Unit* target) noexcept -> bool {
-	const uint32_t id = At<uint32_t>(target, d2r::rva::UnitOwnerId);
-	return At<int32_t>(target, d2r::rva::UnitOwnerType) == 0 && id != 0 && id != UINT32_MAX;
+// Summons can record ownership only in the monster AI block (#2035); see Redemption #1987.
+inline auto MonsterAiOwner(const Unit* target) noexcept -> const uint8_t* {
+	using namespace d2r::rva;
+	const auto* data = target != nullptr && At<int32_t>(target, UnitType) == UnitMonster
+	    ? At<uint8_t*>(target, UnitData) : nullptr;
+	return data != nullptr ? At<uint8_t*>(data, MonDataAi) : nullptr;
+}
+inline auto ValidOwnerId(uint32_t id) noexcept -> bool {
+	return id != 0 && id != UINT32_MAX;
+}
+inline auto OwnedByPlayer(const Unit* target) noexcept -> bool {
+	using namespace d2r::rva;
+	if (target == nullptr) {
+		return false;
+	}
+	if (At<int32_t>(target, UnitOwnerType) == 0 && ValidOwnerId(At<uint32_t>(target, UnitOwnerId))) {
+		return true;
+	}
+	const auto* ai = MonsterAiOwner(target);
+	return ai != nullptr && At<int32_t>(ai, AiOwnerType) == 0 && ValidOwnerId(At<uint32_t>(ai, AiOwnerId));
 }
 
 // PD2's 46 bosses whose corpses can't be searched (map, uber and PD2-only-area bosses; docs/research/skills/w10-barbarian.md),
