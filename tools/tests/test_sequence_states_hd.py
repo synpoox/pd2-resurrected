@@ -87,6 +87,17 @@ class SequenceStates(unittest.TestCase):
                     sm = gen.build(sm, *one)
                 self.assertEqual((FILES / gen.hd(kind, unit)).read_text("utf-8"), json.dumps(sm, separators=(",", ":")))
 
+    def test_decoy_strafe_entry_blend(self):
+        # #2156: both Decoy draws enter quickly; the mercenary retains its own wiring.
+        sm = json.loads((FILES / "hd/character/enemy/roguehire/roguehire_state_machine.json").read_text("utf-8"))
+        states = [s for s in sm["states"] if s["modeId"] == 14 and s["skillIndex"] == 557]
+        self.assertEqual([s["stepIndex"] for s in states], [0, 1])
+        for state in states:
+            incoming = [i["crossfadeSeconds"] for g in sm["transitions"] for i in g["settings"]
+                        if i["to"] == state["stateId"]]
+            self.assertTrue(incoming)
+            self.assertTrue(all(t == 0.01 for t in incoming))
+
     def test_a1_merc_strafe_follow_up(self):
         # #2156: D2R keys a monster state by (skill, step) only in Cast (7) and SQ (14); other modes key by mode alone
         # (first state wins), so a skill state there is dead. The merc's Strafe starts in plain Attack1 and each extra

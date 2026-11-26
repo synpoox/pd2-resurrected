@@ -157,6 +157,13 @@ def build(sm: dict, mode: int, new_skill: int, src_skill: int, name: str, suffix
         sm["transitions"].append(own)
     if pair:
         add_follow_up(sm, next_id, name, suffix)
+        if mode == MONSTER_SEQUENCE_MODE and new_skill == 557:
+            # #2156 experiment: the stock entry blend can consume much of the 12-frame Decoy sequence.
+            # Match the follow-up blend without touching the mercenary or gameplay timing.
+            for group in sm["transitions"]:
+                for item in group["settings"]:
+                    if item["to"] == next_id:
+                        item["crossfadeSeconds"] = 0.01
     return sm
 
 
