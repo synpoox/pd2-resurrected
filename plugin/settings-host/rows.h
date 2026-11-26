@@ -34,8 +34,7 @@ inline auto ToggleWidget(const std::string& row, bool on) -> std::string {
 // the layout and this table list the same options in the same order: state i stands for the owner's label labels[i].
 // Pyre names a filter by its "name", and adds " (<file stem>)" when two share one (a player's own filter.json named
 // "PD2R Starter" lists as "PD2R Starter (Legacy)"), so a state matches either form.
-// shortcut: a filter with no state (a player's own file) can't be picked here; they pick it in the toml.
-// Upgrade when the loader can set a dropdown's states.
+// An option with no layout state (a player's own filter) gets an extra state the plugin adds at runtime (ExtraOptions).
 struct Dropdown {
 	const char* row;
 	const char* widget;
@@ -85,10 +84,40 @@ inline auto StateOf(const Dropdown& d, const std::string& label) -> int32_t {
 	return -1;
 }
 
+// D2R's dropdown holds at most this many states.
+inline constexpr uint32_t MaxStates = 250;
+
+// The options the layout has no state for (a player's own filter): the plugin adds them after the layout's states,
+// in the owner's order, so the extra k is state d.count + k.
+inline auto ExtraOptions(const Dropdown& d, const std::vector<std::string>& options) -> std::vector<std::string> {
+	std::vector<std::string> extra;
+	for (const std::string& option : options) {
+		if (StateOf(d, option) < 0 && d.count + extra.size() < MaxStates) {
+			extra.push_back(option);
+		}
+	}
+	return extra;
+}
+
+// The state that shows the owner's option i: the layout's, else its extra state, else -1.
+inline auto StateFor(const Dropdown& d, const std::vector<std::string>& options, size_t i) -> int32_t {
+	if (i >= options.size()) {
+		return -1;
+	}
+	if (const int32_t state = StateOf(d, options[i]); state >= 0) {
+		return state;
+	}
+	uint32_t state = d.count;
+	for (size_t j = 0; j < i; ++j) {
+		state += StateOf(d, options[j]) < 0 ? 1 : 0;
+	}
+	return state < MaxStates ? static_cast<int32_t>(state) : -1;
+}
+
 // The owner's option a picked state stands for: the first one it matches, or -1.
 inline auto OptionOf(const Dropdown& d, int32_t state, const std::vector<std::string>& options) -> int32_t {
 	for (size_t i = 0; i < options.size(); ++i) {
-		if (state >= 0 && StateOf(d, options[i]) == state) {
+		if (state >= 0 && StateFor(d, options, i) == state) {
 			return static_cast<int32_t>(i);
 		}
 	}
