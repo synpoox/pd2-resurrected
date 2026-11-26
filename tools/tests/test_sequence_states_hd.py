@@ -87,15 +87,17 @@ class SequenceStates(unittest.TestCase):
                     sm = gen.build(sm, *one)
                 self.assertEqual((FILES / gen.hd(kind, unit)).read_text("utf-8"), json.dumps(sm, separators=(",", ":")))
 
-    def test_decoy_strafe_cast_follow_up(self):
-        # #2156: retain the SQ path and offer the same Cast follow-up lookup as the merc.
+    def test_decoy_strafe_rollback(self):
+        # #2156: use the working Strafe rollback without changing the two-arrow sequence.
+        with (FILES / "global/excel/skills.txt").open(encoding="utf-8-sig", newline="") as f:
+            skills = {row["skill"]: row for row in csv.DictReader(f, delimiter="\t")}
+        decoy = skills["DoppleZonStrafe"]
+        self.assertEqual(decoy["Param6"], skills["Strafe"]["Param6"])
+        self.assertEqual(decoy["Param6"], "50")
+        self.assertEqual((decoy["calc1"], decoy["calc3"]), ("2", "2"))
         sm = json.loads((FILES / "hd/character/enemy/roguehire/roguehire_state_machine.json").read_text("utf-8"))
-        states = [s for s in sm["states"] if s["skillIndex"] == 557]
-        self.assertEqual([(s["modeId"], s["stepIndex"]) for s in states], [(14, 0), (14, 1), (7, 1)])
-        cast = states[-1]
-        self.assertEqual(cast["animationBindings"], states[0]["animationBindings"])
-        for g in sm["transitions"]:
-            self.assertIn((cast["stateId"], 0.01), [(i["to"], i["crossfadeSeconds"]) for i in g["settings"]], g["name"])
+        self.assertEqual([(s["modeId"], s["stepIndex"]) for s in sm["states"] if s["skillIndex"] == 557],
+                         [(14, 0), (14, 1)])
 
     def test_a1_merc_strafe_follow_up(self):
         # #2156: D2R keys a monster state by (skill, step) only in Cast (7) and SQ (14); other modes key by mode alone

@@ -1,1 +1,1 @@
-Add a Decoy Strafe follow-up animation state matching the Act I mercenary's lookup.
+Give Decoy Strafe the same animation-frame rollback as normal Strafe.
