@@ -100,9 +100,7 @@ auto OwnerOf(const Unit* unit) noexcept -> Owner {
 	case 0:
 		return Owner::Player;
 	case 1: {
-		const uint32_t id = At<uint32_t>(unit, d2r::rva::UnitOwnerId);
-		const bool owned = id != 0 && id != UINT32_MAX;
-		return owned && At<int32_t>(unit, d2r::rva::UnitOwnerType) == 0 ? Owner::Player : Owner::Monster;
+		return pd2r::skills::OwnedByPlayer(unit) ? Owner::Player : Owner::Monster;
 	}
 	default:
 		return Owner::None;
