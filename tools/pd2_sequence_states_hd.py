@@ -83,7 +83,9 @@ STATES = {
     # Decoy (dopplezonnew) draws the rogue merc's model; its Strafe sequence repeats A1 frames. The A1 merc's Strafe (26)
     # starts in plain Attack1, so it needs only the follow-up (#2156)
     ("enemy", "roguehire"): [(MONSTER_SEQUENCE_MODE, 557, -1, "Seq_DoppleZonStrafe", "_dopplestrafe", 4, True),
-                             (MONSTER_CAST_MODE, 26, -1, "Strafe_FollowUp", "_strafe", 4, False, True)],
+                             (MONSTER_CAST_MODE, 26, -1, "Strafe_FollowUp", "_strafe", 4, False, True),
+                             # #2156 experiment: the client follow-up may resolve through Cast, as for the merc.
+                             (MONSTER_CAST_MODE, 557, -1, "DoppleZonStrafe_CastFollowUp", "_dopplestrafe_cast", 4, False, True)],
     ("enemy", "duriel"): [
         (MONSTER_SEQUENCE_MODE, 486, 107, "Ability_MONCHARGE_Sequence", "_moncharge"),
         (MONSTER_SEQUENCE_MODE, 484, 10, "Ability_MONJAB_Sequence", "_monjab"),
@@ -157,13 +159,6 @@ def build(sm: dict, mode: int, new_skill: int, src_skill: int, name: str, suffix
         sm["transitions"].append(own)
     if pair:
         add_follow_up(sm, next_id, name, suffix)
-        if mode == MONSTER_SEQUENCE_MODE and new_skill == 557:
-            # #2156 experiment: the stock entry blend can consume much of the 12-frame Decoy sequence.
-            # Match the follow-up blend without touching the mercenary or gameplay timing.
-            for group in sm["transitions"]:
-                for item in group["settings"]:
-                    if item["to"] == next_id:
-                        item["crossfadeSeconds"] = 0.01
     return sm
 
 

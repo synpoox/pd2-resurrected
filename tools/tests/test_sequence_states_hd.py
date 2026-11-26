@@ -87,16 +87,15 @@ class SequenceStates(unittest.TestCase):
                     sm = gen.build(sm, *one)
                 self.assertEqual((FILES / gen.hd(kind, unit)).read_text("utf-8"), json.dumps(sm, separators=(",", ":")))
 
-    def test_decoy_strafe_entry_blend(self):
-        # #2156: both Decoy draws enter quickly; the mercenary retains its own wiring.
+    def test_decoy_strafe_cast_follow_up(self):
+        # #2156: retain the SQ path and offer the same Cast follow-up lookup as the merc.
         sm = json.loads((FILES / "hd/character/enemy/roguehire/roguehire_state_machine.json").read_text("utf-8"))
-        states = [s for s in sm["states"] if s["modeId"] == 14 and s["skillIndex"] == 557]
-        self.assertEqual([s["stepIndex"] for s in states], [0, 1])
-        for state in states:
-            incoming = [i["crossfadeSeconds"] for g in sm["transitions"] for i in g["settings"]
-                        if i["to"] == state["stateId"]]
-            self.assertTrue(incoming)
-            self.assertTrue(all(t == 0.01 for t in incoming))
+        states = [s for s in sm["states"] if s["skillIndex"] == 557]
+        self.assertEqual([(s["modeId"], s["stepIndex"]) for s in states], [(14, 0), (14, 1), (7, 1)])
+        cast = states[-1]
+        self.assertEqual(cast["animationBindings"], states[0]["animationBindings"])
+        for g in sm["transitions"]:
+            self.assertIn((cast["stateId"], 0.01), [(i["to"], i["crossfadeSeconds"]) for i in g["settings"]], g["name"])
 
     def test_a1_merc_strafe_follow_up(self):
         # #2156: D2R keys a monster state by (skill, step) only in Cast (7) and SQ (14); other modes key by mode alone

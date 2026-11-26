@@ -1,1 +1,1 @@
-Shorten the HD animation entry blend for Decoy's Strafe.
+Add a Decoy Strafe follow-up animation state matching the Act I mercenary's lookup.
