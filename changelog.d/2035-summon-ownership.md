@@ -1,1 +1,1 @@
-Recognize player summons whose ownership is stored in the monster AI block.
+- Fixed some player summons being treated as monsters by skills, melee reach and Crushing Blow.
