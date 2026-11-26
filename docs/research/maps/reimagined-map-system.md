@@ -82,6 +82,8 @@ The static population, baseline Magic Find, drops and recipes work without the p
 
 ## 3. Limits they hit and how they got around them
 
+The engine limits in this table (act-bound red portals, overlapping world space, automap layers, level ids above 255, 8-bit preset slots, hardcoded maze and town ids) are generic D2R facts: the toolkit holds them in `knowledge/engine-limits.md`, *Reported by a third-party level generator (source-read, not verified here)*. The table stays as the record of what Reimagined did about each.
+
 | Limit | Workaround | Source |
 |---|---|---|
 | Red portals and town portals must stay within one act | Every Labyrinth and map level is `Act=4` (Act V) whatever its tileset, opened from Harrogath | MAPS-README "Themes and layouts" |

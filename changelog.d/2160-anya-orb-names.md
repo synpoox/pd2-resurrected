@@ -1,1 +1,0 @@
-- Fix stray color markers in the names of Anya's map orbs (#2160).

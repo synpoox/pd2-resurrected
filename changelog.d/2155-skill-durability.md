@@ -1,1 +1,0 @@
-- Stop Leap Attack and Blade Shield from wearing out weapons (#2155).

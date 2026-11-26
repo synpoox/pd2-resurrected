@@ -12,6 +12,7 @@
 //   affinity  stash affinity: quick-moved maps, bossing and map materials go to their reserved shared stash pages (#1553)
 //   tabs      stash tabs: a second tab row with the Maps tab (tiers, bases, the cube) and the Bossing tab (#1553)
 //   monsters  PD2 Monsters Remaining: the level hostile monsters left, in the zone info (#1534)
+//   menunames gold shop confirmation names without inline color markers (#2249)
 //   corrupt   corruption markers: the lines a corruption added or changed are red (#2070)
 //   hotkeys   PD2 inventory hotkeys: Ctrl, Shift and Ctrl+Shift right click drop, stash and Cube, Shift+left click identifies; configurable (#1567)
 //   descdam   PD2 character screen skill damage lines: descdam 11, 13, 15, 25 and 26 print PD2's line (#2005)
@@ -29,6 +30,7 @@
 #include "pad_binds.h"
 #include "hotkeys.h"
 #include "monsters_remaining.h"
+#include "menu_names.h"
 #include "off_switch.h"
 #include "parts.h"
 #include "stack_split.h"
@@ -43,7 +45,7 @@
 #define MODKIT_PLUGIN_NAME "core-ui"
 #endif
 #ifndef MODKIT_PLUGIN_VERSION
-#define MODKIT_PLUGIN_VERSION "0.2.6"
+#define MODKIT_PLUGIN_VERSION "0.2.7"
 #endif
 
 namespace {
@@ -69,6 +71,7 @@ parts::Part g_parts[] = {
 	{"tabs", false, stash_tabs::Install},
 	{"monsters", false, monsters_remaining::Install},
 	{"corrupt", true, corruption_marks::Install},
+	{"menunames", true, menu_names::Install},
 	{"descdam", true, descdam_lines::Install, nullptr, descdam_lines::Uses},
 };
 

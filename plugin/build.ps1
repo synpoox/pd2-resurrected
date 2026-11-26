@@ -12,5 +12,5 @@ $boot = if ($env:D2R_TOOLKIT) { $env:D2R_TOOLKIT } else {
 if (-not $boot) { throw "d2rAI-toolkit not found beside any parent folder: set D2R_TOOLKIT" }
 . (Join-Path $boot "tools\ToolkitPath.ps1")
 $toolkit = Find-D2rToolkit -From $PSScriptRoot  # warns when toolkit.version differs from the toolkit's HEAD
-& (Join-Path $toolkit "plugin-template\build.ps1") -Source $PSScriptRoot -Name "core-rules", "core-events", "core-ui" -Toolkit $toolkit -Tests:$Tests
+& (Join-Path $toolkit "plugin-template\build.ps1") -Source $PSScriptRoot -Name "core-rules", "core-events", "core-ui", "aa-settings-host" -Toolkit $toolkit -Tests:$Tests
 if ($LASTEXITCODE -ne 0) { throw "plugin build failed ($LASTEXITCODE)" }

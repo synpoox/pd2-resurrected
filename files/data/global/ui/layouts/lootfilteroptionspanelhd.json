@@ -1,0 +1,461 @@
+{
+    "type": "LootFilterOptionsPanel", "name": "LootFilterOptionsPanel",
+    "fields": {
+        "priority": 9003,
+        "rect": "$LootFilterOptionsPanelRect",
+        "anchor": { "x": 0.5 },
+    },
+    "children": [
+        // This click catcher is the same size as the panel - this is needed for PC Handheld
+        // Because when we're using controllers we hide the 'background' rect defined below.
+        // We also don't want this one to block the entire screen, because  then it would cover the controller overlay.
+        {
+            "type": "ClickCatcherWidget", "name": "catcher",
+            "fields": {
+                "fitToParent": true
+            }
+        },
+        {
+            "type": "RectangleWidget", "name": "Background",
+            "fields": {
+                "fitToScreen": true,
+                "color": [ 0.0, 0.0, 0.0, 0.7 ]
+            },
+            "children": [
+                // This click catcher covers the full screen and is only used for MKB. 
+                // This prevents us from interacting with game UI like the HUD widget at the bottom of the screen.
+                {
+                    "type": "ClickCatcherWidget", "name": "catcher",
+                    "fields": {
+                        "fitToParent": true
+                    }
+                },
+                {
+                    "type": "Widget", "name": "Anchor",
+                    "fields": {
+                        "anchor": { "x": 0.5, "y": 0.5 },
+                        "rect": "$SettingsPanelAnchorRect",
+                    },
+                    "children": [
+                        {
+                            "type": "ImageWidget", "name": "Background",
+                            "fields": {
+                                "filename": "\\PANEL\\Options\\FrontEndOptionsBG",
+                            },
+                        },
+                        {
+                            "type": "TextBoxWidget", "name": "Title",
+                            "fields": {
+                                "rect": { "x": 0, "y": 45, "width": 1950, "height": 103 },
+                                "text": "@LootFilter",
+                                "style": "$StyleTitleBlock",
+                            },
+                        },
+                        {
+                            "type": "ButtonWidget", "name": "CloseButton",
+                            "fields": {
+                                "rect": { "x": 1868, "y": 8 },
+                                "filename": "PANEL\\closebtn_4x",
+                                "hoveredFrame": 3,
+                                "onClickMessage": "LootFilterOptionsPanelMessage:Close",
+                                "tooltipString": "@strClose",
+                                "sound": "cursor_close_window_hd",
+                                "acceptsEscKeyEverywhere": true,
+                            },
+                        },
+                    ]
+                },
+            ]
+        },
+		{
+            "type": "ImageWidget", "name": "LootFilterBackground",
+            "fields": {
+                "rect": {"x": -30, "y": -10},
+                //"anchor": { "x": 0.5 },
+                "filename": "Controller/Panel/Options/Panel_Options_BG"
+            },
+            "children": [
+                {
+                    "type": "ControllerCursorBoundsWidget", "name": "ControllerCursorBounds",
+                    "fields": {
+                        "fitToParent": true
+                    }
+                }
+            ]
+        },
+        // PD2R #2240: Pyre Loot Filter's rows (aa-settings-host shows them and hides LootFilterProfilePanel while
+        // Pyre is loaded; without it D2R's own screen shows as before)
+        {
+            "type": "Widget", "name": "PyreRows",
+            "fields": { "rect": { "x": 0, "y": 40 }, "visible": false },
+            "children": [
+                {
+                    "type": "TableWidget", "name": "PyreTable",
+                    "fields": {
+                        "columns": [ "$OptionsTableColumn1", "$OptionsTableColumn2" ],
+                        "rowHeight": "$OptionsTableRowHeight",
+                        "generateFocusLinks": true
+                    },
+                    "children": [
+                        {
+                            "type": "TableRowWidget",
+                            "name": "Row pyre-lootfilter/pyre-lootfilter_selected_filter",
+                            "children": [
+                                {
+                                    "type": "TextBoxWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_selected_filter:text",
+                                    "fields": {
+                                        "text": "Loot Filter Profile",
+                                        "style": "$StyleSettingsText"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "DropdownListWidget",
+                                    "name": "pyre-lootfilter:pyre-lootfilter_selected_filter",
+                                    "fields": {
+                                        "rect": "$OptionsDropDownRect",
+                                        "background/rect": "$OptionsDropDownBackgroundRect",
+                                        "background/leftCapOffset": "$OptionsDropDownLeftCapOffset",
+                                        "background/rightCapOffset": "$OptionsDropDownRightCapOffset",
+                                        "pressedFrame": 1,
+                                        "disabledFrame": 2,
+                                        "hoveredFrame": 3,
+                                        "focusIndicatorFilename": "$OptionsDropDownFocusIndicatorFilename",
+                                        "states": [
+                                            "Off",
+                                            "Starter",
+                                            "Regular",
+                                            "Semi strict",
+                                            "Strict",
+                                            "Very strict",
+                                            "Ultra strict",
+                                            "Endgame"
+                                        ],
+                                        "onUpdateMessage": "PanelManager:OpenPanel:aa-settings-host",
+                                        "text/style": "$StyleSettingsCarousel",
+                                        "text/style": {
+                                            "pointSize": "$MediumFontSize"
+                                        },
+                                        "textColor": "$FontColorLightGold"
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "type": "TableRowWidget",
+                            "name": "Row pyre-lootfilter/pyre-lootfilter_minimap_icons",
+                            "children": [
+                                {
+                                    "type": "TextBoxWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_minimap_icons:text",
+                                    "fields": {
+                                        "text": "Minimap Icons",
+                                        "style": "$StyleSettingsText"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "ButtonWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_minimap_icons:off",
+                                    "fields": {
+                                        "rect": "$OptionsToggleRect",
+                                        "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
+                                        "normalFrame": 0,
+                                        "pressedFrame": 1,
+                                        "hoveredFrame": 3,
+                                        "disabledFrame": 2,
+                                        "sound": "cursor_menu_select_hd",
+                                        "focusIndicatorPadding": "$OptionsToggleFocusIndicatorPadding",
+                                        "focusIndicatorFilename": "$OptionsToggleFocusIndicatorFilename",
+                                        "onClickMessage": "PanelManager:OpenPanel:aa-settings-host/pyre-lootfilter/pyre-lootfilter_minimap_icons"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "ImageWidget",
+                                            "name": "pyre-lootfilter/pyre-lootfilter_minimap_icons:on",
+                                            "fields": {
+                                                "rect": {
+                                                    "x": 0,
+                                                    "y": 0
+                                                },
+                                                "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
+                                                "frame": 4,
+                                                "visible": false
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "type": "TableRowWidget",
+                            "name": "Row pyre-lootfilter/pyre-lootfilter_drop_sounds",
+                            "children": [
+                                {
+                                    "type": "TextBoxWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_drop_sounds:text",
+                                    "fields": {
+                                        "text": "Drop Sounds",
+                                        "style": "$StyleSettingsText"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "ButtonWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_drop_sounds:off",
+                                    "fields": {
+                                        "rect": "$OptionsToggleRect",
+                                        "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
+                                        "normalFrame": 0,
+                                        "pressedFrame": 1,
+                                        "hoveredFrame": 3,
+                                        "disabledFrame": 2,
+                                        "sound": "cursor_menu_select_hd",
+                                        "focusIndicatorPadding": "$OptionsToggleFocusIndicatorPadding",
+                                        "focusIndicatorFilename": "$OptionsToggleFocusIndicatorFilename",
+                                        "onClickMessage": "PanelManager:OpenPanel:aa-settings-host/pyre-lootfilter/pyre-lootfilter_drop_sounds"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "ImageWidget",
+                                            "name": "pyre-lootfilter/pyre-lootfilter_drop_sounds:on",
+                                            "fields": {
+                                                "rect": {
+                                                    "x": 0,
+                                                    "y": 0
+                                                },
+                                                "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
+                                                "frame": 4,
+                                                "visible": false
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "type": "TableRowWidget",
+                            "name": "Row pyre-lootfilter/pyre-lootfilter_drop_sound_3d_attenuation",
+                            "children": [
+                                {
+                                    "type": "TextBoxWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_drop_sound_3d_attenuation:text",
+                                    "fields": {
+                                        "text": "3D Drop Audio",
+                                        "style": "$StyleSettingsText"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "ButtonWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_drop_sound_3d_attenuation:off",
+                                    "fields": {
+                                        "rect": "$OptionsToggleRect",
+                                        "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
+                                        "normalFrame": 0,
+                                        "pressedFrame": 1,
+                                        "hoveredFrame": 3,
+                                        "disabledFrame": 2,
+                                        "sound": "cursor_menu_select_hd",
+                                        "focusIndicatorPadding": "$OptionsToggleFocusIndicatorPadding",
+                                        "focusIndicatorFilename": "$OptionsToggleFocusIndicatorFilename",
+                                        "onClickMessage": "PanelManager:OpenPanel:aa-settings-host/pyre-lootfilter/pyre-lootfilter_drop_sound_3d_attenuation"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "ImageWidget",
+                                            "name": "pyre-lootfilter/pyre-lootfilter_drop_sound_3d_attenuation:on",
+                                            "fields": {
+                                                "rect": {
+                                                    "x": 0,
+                                                    "y": 0
+                                                },
+                                                "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
+                                                "frame": 4,
+                                                "visible": false
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "type": "TableRowWidget",
+                            "name": "Row pyre-lootfilter/pyre-lootfilter_auto_show_items_on_join",
+                            "children": [
+                                {
+                                    "type": "TextBoxWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_auto_show_items_on_join:text",
+                                    "fields": {
+                                        "text": "Auto-Show Items",
+                                        "style": "$StyleSettingsText"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "ButtonWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_auto_show_items_on_join:off",
+                                    "fields": {
+                                        "rect": "$OptionsToggleRect",
+                                        "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
+                                        "normalFrame": 0,
+                                        "pressedFrame": 1,
+                                        "hoveredFrame": 3,
+                                        "disabledFrame": 2,
+                                        "sound": "cursor_menu_select_hd",
+                                        "focusIndicatorPadding": "$OptionsToggleFocusIndicatorPadding",
+                                        "focusIndicatorFilename": "$OptionsToggleFocusIndicatorFilename",
+                                        "onClickMessage": "PanelManager:OpenPanel:aa-settings-host/pyre-lootfilter/pyre-lootfilter_auto_show_items_on_join"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "ImageWidget",
+                                            "name": "pyre-lootfilter/pyre-lootfilter_auto_show_items_on_join:on",
+                                            "fields": {
+                                                "rect": {
+                                                    "x": 0,
+                                                    "y": 0
+                                                },
+                                                "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
+                                                "frame": 4,
+                                                "visible": false
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "type": "TableRowWidget",
+                            "name": "Row pyre-lootfilter/pyre-lootfilter_alt_pickup_override",
+                            "children": [
+                                {
+                                    "type": "TextBoxWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_alt_pickup_override:text",
+                                    "fields": {
+                                        "text": "Ctrl Shows Hidden Items",
+                                        "style": "$StyleSettingsText"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "ButtonWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_alt_pickup_override:off",
+                                    "fields": {
+                                        "rect": "$OptionsToggleRect",
+                                        "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
+                                        "normalFrame": 0,
+                                        "pressedFrame": 1,
+                                        "hoveredFrame": 3,
+                                        "disabledFrame": 2,
+                                        "sound": "cursor_menu_select_hd",
+                                        "focusIndicatorPadding": "$OptionsToggleFocusIndicatorPadding",
+                                        "focusIndicatorFilename": "$OptionsToggleFocusIndicatorFilename",
+                                        "onClickMessage": "PanelManager:OpenPanel:aa-settings-host/pyre-lootfilter/pyre-lootfilter_alt_pickup_override"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "ImageWidget",
+                                            "name": "pyre-lootfilter/pyre-lootfilter_alt_pickup_override:on",
+                                            "fields": {
+                                                "rect": {
+                                                    "x": 0,
+                                                    "y": 0
+                                                },
+                                                "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
+                                                "frame": 4,
+                                                "visible": false
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "type": "TableRowWidget",
+                            "name": "Row pyre-lootfilter/pyre-lootfilter_auto_reload",
+                            "children": [
+                                {
+                                    "type": "TextBoxWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_auto_reload:text",
+                                    "fields": {
+                                        "text": "Auto-Reload Filter",
+                                        "style": "$StyleSettingsText"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "Widget",
+                                            "name": "AutoPartyInvite"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "ButtonWidget",
+                                    "name": "pyre-lootfilter/pyre-lootfilter_auto_reload:off",
+                                    "fields": {
+                                        "rect": "$OptionsToggleRect",
+                                        "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
+                                        "normalFrame": 0,
+                                        "pressedFrame": 1,
+                                        "hoveredFrame": 3,
+                                        "disabledFrame": 2,
+                                        "sound": "cursor_menu_select_hd",
+                                        "focusIndicatorPadding": "$OptionsToggleFocusIndicatorPadding",
+                                        "focusIndicatorFilename": "$OptionsToggleFocusIndicatorFilename",
+                                        "onClickMessage": "PanelManager:OpenPanel:aa-settings-host/pyre-lootfilter/pyre-lootfilter_auto_reload"
+                                    },
+                                    "children": [
+                                        {
+                                            "type": "ImageWidget",
+                                            "name": "pyre-lootfilter/pyre-lootfilter_auto_reload:on",
+                                            "fields": {
+                                                "rect": {
+                                                    "x": 0,
+                                                    "y": 0
+                                                },
+                                                "filename": "Lobby\\CreateGame\\CreateGame_AdvancedCheckbox",
+                                                "frame": 4,
+                                                "visible": false
+                                            }
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+	]
+}

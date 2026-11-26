@@ -45,12 +45,32 @@ target_include_directories(core_common INTERFACE common)
 target_link_libraries(core_common INTERFACE plugin_common)
 
 # Bump with every release: Shared plugins must match between host and client.
-set(CORE_RULES_VERSION "0.2.6" CACHE STRING "core-rules PluginInfo::version")
+set(CORE_RULES_VERSION "0.2.7")
 modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/plugin.cpp
 	core-rules/skill_functions.cpp
 	core-rules/missile_functions.cpp
+	core-rules/missile/amazon.cpp
+	core-rules/missile/bounce.cpp
+	core-rules/missile/client_hits.cpp
+	core-rules/missile/fragments.cpp
+	core-rules/missile/hit_effects.cpp
+	core-rules/missile/potions.cpp
+	core-rules/missile/return_missiles.cpp
+	core-rules/missile/summons.cpp
 	core-rules/item_rules.cpp
+	core-rules/item/ormus.cpp
+	core-rules/item/strikes.cpp
+	core-rules/item/crushing_blow.cpp
+	core-rules/item/curses.cpp
+	core-rules/item/equip.cpp
+	core-rules/item/replenish.cpp
+	core-rules/item/books.cpp
+	core-rules/item/patches.cpp
+	core-rules/item/charms.cpp
+	core-rules/item/thunk_hooks.cpp
+	core-rules/item/dye_tint.cpp
+	core-rules/item/map_items.cpp
 	core-rules/gold_pickup.cpp
 	core-rules/merc_rules.cpp
 	core-rules/socket_rules.cpp
@@ -78,7 +98,7 @@ target_sources(plugin_core_rules PRIVATE ${CORE_PLACEMENT_SOURCES})
 target_include_directories(plugin_core_rules PRIVATE "${D2R_TOOLKIT_DIR}/plugin-template/src")
 target_link_libraries(plugin_core_rules PRIVATE core_common)
 
-set(CORE_EVENTS_VERSION "0.2.6" CACHE STRING "core-events PluginInfo::version")
+set(CORE_EVENTS_VERSION "0.2.7")
 modkit_add_plugin(core-events VERSION "${CORE_EVENTS_VERSION}" SOURCES
 	core-events/plugin.cpp
 	core-events/cube_ops.cpp
@@ -119,15 +139,15 @@ modkit_add_plugin(core-events VERSION "${CORE_EVENTS_VERSION}" SOURCES
 	core-events/test_item.cpp
 	core-events/plugin.rc
 )
-# Each lane registers its parts from its own folder (core-events/lane-a .. lane-d, #943): new files there need no edit here.
-file(GLOB CORE_EVENTS_LANE_SOURCES CONFIGURE_DEPENDS core-events/lane-*/*.cpp)
-target_sources(plugin_core_events PRIVATE ${CORE_EVENTS_LANE_SOURCES})
+# Feature folders (maps/, ubers/, generic/) register their parts from there (#943): new files there need no edit here.
+file(GLOB CORE_EVENTS_FOLDER_SOURCES CONFIGURE_DEPENDS core-events/maps/*.cpp core-events/ubers/*.cpp core-events/generic/*.cpp)
+target_sources(plugin_core_events PRIVATE ${CORE_EVENTS_FOLDER_SOURCES})
 target_sources(plugin_core_events PRIVATE ${CORE_PLACEMENT_SOURCES})
 target_include_directories(plugin_core_events PRIVATE core-events)
 target_link_libraries(plugin_core_events PRIVATE core_common)
 
 # Client-only: not Shared, so its version need not match between host and client.
-set(CORE_UI_VERSION "0.2.6" CACHE STRING "core-ui PluginInfo::version")
+set(CORE_UI_VERSION "0.2.7")
 modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/plugin.cpp
 	core-ui/item_pictures.cpp
@@ -138,13 +158,26 @@ modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/hotkeys.cpp
 	core-ui/inventory_lock.cpp
 	core-ui/stash_affinity.cpp
+	core-ui/stash_affinity_parts/cells.cpp
+	core-ui/stash_affinity_parts/routing.cpp
+	core-ui/stash_affinity_parts/stacking.cpp
+	core-ui/stash_affinity_parts/watch.cpp
 	core-ui/stash_tabs.cpp
 	core-ui/monsters_remaining.cpp
 	core-ui/corruption_marks.cpp
+	core-ui/menu_names.cpp
 	core-ui/descdam_lines.cpp
 	core-ui/plugin.rc
 )
 target_link_libraries(plugin_core_ui PRIVATE core_common xinput)
+
+# The settings host Pyre-Flies' companions look for (#2237): SDK only, client-only. Its id is the provider id they acquire.
+set(SETTINGS_HOST_VERSION "0.2.7")
+modkit_add_plugin(aa-settings-host VERSION "${SETTINGS_HOST_VERSION}" SOURCES
+	settings-host/plugin.cpp
+	settings-host/plugin.rc
+)
+target_link_libraries(plugin_aa_settings_host PRIVATE core_common)
 
 # Host self-check of common/event_link.h (#944): not shipped, not in `all`. With CARTOGRAPHER_SRC (a d2r-tools
 # plugins/cartographer/src checkout, read-only) it also checks Cartographer's own stat code.
@@ -258,3 +291,24 @@ add_executable(almanac_identify_check EXCLUDE_FROM_ALL tests/almanac_identify_ch
 target_include_directories(almanac_identify_check PRIVATE core-ui)
 target_link_libraries(almanac_identify_check PRIVATE core_common)
 core_options(almanac_identify_check)
+
+# settings-host's row names and click step (#2237): settings-host/rows.h has no engine types.
+add_executable(settings_rows_check EXCLUDE_FROM_ALL tests/settings_rows_check.cpp)
+target_compile_features(settings_rows_check PRIVATE cxx_std_20)
+core_options(settings_rows_check)
+
+add_executable(menu_text_check EXCLUDE_FROM_ALL tests/menu_text_check.cpp)
+target_include_directories(menu_text_check PRIVATE common)
+target_compile_features(menu_text_check PRIVATE cxx_std_20)
+core_options(menu_text_check)
+
+# Under build.ps1 -Tests (MODKIT_BUILD_TESTS=ON) every *_check program is built and run by ctest; otherwise they stay out of `all` (#1949).
+if(MODKIT_BUILD_TESTS)
+	enable_testing()
+	get_property(_all DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
+	list(FILTER _all INCLUDE REGEX "_check$")
+	foreach(_t ${_all})
+		set_property(TARGET ${_t} PROPERTY EXCLUDE_FROM_ALL OFF)
+		add_test(NAME ${_t} COMMAND ${_t})
+	endforeach()
+endif()

@@ -599,7 +599,6 @@ auto Query(const Service*& service, bool (*has)(const Service*, uint32_t), uint3
 
 void Install(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
 	g_context = context;
-	sigscan::Resolve(Sigs, std::size(Sigs), context->exeBase, nullptr, 0);
 	g_locked.store(Marked(SavePath("")));  // the padlock shows the last lock until this game's character is read
 	const D2RL::LifecycleService* lifecycle = nullptr;
 	const D2RL::SharedEventService* events = nullptr;

@@ -124,7 +124,7 @@ Rules each new row follows (from `knowledge/new-game-systems.md:144-162` and the
    temple-portal and `chest*`; chests via DS1 objects or `SpawnObjectAt`; Desecration.
 6. **#965** then removes the converter: no reserved level reads converted output.
 
-Lane D runs 2 → 4 → 5 in series (tickets 14 → 17 → 18, `docs/cartographer-migration-tickets.md:77-85`). Lane C's
+Lane D runs 2 → 4 → 5 in series (tickets 14 → 17 → 18, the draft file `docs/cartographer/migration-tickets.md:77-85`, since deleted (see git history before #2199)). Lane C's
 step 3 runs alongside.
 
 ## What to prove in game (per area)

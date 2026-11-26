@@ -6,21 +6,22 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 
 - [deviations.md](deviations.md) — every place the port differs from PD2 (CI gate input)
 - [roadmap.md](roadmap.md) — alpha roadmap, one row per issue with its merged PR
-- [adr/](adr/) — architecture decision records
-- [agents/](agents/) — agent conventions (issue tracker, triage, domain docs)
+- [adr/](adr/) — architecture decision records (0001-0007; 0002 and 0005 are superseded)
+- [agents/](agents/) — agent conventions: [issue-tracker.md](agents/issue-tracker.md), [triage-labels.md](agents/triage-labels.md), [domain.md](agents/domain.md), [game-check.md](agents/game-check.md), [game-slots.md](agents/game-slots.md)
+- [controller.md](controller.md) — every controller control the mod ships, with source and status
+- [console-commands.md](console-commands.md) — console commands the plugins add
+- [testing/TESTING.md](testing/TESTING.md) — regression checks
+- [release-notes/](release-notes/) — player release notes, 0.2.1 to 0.2.7
 
 ## Player guides
 
 - [linux.md](linux.md) — playing on Linux with Wine/Proton and Lutris
 
-## Cartographer migration (this mod onto the cartographer plugin)
+## Cartographer in PD2R (migration done in #1058)
 
-- [cartographer/contracts.md](cartographer/contracts.md) — Cartographer candidate: frozen contracts (#946, epic #942)
-- [cartographer/core-events-lanes.md](cartographer/core-events-lanes.md) — core-events lane allowlist (#943)
-- [cartographer/migration-spec.md](cartographer/migration-spec.md) — Migration spec: problem statement and scope
-- [cartographer/migration-tickets.md](cartographer/migration-tickets.md) — Work items for #942 — corrected vanilla arena reuse
-- [cartographer/migration.md](cartographer/migration.md) — Cartographer migration plan — revised scope
-- [cartographer/native-check.md](cartographer/native-check.md) — Native catalogue check (#952, lane A)
+Cartographer itself (how it works, its tables, reverse engineering) is documented in d2r-tools: `docs/cartographer/` and `docs/reverse-engineering/cartographer/`. Only what this mod decided is kept here.
+
+- [cartographer/contracts.md](cartographer/contracts.md) — What PD2R ships on Cartographer, and its id and file rules
 
 ## Features and rule lists
 
@@ -32,6 +33,13 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [features/map-system.md](features/map-system.md) — PD2's map system in the port
 - [features/uber-bosses.md](features/uber-bosses.md) — PD2's uber bosses in the port
 - [features/warlock.md](features/warlock.md) — The Warlock in PD2's style
+- [features/inventory-hotkeys.md](features/inventory-hotkeys.md) — Inventory hotkeys
+- [features/inventory-lock.md](features/inventory-lock.md) — Lock Inventory
+- [features/map-affixes.md](features/map-affixes.md) — Map affixes (#1305, part of #1303)
+- [features/map-recipes.md](features/map-recipes.md) — Map cube recipes (#1306, part of #1303)
+- [features/socket-stacks.md](features/socket-stacks.md) — Socketing from a stack
+- [features/stash-affinity.md](features/stash-affinity.md) — Stash affinity and the Maps tab
+- [features/vendor-sell-refusals.md](features/vendor-sell-refusals.md) — Vendors refuse what PD2's vendors refuse
 
 ## PD2 reference: what PD2 does and what was found in it
 
@@ -47,10 +55,13 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [pd2/strings-inventory.md](pd2/strings-inventory.md) — Inventory of PD2's strings against D2R's
 - [pd2/uber-bosses-dll.md](pd2/uber-bosses-dll.md) — PD2's uber bosses in ProjectDiablo.dll
 - [pd2/unported-rows.md](pd2/unported-rows.md) — The remaining unported rows in the port
+- [pd2/summon-ai.md](pd2/summon-ai.md) — PD2's summon AI changes
+- [contributions/ascendant-assets.md](contributions/ascendant-assets.md) — RuffnecKk's Dark and Light Ascendant assets
 
 ## Process and tooling
 
-- [process/d2rloader-capabilities.md](process/d2rloader-capabilities.md) — D2RLoader 1.3.1 and PluginSDK 0.4.0: capability matrix
+Generic D2RLoader, D2R engine and agent-workflow knowledge lives in the d2rAI-toolkit (`knowledge/`, `docs/`), for example its `knowledge/d2rloader-capabilities.md`.
+
 - [process/modkit-validation.md](process/modkit-validation.md) — modkit validation errors
 - [process/release-rehearsal.md](process/release-rehearsal.md) — Release rehearsal: install, upgrade, roll back (#966)
 
@@ -88,6 +99,7 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [research/skills/w34-gate-b.md](research/skills/w34-gate-b.md) — Gate B (W34): the get-hit/block end window and the cast stamp
 - [research/skills/w35-melee-splash-extras.md](research/skills/w35-melee-splash-extras.md) — Melee splash: the current skill's damage and radius extras (W35)
 - [research/skills/w36-monster-kits.md](research/skills/w36-monster-kits.md) — Monster kits (W36)
+- [research/skills/skill-weapon-durability.md](research/skills/skill-weapon-durability.md) — Skill weapon durability (#2155)
 
 ## Research: item rules (IR, P and stack notes)
 
@@ -100,6 +112,8 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [research/items/pd2-remaining-items.md](research/items/pd2-remaining-items.md) — The remaining PD2 items and item rules
 - [research/items/split-throw.md](research/items/split-throw.md) — Spike: PD2 Split Throw in a free srvdofunc slot
 - [research/items/suite-companions.md](research/items/suite-companions.md) — RuffnecKk's suite plugins as item-rule companions
+- [research/items/item-durability.md](research/items/item-durability.md) — PD2's item durability rules
+- [research/items/item-prices.md](research/items/item-prices.md) — [#1539](https://github.com/synpoox/pd2-resurrected/issues/1539): vendor and gamble prices, D2R vs PD2
 
 ## Research: map opening and uber fights (MS, UB notes)
 
@@ -132,13 +146,19 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 ## Research: controller
 
 - [research/controller/controller-audit.md](research/controller/controller-audit.md) — Controller support audit (#340): what D2R covers, what the port's screens miss
+- [research/controller/altar-world-focus.md](research/controller/altar-world-focus.md) — Altar opened in the world: pad focus (#1456)
 
 ## Research: process and tooling
 
-- [research/process/documentation-audit-2026-11-09.md](research/process/documentation-audit-2026-11-09.md) — PD2 Resurrected documentation audit
 - [research/process/pd2-merge-speed.md](research/process/pd2-merge-speed.md) — pd2_merge speed (#803)
 
 ## Research: multiplayer
 
 - [research/multiplayer/multiplayer-options.md](research/multiplayer/multiplayer-options.md) — TCP/IP over D2RLoader, hosted servers, and how Reimagined runs its ladder
 - [research/multiplayer/hosted-leagues.md](research/multiplayer/hosted-leagues.md) — hosted leagues end to end: headless servers, saves, accounts, server needs, providers and monthly cost
+
+## Research: other
+
+- [research/cosmetics/portal-vfx-variant.md](research/cosmetics/portal-vfx-variant.md) — Town portal VFX variant: how D2R picks blue or Chronicle gold
+- [research/monsters-remaining.md](research/monsters-remaining.md) — Monsters Remaining: what PD2 counts (#1656)
+- [research/saves/non-rotw-characters.md](research/saves/non-rotw-characters.md) — Classic and LoD characters (#1825)

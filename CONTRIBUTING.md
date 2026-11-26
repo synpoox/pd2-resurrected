@@ -40,8 +40,8 @@ python <toolkit>/release/companions.py install --game DIR
 `companions.py fetch` downloads the pinned companion plugins in
 `companions/manifest.json` (checked by SHA-256, never committed; an entry pins a GitHub release asset (`repo`, `tag`),
 a file at a repo commit (`commit`), or a direct download link (`url`, e.g. a D2RLoader Hub release)). `install` is
-`modkit install` plus the companions, our `companions/filter.json`, plugin settings
-(`companions/config/`), Cartographer's `signatures.txt` (manifest `project_files`), and the vanilla
+`modkit install` plus the companions, plugin settings
+(`companions/config/`), and the vanilla
 item tables the loot filter needs when the build doesn't ship them (manifest `filter_tables`). The tool tests find modkit through the same finder (or on `PYTHONPATH`).
 
 ### Importing a new PD2 version
@@ -79,7 +79,7 @@ section and the deviation list, and `SHA256SUMS`. It needs 7-Zip, and a `### <ve
 
 ```bash
 python tools/release_precheck.py   # refuses an out/data with the retired converter's output
-python <toolkit>/release/stage.py --game DIR --extra-plugin "<cartographer.dll>@d2r-tools <commit>"
+python <toolkit>/release/stage.py --game DIR   # Cartographer ships as a pinned companion (companions/manifest.json)
 ```
 
 The `release` workflow (Actions > release > Run workflow) runs the whole build and this script, then publishes a GitHub

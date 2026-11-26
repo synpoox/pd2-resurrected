@@ -33,7 +33,7 @@ class NoHotLogs(unittest.TestCase):
 class StashAffinityLogs(unittest.TestCase):
     def test_retry_path_lines_are_log_once(self):
         """#2094: Route, MoveTo and MapRefusal run every tidy pass, so each log line sits under a LogOnce `.First(` guard."""
-        text = (PLUGIN / "core-ui/stash_affinity.cpp").read_text(encoding="utf-8")
+        text = "".join(f.read_text(encoding="utf-8") for f in (PLUGIN / "core-ui/stash_affinity_parts").glob("*.cpp"))
         for fn in ("Route", "MoveTo", "MapRefusal"):
             lines = bodies(text, fn)[0].splitlines()
             calls = [i for i, line in enumerate(lines) if "plog::" in line]

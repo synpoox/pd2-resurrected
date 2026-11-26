@@ -52,3 +52,13 @@ Full syntax: `docs/console-commands.md` (grep the command, don't read the whole 
 
 Remove a worktree only with toolkit `tools/worktree_remove.ps1 -Path <worktree> [-DeleteBranch]`. `git worktree remove --force`, `rm -r` and
 `gh pr merge --delete-branch` follow the `pd2-data` junction and empty `C:\pd2r-cache`. Unlink `pd2-data` before any harness cleanup, and commit or delete scratch files first.
+
+## Host + client check (TCP/IP)
+
+Two slots on one PC: a host slot and a client slot (lock each, one attempt each; unlock both right after).
+
+- Both slots need identical plugin folders (`<slot>\mods\PD2Resurrected\d2rloader\plugins`), or the join fails with "D2RLoader environment does not match the host". Install on both, then copy the host slot's plugin folder over the client's; restore the client's original afterwards (back it up first, e.g. `C:\D2RTestSlots\backups\<lane>-s5plugins`).
+- Host on LAN (Multiplayer > Host Game, LAN Only, Hell, Create Game); the client joins 127.0.0.1 (Multiplayer > Browse Games > Direct Join; the field is prefilled). Start the host first.
+- Console cheats on the client do nothing in TCP/IP: spawn items on the host, or use a client save that already holds the stack.
+- A plugin's connection event carries a valid `peer` on the client too, so never tell client from host by it.
+- Proof for stash affinity: client Ctrl+click on a Bossing stack over 50 leaves 50 in its inventory and the rest on the tab.

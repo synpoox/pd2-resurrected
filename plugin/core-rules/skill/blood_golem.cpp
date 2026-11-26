@@ -123,7 +123,6 @@ auto BloodGolemHeal(Game* game, Unit* golem, Unit* target, int32_t, int32_t calc
 
 auto InstallBloodGolem(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
 	size_t used = std::strlen(report);
-	sigscan::Resolve(BloodGolemUses, std::size(BloodGolemUses), context->exeBase, nullptr, 0);
 	bool golem = AiOwnerGetter() != nullptr;
 	for (const sigscan::Entry* e : BloodGolemUses) {
 		golem = golem && e->state == sigscan::State::Ok;

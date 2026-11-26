@@ -7,9 +7,9 @@ level 95+ characters). Nothing was tagged, uploaded or released.
 
 `python <toolkit>/release/stage.py --game <D2R> --version 0.3.0-rc.1 --out <dir> --extra-plugin
 "<cartographer.dll>@d2r-tools <sha>"` stages the mod folder and hands it to the toolkit's `package_release.py`
-(`<toolkit>` is the d2rAI-toolkit checkout, found with its `tools/toolkit_path.py`). Cartographer is not pinned: a
-release ships the latest build, passed with `--extra-plugin`. The stager fails only when the file is missing, and records
-`cartographer: d2r-tools <sha>, sha256 <hash>` at the end of the release notes (the source after `@` is optional).
+(`<toolkit>` is the d2rAI-toolkit checkout, found with its `tools/toolkit_path.py`). That was the rehearsal as run, when
+Cartographer was passed in with `--extra-plugin`; it is a pinned companion now (see *Cartographer* below). The stager
+recorded `cartographer: d2r-tools <sha>, sha256 <hash>` at the end of the release notes.
 
 | | main (0.2.0-alpha) | candidate (0.3.0-rc.1) |
 |---|---|---|
@@ -32,20 +32,13 @@ writes a temporary `release.toml` that adds `catalog.loader_files` for it, pinne
 toolkit's schema 3 refuses a catalog without it). It fails when `[catalog]` or that version is missing, or when
 `release.toml` sets `loader_files` itself.
 
-## Build latest Cartographer from d2r-tools main and pass it to the stager
+## Cartographer
 
-1. Build from a d2r-tools `origin/main` commit in a scratch clone (never the owner's worktrees):
-   `git clone https://github.com/synpoox/d2r-tools <dir>`, `git submodule update --init third_party/PluginSDK`, then
-   `cmake -S <dir>/plugins/cartographer -B <build> -A x64` and `cmake --build <build> --config Release`
-   (the dll is `<build>/Release/cartographer.dll`; build outside the system temp folder if MSBuild warns).
-2. `python <toolkit>/release/stage.py ... --extra-plugin "<build>/Release/cartographer.dll@d2r-tools <full sha>"`.
-3. Start the game once in a slot with the dll and check `cartographer.log` loads it.
-
-## The pinned minimum (#1300)
-
-The release workflow builds the exact d2r-tools revision in tools/cartographer.pin with its PluginSDK and records the revision and DLL hash in the package.
-
-`tools/cartographer.pin` holds the oldest d2r-tools commit whose Cartographer may ship or install (d78d3bc1: knows all 25 tilesets; older builds skip 12 of them and those map items refuse to open). `tools/check_cartographer.ps1` enforces it for `install.ps1` and the `Package` step of `release.yml`. The DLL has no build stamp, so the check looks inside it for tileset names (`KurastSewer`, `Catacombs`, `Tombs`, `MazeTemple`, the last added at f4964090): they prove all 25 tilesets, not the exact commit; in the release it also checks `CARTOGRAPHER_COMMIT` descends from the pin when a `d2r-tools` checkout sits beside the toolkit. A refused DLL: `git -C <d2r-tools> pull`, `powershell tools\build.ps1 -Plugin cartographer`, then reinstall. Raise the pin when a Cartographer change is required.
+Cartographer is a pinned companion (`companions/manifest.json`, a d2r-tools release zip), so the stager ships it with the other companions and the
+workflow builds nothing. To rehearse a newer build, build it from a d2r-tools commit in a scratch clone (never the owner's worktrees:
+`cmake -S <dir>/plugins/cartographer -B <build> -A x64`, then `cmake --build <build> --config Release`) and pass
+`--extra-plugin "<build>/Release/cartographer.dll@d2r-tools <sha>"` to `stage.py`. To raise the pin, release Cartographer in d2r-tools and
+change the manifest entry (tag, asset, sha256, DLL path).
 
 ## Arena status
 

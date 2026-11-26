@@ -14,7 +14,7 @@
 param(
     [Parameter(Mandatory)] [string]$Game,
     [string]$Data = "",
-    [string]$Cartographer = "",  # cartographer.dll (default: CARTOGRAPHER_DLL, else d2r-tools\dist\cartographer beside the toolkit)
+    [string]$Cartographer = "",  # optional cartographer.dll to test a branch build; copied after the companions, which carry the pinned release
     [string]$Toolkit = "",  # d2rAI-toolkit checkout (default: the toolkit's finder: D2R_TOOLKIT, else a walk up, so worktrees find it)
     [switch]$NoValidate,
     [switch]$KeepExtras  # keep third-party plugins in <Game>\d2rloader\plugins (a slot set up on purpose)
@@ -44,28 +44,17 @@ if (Get-Process D2R, D2RLoader -ErrorAction SilentlyContinue | Where-Object { $_
     throw "the game is running from ${Game}: close it first"
 }
 
-# cartographer.dll (d2r-tools) is mandatory to play; release.yml ships it with --extra-plugin (#1188).
-if (-not $Cartographer) { $Cartographer = $env:CARTOGRAPHER_DLL }
-if (-not $Cartographer) {
-    $tools = Join-Path (Split-Path $Toolkit -Parent) "d2r-tools"
-    $Cartographer = Join-Path $tools "dist\cartographer\cartographer.dll"
-}
-if (-not (Test-Path $Cartographer)) { throw "$Cartographer missing: build it in d2r-tools (tools\build.ps1 -Plugin cartographer) or pass -Cartographer" }
-& (Join-Path $PSScriptRoot "check_cartographer.ps1") -Dll $Cartographer  # refuses a DLL older than tools\cartographer.pin (#1300)
-
 # Our plugins are mod-scoped (#1180): <Game>\mods\<mod>\d2rloader\plugins, beside the companions. File-name order
 # runs core-rules before Cast Triggers (d2rl-ruffneckk-cast-triggers.dll) with no load_order.
 $repoMod = (Get-Content (Join-Path $PSScriptRoot "..\mod.json") -Raw | ConvertFrom-Json).name
 $plugins = Join-Path $Game "mods\$repoMod\d2rloader\plugins"
 New-Item -ItemType Directory -Force $plugins | Out-Null
-foreach ($name in @("core-rules", "core-events", "core-ui")) {
+foreach ($name in @("core-rules", "core-events", "core-ui", "aa-settings-host")) {
     $dll = Join-Path $PSScriptRoot "..\plugin\build\Release\$name.dll"
     if (-not (Test-Path $dll)) { throw "$dll missing: run plugin\build.ps1 first" }
     Copy-Item $dll $plugins -Force
     Write-Output "installed $name.dll -> $plugins"
 }
-Copy-Item $Cartographer $plugins -Force
-Write-Output "installed cartographer.dll -> $plugins"
 # The game-wide folder: our old copies there (core-*, cartographer, the removed Charm Inventory) would load a second
 # copy, so they always go; other strays (third-party plugins) would make the test run on an unclean install unless
 # -KeepExtras. The removed Charm Inventory also goes from the mod folder. Move, never delete.
@@ -86,6 +75,7 @@ if ($moved) {
     }
 }
 
+$companionsInstalled = $false
 if ($Data) {
     $Data = (Resolve-Path $Data).Path
     # files/data holds the committed tables (ADR 0007); a leftover generated/data would be copied over them by modkit build.
@@ -97,7 +87,7 @@ if ($Data) {
     $modinfos = @((Join-Path $root "modinfo.json"), (Join-Path $root "$mod.mpq\modinfo.json"))
     $saved = @{}
     foreach ($f in $modinfos) { if (Test-Path $f) { $saved[$f] = (Get-Content $f -Raw | ConvertFrom-Json).savepath } }
-    # Fetch the companions (not for a test slot) before modkit install: a network failure must not leave the savepath reset by modkit install (#1188).
+    # Fetch the companions before modkit install: a network failure must not leave the savepath reset by modkit install (#1188).
     $companions = (Test-Path (Join-Path $Data "companions\manifest.json"))
     Push-Location $Toolkit
     try {
@@ -105,7 +95,7 @@ if ($Data) {
         # toolkit's slot_install.py, which sets the slot's own savepath and needs the slot lock held by MODKIT_RUN (#602).
         $slot = py -3 -c "import sys; from pathlib import Path; from modkit.install import configured_slot; print(configured_slot(Path(sys.argv[1])) or '')" $Game
         if ($LASTEXITCODE -ne 0) { throw "reading the testing config failed ($LASTEXITCODE)" }
-        if ($companions -and -not $slot) {
+        if ($companions) {
             Push-Location $Data
             try {
                 py -3 (Join-Path $Toolkit "release\companions.py") fetch
@@ -122,31 +112,47 @@ if ($Data) {
             py -3 testing\slot_install.py --slot $slot $Data
             if ($LASTEXITCODE -ne 0) { throw "slot_install failed ($LASTEXITCODE)" }
             $saved = @{}  # slot_install wrote the slot's savepath
+            # modkit install is skipped for a slot, so lay the companions into the slot's mod folder ourselves
+            if ($companions) {
+                Push-Location $Data
+                try {
+                    py -3 -c "import sys; sys.path.insert(0, sys.argv[1]); from pathlib import Path; from release.companions import overlay; overlay(Path('.'), Path(sys.argv[2]), prune=True)" $Toolkit $root
+                    if ($LASTEXITCODE -ne 0) { throw "companions overlay failed ($LASTEXITCODE)" }
+                    $companionsInstalled = $true
+                } finally { Pop-Location }
+            }
         } else {
             py -3 -m modkit --game $Game install $Data
             if ($LASTEXITCODE -ne 0) { throw "modkit install failed ($LASTEXITCODE)" }
-            # The companion plugins are mandatory to play (#1188); a test slot stays clean of them.
+            # The companion plugins (Cartographer included) are mandatory to play (#1188).
             if ($companions) {
                 Push-Location $Data
                 try {
                     py -3 (Join-Path $Toolkit "release\companions.py") install --game $Game
                     if ($LASTEXITCODE -ne 0) { throw "companions install failed ($LASTEXITCODE)" }
+                    $companionsInstalled = $true
                 } finally { Pop-Location }
             }
         }
     } finally { Pop-Location }
-    # Cartographer's cube signatures beside its tables keep the cube executor with core-rules (#987); the toolkit's release/companions.py overlay() does the same.
-    $sig = Join-Path $PSScriptRoot "..\companions\cartographer\signatures.txt"
-    if (Test-Path $sig) {
-        $tables = Join-Path $root "$mod.mpq\data\global\excel\d2rloader\cartographer"
-        New-Item -ItemType Directory -Force $tables | Out-Null
-        Copy-Item $sig $tables -Force
-        Write-Output "installed signatures.txt -> $tables"
-    }
     foreach ($f in $saved.Keys) {
         $info = Get-Content $f -Raw | ConvertFrom-Json
         $info.savepath = $saved[$f]
         [IO.File]::WriteAllText($f, ($info | ConvertTo-Json))  # UTF-8 without a BOM, as modkit writes it
         Write-Output "savepath kept: $($saved[$f]) in $f"
     }
+}
+
+if ($companionsInstalled -and -not $KeepExtras) {
+    # Companions the manifest dropped but the toolkit's recorded-file prune never knew (#1920): move, never delete.
+    . (Join-Path $PSScriptRoot "stray_companions.ps1")
+    Move-UnlistedCompanions -Plugins $plugins -Manifest (Join-Path $Data "companions\manifest.json") `
+        -Backup (Join-Path "C:\D2RTestSlots\backups\stray-plugins-$(Get-Date -Format yyyy-MM-dd)" (Split-Path $Game -Leaf))
+}
+if (-not $companionsInstalled) { Write-Warning "companions (Cartographer included) were not installed or updated: pass -Data <project with companions/manifest.json>" }
+if ($Cartographer) {
+    if (-not (Test-Path $Cartographer)) { throw "$Cartographer missing" }
+    New-Item -ItemType Directory -Force $plugins | Out-Null
+    Copy-Item $Cartographer $plugins -Force
+    Write-Output "installed cartographer.dll (override) -> $plugins"
 }

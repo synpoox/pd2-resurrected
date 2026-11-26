@@ -1,0 +1,1 @@
+- Fixed buying the same map orb repeatedly from Anya (#2248).
