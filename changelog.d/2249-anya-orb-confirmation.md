@@ -1,0 +1,1 @@
+- Remove stray color markers from gold map-orb names in shop confirmations. (#2249)
