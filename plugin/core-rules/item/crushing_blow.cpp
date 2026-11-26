@@ -338,15 +338,23 @@ auto WoundsByLevel(int32_t level) noexcept -> int32_t {
 auto OwnedByPlayer(Game* game, Unit* unit) noexcept -> bool {
 	using namespace d2r::rva;
 	for (int depth = 0; depth < 2 && unit != nullptr && At<int32_t>(unit, UnitType) == 1; ++depth) {
-		const int32_t type = At<int32_t>(unit, UnitOwnerType);
-		const uint32_t id = At<uint32_t>(unit, UnitOwnerId);
-		if (id == 0 || id == UINT32_MAX) {
-			return false;
-		}
-		if (type == 0) {
+		if (pd2r::skills::OwnedByPlayer(unit)) {
 			return true;
 		}
-		unit = type == 1 ? d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit)(game, 1, id) : nullptr;
+		const int32_t type = At<int32_t>(unit, UnitOwnerType);
+		const uint32_t id = At<uint32_t>(unit, UnitOwnerId);
+		const auto find = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit);
+		Unit* owner = type == UnitMonster && pd2r::skills::ValidOwnerId(id) ? find(game, UnitMonster, id) : nullptr;
+		if (owner == nullptr) {
+			const auto* ai = pd2r::skills::MonsterAiOwner(unit);
+			if (ai != nullptr && At<int32_t>(ai, AiOwnerType) == UnitMonster) {
+				const uint32_t aiId = At<uint32_t>(ai, AiOwnerId);
+				if (pd2r::skills::ValidOwnerId(aiId)) {
+					owner = find(game, UnitMonster, aiId);
+				}
+			}
+		}
+		unit = owner;
 	}
 	return false;
 }
