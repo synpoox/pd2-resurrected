@@ -289,6 +289,8 @@ auto VanillaSlot(uint64_t table, int slot) noexcept -> Fn {
 // PD2's Find guard: a corpse whose owner is a player (a summon or minion) can't be searched. D2R's unowned units
 // carry id 0 or -1 here; both pass.
 // Summons can record ownership only in the monster AI block (#2035); see Redemption #1987.
+// The monster data's AI block (unit data +0x30) and its owner id / type, as 0x4a5800 writes and 0x4a53c0 reads them
+constexpr int MonDataAi = 0x30, AiOwnerId = 0x68, AiOwnerType = 0x6c;
 inline auto MonsterAiOwner(const Unit* target) noexcept -> const uint8_t* {
 	using namespace d2r::rva;
 	const auto* data = target != nullptr && At<int32_t>(target, UnitType) == UnitMonster
@@ -502,8 +504,6 @@ auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t;
 // position left (killed by the hit); 0 without a struck unit, or inside another splash.
 auto Splash(Game* game, Unit* unit, Unit* struck, int32_t skillId, int32_t level) noexcept -> int64_t;
 
-// The monster data's AI block (unit data +0x30) and its owner id / type, as 0x4a5800 writes and 0x4a53c0 reads them
-constexpr int MonDataAi = 0x30, AiOwnerId = 0x68, AiOwnerType = 0x6c;
 
 extern std::atomic<uint32_t> g_sentinelHits;
 
