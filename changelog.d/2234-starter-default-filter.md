@@ -1,1 +1,1 @@
-- Ship all five loot filter strictness levels, with Starter active by default (#2234).
+- Ship the loot filter strictness levels, with Starter active by default (#2234).

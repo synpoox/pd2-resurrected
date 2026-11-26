@@ -39,7 +39,7 @@
 #define MODKIT_PLUGIN_NAME "aa-settings-host"
 #endif
 #ifndef MODKIT_PLUGIN_VERSION
-#define MODKIT_PLUGIN_VERSION "0.2.6"
+#define MODKIT_PLUGIN_VERSION "0.2.7"
 #endif
 
 namespace {

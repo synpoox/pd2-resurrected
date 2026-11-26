@@ -44,9 +44,13 @@ struct Dropdown {
 	uint32_t count;
 };
 
-inline constexpr const char* LootFilterLabels[] = {"None (Off)",  "PD2R Starter",     "PD2R Regular",
-                                                   "PD2R Strict", "PD2R Very strict", "PD2R Endgame"};
-inline constexpr const char* LootFilterStems[] = {"", "pd2r-starter", "pd2r-regular", "pd2r-strict", "pd2r-very-strict", "pd2r-endgame"};
+inline constexpr const char* LootFilterLabels[] = {"None (Off)",       "PD2R Starter",     "PD2R Regular",
+                                                   "PD2R Semi strict", "PD2R Strict",      "PD2R Very strict",
+                                                   "PD2R Ultra strict", "PD2R Endgame"};
+inline constexpr const char* LootFilterStems[] = {"",
+                                                  "pd2r-starter",     "pd2r-regular",     "pd2r-semi-strict",
+                                                  "pd2r-strict",      "pd2r-very-strict", "pd2r-ultra-strict",
+                                                  "pd2r-endgame"};
 inline constexpr const char* RollRangeLabels[] = {"Hold Ctrl / RT", "Always Show"};
 inline constexpr const char* GroundReticleLabels[] = {"Ice Blue", "Gold", "Emerald", "White", "Crimson", "Violet"};
 inline constexpr const char* LockReticleLabels[] = {"Gold", "Crimson", "Emerald", "Ice Blue", "White", "Orange"};
