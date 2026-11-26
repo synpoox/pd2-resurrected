@@ -82,6 +82,11 @@ One line per PD2 pad bind, with its status.
 
 PD2's own combos can't be mirrored: its LT + X multi-buy clashes with Controller QoL's LT/RT page change, and its other three are keyboard-only in PD2.
 
+## Shop confirmation text
+
+The native Buy confirmation keeps its gold item-name color and omits a redundant inline gold marker from Anya's map
+orb names (#2249). Other item-name contexts keep their original formatting. No binds change.
+
 ## Known gaps
 
 - #1444: Cube focus starts on the wrong widget (the belt slot, not the grid).

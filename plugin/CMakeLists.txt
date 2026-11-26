@@ -165,6 +165,7 @@ modkit_add_plugin(core-ui VERSION "${CORE_UI_VERSION}" SOURCES
 	core-ui/stash_tabs.cpp
 	core-ui/monsters_remaining.cpp
 	core-ui/corruption_marks.cpp
+	core-ui/menu_names.cpp
 	core-ui/descdam_lines.cpp
 	core-ui/plugin.rc
 )
@@ -295,6 +296,11 @@ core_options(almanac_identify_check)
 add_executable(settings_rows_check EXCLUDE_FROM_ALL tests/settings_rows_check.cpp)
 target_compile_features(settings_rows_check PRIVATE cxx_std_20)
 core_options(settings_rows_check)
+
+add_executable(menu_text_check EXCLUDE_FROM_ALL tests/menu_text_check.cpp)
+target_include_directories(menu_text_check PRIVATE common)
+target_compile_features(menu_text_check PRIVATE cxx_std_20)
+core_options(menu_text_check)
 
 # Under build.ps1 -Tests (MODKIT_BUILD_TESTS=ON) every *_check program is built and run by ctest; otherwise they stay out of `all` (#1949).
 if(MODKIT_BUILD_TESTS)
