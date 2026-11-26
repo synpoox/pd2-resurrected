@@ -1313,32 +1313,32 @@ PD2's start-up routine `0x10344580` runs installers that write PD2 functions int
 | `0x1036c2b0` | skill and item event functions (auraeventfunc) | 27 | `0x10347300` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036c2b0` | skill and item event functions (auraeventfunc) | 32 | `0x10347370` | ported | `plugin/core-rules/skill_functions.cpp` |
 | `0x1036c2b0` | skill and item event functions (auraeventfunc) | 33 | `0x103473a0` | documented | [p12-ormus-robes](../research/items/p12-ormus-robes.md) |
-| `0x103a9170` | missile srvdo | 1 | `0x103a75c0` | missing | [#2228](https://github.com/synpoox/pd2-resurrected/issues/2228): the installer is srvhit (1.13c dispatcher `0x3ede0` reads row `+0xe`); for an empty HitPar1 PD2 takes the radius from calc1 of the row's Skill (`+0x194`), not the missile's own skill, without the clamp to 1, and returns 6 without CollideKill (the 0x400 gate it drops is 1.13c-only); D2R slot `0x45bc40` |
-| `0x103a9170` | missile srvdo | 6 | `0x103a7750` | ported | `plugin/core-rules/missile/` |
-| `0x103a9170` | missile srvdo | 7 | `0x103a7840` | missing | [#2227](https://github.com/synpoox/pd2-resurrected/issues/2227): really srvhit 7 (Holy Bolt, Holy Nova); PD2 heals from cltcalc2..cltcalc3, D2R `0x45cb80` from calc1..calc2, which PD2 data fills with the bolt count; return codes match |
-| `0x103a9170` | missile srvdo | 30 | `0x103a7a50` | ported | `plugin/core-rules/missile/` |
-| `0x103a9170` | missile srvdo | 34 | `0x103a7c70` | ported | `plugin/core-rules/missile/` |
-| `0x103a9170` | missile srvdo | 50 | `0x103a8100` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: no PD2 missiles.txt row uses it |
-| `0x103a9170` | missile srvdo | 52 | `0x103a81c0` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: no PD2 missiles.txt row uses it |
-| `0x103a9170` | missile srvdo | 60 | `0x103a8360` | ported | `plugin/core-rules/missile/` |
-| `0x103a9170` | missile srvdo | 61 | `0x103a84f0` | ported | `plugin/core-rules/missile/` |
-| `0x103a9170` | missile srvdo | 62 | `0x103a86d0` | ported | `plugin/core-rules/missile/` |
-| `0x103a9170` | missile srvdo | 63 | `0x103a8800` | documented | [w28-sorceress-bolts](../research/skills/w28-sorceress-bolts.md) |
-| `0x103a9170` | missile srvdo | 64 | `0x103a8ca0` | ported | `plugin/core-rules/missile/` |
-| `0x103a9170` | missile srvdo | 65 | `0x103a9020` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: no PD2 missiles.txt row uses it |
-| `0x103a7220` | missile srvhit | 15 | `0x103a6c90` | ported | `plugin/core-rules/missile/` |
-| `0x103a7220` | missile srvhit | 16 | `0x103a6da0` | ported | `plugin/core-rules/missile/` |
-| `0x103a7220` | missile srvhit | 17 | `0x103a6ea0` | ported | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849): the installer is srvdmg; slot 17 is Multiple Shot arrow/bolt pierce falloff, ported as dmg 20 in plugin/core-rules/missile/amazon.cpp |
-| `0x103a7220` | missile srvhit | 18 | `0x103a6fd0` | ported | `plugin/core-rules/missile/` |
-| `0x103a7220` | missile srvhit | 19 | `0x103a7130` | ported | `plugin/core-rules/missile/` |
+| `0x103a9170` | missile srvhit | 1 | `0x103a75c0` | missing | [#2228](https://github.com/synpoox/pd2-resurrected/issues/2228): the installer is srvhit (1.13c dispatcher `0x3ede0` reads row `+0xe`); for an empty HitPar1 PD2 takes the radius from calc1 of the row's Skill (`+0x194`), not the missile's own skill, without the clamp to 1, and returns 6 without CollideKill (the 0x400 gate it drops is 1.13c-only); D2R handler `0x45bc40`; D2R srvhit 1 table entry `0x2391038` |
+| `0x103a9170` | missile srvhit | 6 | `0x103a7750` | ported | `plugin/core-rules/missile/`; D2R srvhit 6 table entry `0x2391060`; port uses srvhit 67 at `0x2391248` |
+| `0x103a9170` | missile srvhit | 7 | `0x103a7840` | missing | [#2227](https://github.com/synpoox/pd2-resurrected/issues/2227): srvhit 7 (Holy Bolt, Holy Nova); PD2 heals from cltcalc2..cltcalc3, D2R `0x45cb80` from calc1..calc2, which PD2 data fills with the bolt count; return codes match; D2R srvhit 7 table entry `0x2391068` |
+| `0x103a9170` | missile srvhit | 30 | `0x103a7a50` | ported | `plugin/core-rules/missile/`; D2R srvhit 30 table entry `0x2391120`; port uses srvhit 66 at `0x2391240` |
+| `0x103a9170` | missile srvhit | 34 | `0x103a7c70` | ported | `plugin/core-rules/missile/`; D2R srvhit 34 table entry `0x2391140`; port uses srvhit 69 at `0x2391258` |
+| `0x103a9170` | missile srvhit | 50 | `0x103a8100` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: no PD2 missiles.txt row uses it; D2R srvhit 50 table entry `0x23911c0` |
+| `0x103a9170` | missile srvhit | 52 | `0x103a81c0` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: no PD2 missiles.txt row uses it; D2R srvhit 52 table entry `0x23911d0` |
+| `0x103a9170` | missile srvhit | 60 | `0x103a8360` | ported | `plugin/core-rules/missile/`; D2R srvhit 60 table entry `0x2391210`; port uses srvhit 68 at `0x2391250` |
+| `0x103a9170` | missile srvhit | 61 | `0x103a84f0` | ported | `plugin/core-rules/missile/`; D2R srvhit 61 table entry `0x2391218` |
+| `0x103a9170` | missile srvhit | 62 | `0x103a86d0` | ported | `plugin/core-rules/missile/`; D2R srvhit 62 table entry `0x2391220` |
+| `0x103a9170` | missile srvhit | 63 | `0x103a8800` | documented | [w28-sorceress-bolts](../research/skills/w28-sorceress-bolts.md); D2R srvhit 63 table entry `0x2391228` |
+| `0x103a9170` | missile srvhit | 64 | `0x103a8ca0` | ported | `plugin/core-rules/missile/`; D2R srvhit 64 table entry `0x2391230` |
+| `0x103a9170` | missile srvhit | 65 | `0x103a9020` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: no PD2 missiles.txt row uses it; D2R srvhit 65 table entry `0x2391238` |
+| `0x103a7220` | missile srvdmg | 15 | `0x103a6c90` | ported | `plugin/core-rules/missile/`; D2R srvdmg 15 table entry `0x23912e8`; port uses srvdmg 22 at `0x2391320` |
+| `0x103a7220` | missile srvdmg | 16 | `0x103a6da0` | ported | `plugin/core-rules/missile/`; D2R srvdmg 16 table entry `0x23912f0`; port uses srvdmg 21 at `0x2391318` |
+| `0x103a7220` | missile srvdmg | 17 | `0x103a6ea0` | ported | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849): the installer is srvdmg; slot 17 is Multiple Shot arrow/bolt pierce falloff, ported as dmg 20 in plugin/core-rules/missile/amazon.cpp; D2R srvdmg 17 table entry `0x23912f8`; port uses srvdmg 20 at `0x2391310` |
+| `0x103a7220` | missile srvdmg | 18 | `0x103a6fd0` | ported | `plugin/core-rules/missile/`; D2R srvdmg 18 table entry `0x2391300` |
+| `0x103a7220` | missile srvdmg | 19 | `0x103a7130` | ported | `plugin/core-rules/missile/`; D2R srvdmg 19 table entry `0x2391308` |
 | `0x103a7460` | missile srvdmg | 38 | `0x103a7250` | documented | [w20-blessed-hammer](../research/skills/w20-blessed-hammer.md) |
 | `0x103a7460` | missile srvdmg | 39 | `0x103a72d0` | documented | [w20-blessed-hammer](../research/skills/w20-blessed-hammer.md) |
 | `0x103a7460` | missile srvdmg | 40 | `0x103a7410` | ported | `plugin/core-rules/missile/` |
-| `0x103a6c50` | missile cltdo | 5 | `0x103a63c0` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849): the installer is clthit (D2R slot `0x1ae780`); no PD2 missiles.txt row uses pCltHitFunc 5 |
-| `0x103a6c50` | missile cltdo | 6 | `0x103a6530` | ported | `plugin/core-rules/missile/` |
-| `0x103a6c50` | missile cltdo | 65 | `0x103a6890` | ported | `plugin/core-rules/missile/` |
-| `0x103a6c50` | missile cltdo | 66 | `0x103a69c0` | ported | `plugin/core-rules/missile/` |
-| `0x103a6c50` | missile cltdo | 67 | `0x103a6aa0` | ported | `plugin/core-rules/missile/` |
+| `0x103a6c50` | missile clthit | 5 | `0x103a63c0` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849): the installer is clthit (D2R handler `0x1ae780`); no PD2 missiles.txt row uses pCltHitFunc 5; D2R clthit 5 table entry `0x2358738` |
+| `0x103a6c50` | missile clthit | 6 | `0x103a6530` | ported | `plugin/core-rules/missile/`; D2R clthit 6 table entry `0x2358740`; port uses clthit 68 at `0x2358930` |
+| `0x103a6c50` | missile clthit | 65 | `0x103a6890` | ported | `plugin/core-rules/missile/`; D2R clthit 65 table entry `0x2358918`; port uses clthit 72 at `0x2358950` |
+| `0x103a6c50` | missile clthit | 66 | `0x103a69c0` | ported | `plugin/core-rules/missile/`; D2R clthit 66 table entry `0x2358920` |
+| `0x103a6c50` | missile clthit | 67 | `0x103a6aa0` | ported | `plugin/core-rules/missile/`; D2R clthit 67 table entry `0x2358928` |
 | `0x103a6330` | missile clthit | 8 | `0x103a6030` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: no PD2 missiles.txt row uses it |
 | `0x103a6330` | missile clthit | 69 | `0x103a60d0` | ported | `plugin/core-rules/missile/` |
 | `0x103a6330` | missile clthit | 70 | `0x103a61c0` | not needed | [#1849](https://github.com/synpoox/pd2-resurrected/issues/1849) decode: no PD2 missiles.txt row uses it |
