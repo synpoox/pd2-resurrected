@@ -131,8 +131,10 @@
                                             "Off",
                                             "Starter",
                                             "Regular",
+                                            "Semi strict",
                                             "Strict",
                                             "Very strict",
+                                            "Ultra strict",
                                             "Endgame"
                                         ],
                                         "onUpdateMessage": "PanelManager:OpenPanel:aa-settings-host",

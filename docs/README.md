@@ -11,7 +11,7 @@ Lane IDs (W36, IR3, MS4, UB2, ...) in file names are the research ticket codes; 
 - [controller.md](controller.md) — every controller control the mod ships, with source and status
 - [console-commands.md](console-commands.md) — console commands the plugins add
 - [testing/TESTING.md](testing/TESTING.md) — regression checks
-- [release-notes/](release-notes/) — player release notes, 0.2.1 to 0.2.6
+- [release-notes/](release-notes/) — player release notes, 0.2.1 to 0.2.7
 
 ## Player guides
 

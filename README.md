@@ -4,7 +4,7 @@ Project Diablo II rebuilt as a Diablo II: Resurrected mod.
 
 [Discord](https://discord.com/invite/KWGqVxmpDR) | [Launcher](https://github.com/synpoox/resurrected-launcher)
 
-**Status: alpha 0.2.6** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [how it differs from PD2](docs/deviations.md)).
+**Status: alpha 0.2.7** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [how it differs from PD2](docs/deviations.md)).
 
 ## Requirements
 
@@ -38,10 +38,10 @@ Runs under Wine/Proton with the manual install: [docs/linux.md](docs/linux.md).
 ## Loot Filters
 
 The mod ships the [Pyre Loot Filter](https://github.com/Pyre-Flies/D2R-Mods/blob/main/plugins/pyre-lootfilter/README.md)
-plugin with five filters made in the builder.
+plugin with seven filters made in the builder.
 
 - Edit or make a filter: [PD2R loot filter builder](https://synpoox.github.io/pd2r-lootfilter/), built from this mod's own item data. In Chrome or Edge it can save straight into the game folder.
-- All five strictness levels ship in `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter\` (Starter, Regular, Strict, Very strict, Endgame), built with the builder. Starter is the default.
+- All seven strictness levels ship in `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter\` (Starter, Regular, Semi strict, Strict, Very strict, Ultra strict, Endgame), built with the builder in its Resurrected theme. Starter is the default.
 - To switch, open Esc > Loot Filter and pick a filter (or Off) from the Loot Filter Profile dropdown: it loads at once. The same screen holds the plugin's toggles. The pick is saved to `<D2R folder>\mods\PD2Resurrected\d2rloader\config\pyre-lootfilter.toml` (`selected_filter`), which updates keep.
 - Your own filter: open a shipped one in the builder, save it under a new name into the `filter\` folder and point `selected_filter` at it. Don't edit the shipped `pd2r-*.json` files: a new release overwrites them. D2R's own `.fltr` filters can't be picked or applied while this plugin is installed; a pick you made without it comes back if you remove it.
 
