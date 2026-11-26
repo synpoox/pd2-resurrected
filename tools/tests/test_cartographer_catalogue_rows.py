@@ -26,13 +26,13 @@ class CartographerCatalogueRowsTests(unittest.TestCase):
         assert by["Leoric's Passage"] == ["sk_archermap", "zealotmap", "doomknightmap", "oblivionknightmap"]
         assert [n for n, ms in by.items() if "hellbovineMap" in ms] == ["Blood Moon"]
 
-    def test_maps_are_medium_and_each_in_one_tier(self):
+    def test_maps_have_valid_sizes_and_each_in_one_tier(self):
         """#1304: a map's tier type (t1m..t3m) sets its Level (87..89) and its tooltip's tier line; about 8 per tier."""
         data_tables.need(self)
         misc = {r["code"]: r for r in data_tables.rows("misc")}
         counts = {}
         for m in rows("maps.txt"):
-            assert m["Size"] in ("Small", "Medium", "Large") and m["MinCharLevel"] == "80", m["Name"]
+            assert m["Size"] in ("Small", "Medium", "Large", "ExtraLarge") and m["MinCharLevel"] == "80", m["Name"]
             s = misc[m["Item"]]
             n = s["type"][1]
             assert s["type"] in ("t1m", "t2m", "t3m") and m["Level"] == str(86 + int(n)), m["Name"]
