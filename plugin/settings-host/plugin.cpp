@@ -32,6 +32,7 @@
 #include <iterator>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -114,7 +115,26 @@ sigscan::Entry FindChild {"WidgetFind", "settings", sigscan::Kind::Code, 0, 0,
 // pattern holds the count field's offset (0x3794), so a build that moves the fields misses here
 sigscan::Entry DropdownSelect {"DropdownSelect", "settings", sigscan::Kind::Code, 0, 0,
                                "40 56 57 48 81 ec 88 00 00 00 48 8b 05 ?? ?? ?? ?? 48 33 c4 48 89 44 24 60 48 63 f2 48 8b f9 3b b1 94 37 00 00 7c"};
-sigscan::Entry* const Sigs[] = {&FetchPanel, &FindChild, &DropdownSelect};
+// 93847: 0x8efdd0, void (dropdown, const Span*): DropdownListWidget's set states (assigns each, count = n, picked = -1,
+// refreshes an open list); the layout's "states" go through it. The plugin adds a player's own filters with it (#2251).
+sigscan::Entry DropdownStates {"DropdownStates", "settings", sigscan::Kind::Code, 0, 0,
+                               "48 89 5c 24 10 48 89 6c 24 18 48 89 74 24 20 57 41 56 41 57 48 83 ec 30 48 8b 42 08 48 8b f2 48 ff c8 4c 8b "
+                               "f1 48 3d f9 00 00 00 76"};
+sigscan::Entry* const Sigs[] = {&FetchPanel, &FindChild, &DropdownSelect, &DropdownStates};
+// D2R's string {data, size, capacity}: set states reads data and size only, so a view of ours (capacity's top bit:
+// not D2R's to free) is a valid source. The states are an inline array of these.
+struct NativeString {
+	const char* data;
+	size_t size;
+	uint64_t capacity;
+	char inline_[16];
+};
+static_assert(sizeof(NativeString) == 0x28);
+struct NativeSpan {
+	const NativeString* data;
+	size_t count;
+};
+constexpr size_t DropdownStatesAt = 0x1080;  // NativeString[250]
 constexpr size_t DropdownCount = 0x3794;     // int32 state count
 constexpr size_t DropdownSelected = 0x3798;  // int32 picked state, written before its onUpdateMessage goes out
 bool g_native = false;
@@ -317,7 +337,7 @@ constexpr abi::ServiceV1 Service {
 	.setStatus = SetStatus,
 };
 
-// The row's DropdownListWidget, or nullptr (signatures missing, panel gone, or no dropdown of the table's size)
+// The row's DropdownListWidget, or nullptr (signatures missing, panel gone, or fewer states than the table: not ours)
 auto NativeDropdown(const settings_rows::Dropdown& d) noexcept -> uint8_t* {
 	if (!g_native) {
 		return nullptr;
@@ -325,7 +345,34 @@ auto NativeDropdown(const settings_rows::Dropdown& d) noexcept -> uint8_t* {
 	void* panel = reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(settings_rows::PanelOf(d.row));
 	const auto find = reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address);
 	auto* widget = panel != nullptr ? static_cast<uint8_t*>(find(panel, d.widget)) : nullptr;
-	return widget != nullptr && *reinterpret_cast<int32_t*>(widget + DropdownCount) == static_cast<int32_t>(d.count) ? widget : nullptr;
+	const int32_t count = widget != nullptr ? *reinterpret_cast<int32_t*>(widget + DropdownCount) : 0;
+	return count >= static_cast<int32_t>(d.count) && count <= static_cast<int32_t>(settings_rows::MaxStates) ? widget : nullptr;
+}
+
+auto StateAt(uint8_t* widget, size_t i) noexcept -> NativeString* {
+	return reinterpret_cast<NativeString*>(widget + DropdownStatesAt) + i;
+}
+
+// The layout's states, then one per owner option the layout lacks; set only when they differ (it clears the pick).
+void SetExtraStates(uint8_t* widget, const settings_rows::Dropdown& d, const std::vector<std::string>& options) {
+	const std::vector<std::string> extra = settings_rows::ExtraOptions(d, options);
+	bool same = *reinterpret_cast<int32_t*>(widget + DropdownCount) == static_cast<int32_t>(d.count + extra.size());
+	for (size_t k = 0; same && k < extra.size(); ++k) {
+		const NativeString* s = StateAt(widget, d.count + k);
+		same = std::string_view(s->data, s->size) == extra[k];
+	}
+	if (same) {
+		return;
+	}
+	std::vector<NativeString> states;
+	for (size_t i = 0; i < d.count; ++i) {  // the layout's own: D2R's assign copies a string onto itself safely
+		states.push_back({StateAt(widget, i)->data, StateAt(widget, i)->size, 1ull << 63, {}});
+	}
+	for (const std::string& text : extra) {
+		states.push_back({text.data(), text.size(), 1ull << 63, {}});
+	}
+	const NativeSpan span {states.data(), states.size()};
+	reinterpret_cast<void (*)(void*, const NativeSpan*) noexcept>(DropdownStates.address)(widget, &span);
 }
 
 void Show(D2RL::Widgets::WidgetHandle panel, const std::string& name, bool shown) noexcept {
@@ -430,7 +477,8 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 				if (widget == nullptr) {
 					continue;
 				}
-				const int32_t state = valid ? settings_rows::StateOf(*d, row.options[row.index]) : -1;
+				SetExtraStates(widget, *d, row.options);
+				const int32_t state = valid ? settings_rows::StateFor(*d, row.options, static_cast<size_t>(row.index)) : -1;
 				if (state >= 0) {  // a no-op when it already shows that state
 					reinterpret_cast<void (*)(void*, int32_t) noexcept>(DropdownSelect.address)(widget, state);
 				}

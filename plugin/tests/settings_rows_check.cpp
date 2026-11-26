@@ -21,6 +21,11 @@ int main() {
 	const std::vector<std::string> pyre = {"None (Off)", "PD2R Endgame", "PD2R Starter (Legacy)", "PD2R Starter (pd2r-starter)"};
 	check("a pick finds the owner's option", OptionOf(*loot, 1, pyre) == 3 && OptionOf(*loot, 7, pyre) == 1 && OptionOf(*loot, 0, pyre) == 0);
 	check("a pick with no option", OptionOf(*loot, 2, pyre) == -1 && OptionOf(*loot, -1, pyre) == -1);
+	const std::vector<std::string> own = {"None (Off)", "synpoo", "PD2R Starter", "mine"};
+	check("a player's filters get extra states", ExtraOptions(*loot, own) == std::vector<std::string> {"synpoo", "mine"} &&
+	                                                 StateFor(*loot, own, 1) == 8 && StateFor(*loot, own, 3) == 9 &&
+	                                                 StateFor(*loot, own, 2) == 1 && StateFor(*loot, own, 4) == -1);
+	check("an extra state picks its option", OptionOf(*loot, 9, own) == 3 && OptionOf(*loot, 8, own) == 1 && OptionOf(*loot, 10, own) == -1);
 	const Dropdown* ranges = FindDropdown("item-roll-ranges/display_always_show_ranges");
 	check("roll ranges has two states", ranges != nullptr && StateOf(*ranges, "Always Show") == 1);
 	std::printf(fail == 0 ? "all passed\n" : "%d failed\n", fail);
