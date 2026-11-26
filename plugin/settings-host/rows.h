@@ -16,6 +16,14 @@ inline auto RowName(const std::string& plugin, const std::string& key) -> std::s
 	return plugin + "/" + key;
 }
 
+// The panel a row's widgets live in: Pyre's in Esc > Loot Filter (lootfilteroptionspanelhd.json, #2240), the rest in
+// Options > Gameplay.
+inline constexpr char OptionsPanel[] = "GameplayOptionsPanel";
+inline constexpr char LootFilterPanel[] = "LootFilterOptionsPanel";
+inline auto PanelOf(const std::string& row) -> const char* {
+	return row.starts_with("pyre-lootfilter/") ? LootFilterPanel : OptionsPanel;
+}
+
 // A toggle row's button is "<row>:off" (the unticked box, always shown); "<row>:on", the ticked art over it, shows the value.
 inline auto ToggleWidget(const std::string& row, bool on) -> std::string {
 	return row + (on ? ":on" : ":off");

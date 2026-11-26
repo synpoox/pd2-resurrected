@@ -9,6 +9,8 @@ int main() {
 	const auto check = [&](const char* name, bool ok) { std::printf("%s  %s\n", ok ? "PASS" : "FAIL", name); fail += ok ? 0 : 1; };
 	const std::string row = RowName("pyre-lootfilter", "pyre-lootfilter_selected_filter");
 	check("row name is plugin/key", row == "pyre-lootfilter/pyre-lootfilter_selected_filter");
+	check("Pyre's rows live in Esc > Loot Filter", std::string(PanelOf(row)) == LootFilterPanel &&
+	                                                   std::string(PanelOf("item-roll-ranges/display_always_show_ranges")) == OptionsPanel);
 	check("toggle buttons", ToggleWidget("a/b", true) == "a/b:on" && ToggleWidget("a/b", false) == "a/b:off");
 	const Dropdown* loot = FindDropdown("pyre-lootfilter/pyre-lootfilter_selected_filter");
 	check("the loot filter has a dropdown", loot != nullptr && loot->count == 6 && FindDropdown("a/b") == nullptr);

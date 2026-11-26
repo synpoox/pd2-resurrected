@@ -10,6 +10,11 @@
 // dropdown select, found by signature, and reads the picked state from the widget. A missing signature leaves the
 // dropdowns off. Sliders and status rows need runtime text: refused (Unavailable), they stay toml-only.
 // A click applies at once (the Options panel's own Apply button does not cover plugin rows).
+//
+// Pyre's rows sit in Esc > Loot Filter (LootFilterOptionsPanel, #2240), under "PyreRows". This plugin hides them while
+// Pyre has no rows; while it has, it shows them, hides D2R's LootFilterProfilePanel (its .fltr picker and editor) and clears D2R's active filter
+// name, which D2R sets from lootfilter.json when a character joins: the native filter goes by that name only, and
+// Pyre stops while it is set. lootfilter.json is not touched, so without Pyre D2R's own pick comes back.
 #include <D2RLPlugin/api.h>
 
 #include "crash_guard.h"
@@ -96,7 +101,7 @@ static_assert(sizeof(ToggleSpec) == 72 && sizeof(DropdownSpec) == 88 && sizeof(S
 
 constexpr const char* PluginName = MODKIT_PLUGIN_NAME;
 constexpr const char* PluginVersion = MODKIT_PLUGIN_VERSION;
-constexpr const char* OptionsPanel = "GameplayOptionsPanel";
+constexpr const char* Panels[] = {settings_rows::OptionsPanel, settings_rows::LootFilterPanel};
 constexpr uint32_t WatchFrames = 6;  // the padlock's pace: a few frames after a click or an open is soon enough
 
 // D2R's calls for the dropdowns (93847 RVAs for reference only), as core-ui's stash tabs
@@ -113,6 +118,18 @@ sigscan::Entry* const Sigs[] = {&FetchPanel, &FindChild, &DropdownSelect};
 constexpr size_t DropdownCount = 0x3794;     // int32 state count
 constexpr size_t DropdownSelected = 0x3798;  // int32 picked state, written before its onUpdateMessage goes out
 bool g_native = false;
+// D2R's loot filter config (LootFilterConfig, its active profile name a string {data, size, capacity} at +0x20) and
+// its clear. No service covers D2R's loot filter. Both from the character join (93847: 0x9b360), which reads
+// lootfilter.json and selects or clears the profile.
+// 93847: 0x1bf9d0, LootFilterConfig* (): the config singleton
+sigscan::Entry LootConfig {"LootFilterConfig", "settings", sigscan::Kind::Rip, 12, 16,
+                           "48 8b cf e8 ?? ?? ?? ?? 48 8b f8 e8 ?? ?? ?? ?? 80 3f 00 4c 8b f8 74"};
+// 93847: 0x1bf520, void (config): empties the active profile name
+sigscan::Entry LootClear {"LootFilterClear", "settings", sigscan::Kind::Rip, 21, 25,
+                          "80 7d 37 00 49 8b cf 74 0b 48 8d 55 0f e8 ?? ?? ?? ?? eb 05 e8 ?? ?? ?? ?? 80 7d 37 00"};
+sigscan::Entry* const YieldSigs[] = {&LootConfig, &LootClear};
+constexpr size_t ActiveNameSize = 0x28;
+bool g_yield = false;  // both found: Pyre's rows replace D2R's filter screen
 
 struct Row {
 	std::string name;  // settings_rows::RowName
@@ -135,8 +152,20 @@ std::atomic<const D2RL::PluginCommunicationService*> g_comms {nullptr};  // unti
 std::mutex g_lock;
 std::deque<Row> g_rows;  // handle = index + 1; a deque keeps the rows in place as more are added
 std::atomic<uint32_t> g_frames {0}, g_clicks {0};
-std::atomic<bool> g_dirty {true};
-bool g_panelSeen = false;  // UI thread only
+std::atomic<bool> g_dirty[std::size(Panels)] {true, true};
+std::atomic<int> g_pyreRows {0};    // Pyre's live rows: while any, Pyre owns Esc > Loot Filter
+std::atomic<bool> g_soon {false};   // the loot filter screen opens: sync on the next frame
+bool g_panelSeen[std::size(Panels)] {};  // UI thread only
+
+void Dirty() noexcept {
+	for (auto& dirty : g_dirty) {
+		dirty = true;
+	}
+}
+
+auto IsPyre(const Row& row) -> bool {
+	return settings_rows::PanelOf(row.name) == settings_rows::LootFilterPanel;
+}
 
 auto Find(abi::RowHandle handle) -> Row* {
 	return handle == 0 || handle > g_rows.size() || g_rows[handle - 1].removed ? nullptr : &g_rows[handle - 1];
@@ -149,9 +178,10 @@ auto Add(Row&& row, abi::RowHandle* handle) -> abi::Result {
 			return abi::Result::Conflict;
 		}
 	}
+	g_pyreRows += IsPyre(row) ? 1 : 0;
 	g_rows.push_back(std::move(row));
 	*handle = g_rows.size();
-	g_dirty = true;
+	Dirty();
 	return abi::Result::Success;
 }
 
@@ -213,7 +243,8 @@ void __cdecl RemoveRow(abi::RowHandle handle) noexcept {
 	const std::lock_guard guard(g_lock);
 	if (Row* row = Find(handle)) {
 		row->removed = true;
-		g_dirty = true;
+		g_pyreRows -= IsPyre(*row) ? 1 : 0;
+		Dirty();
 	}
 }
 
@@ -224,7 +255,7 @@ auto __cdecl SetToggle(abi::RowHandle handle, bool value) noexcept -> abi::Resul
 		return abi::Result::InvalidArgument;
 	}
 	row->value = value;
-	g_dirty = true;
+	Dirty();
 	return abi::Result::Success;
 }
 
@@ -235,7 +266,7 @@ auto __cdecl SetDropdown(abi::RowHandle handle, int32_t index) noexcept -> abi::
 		return abi::Result::InvalidArgument;
 	}
 	row->index = index;
-	g_dirty = true;
+	Dirty();
 	return abi::Result::Success;
 }
 
@@ -253,7 +284,7 @@ auto __cdecl SetDropdownOptions(abi::RowHandle handle, const char* const* option
 		}
 		row->options = std::move(copy);
 		row->index = index;
-		g_dirty = true;
+		Dirty();
 		return abi::Result::Success;
 	} catch (...) {
 		return abi::Result::Unavailable;
@@ -291,7 +322,7 @@ auto NativeDropdown(const settings_rows::Dropdown& d) noexcept -> uint8_t* {
 	if (!g_native) {
 		return nullptr;
 	}
-	void* panel = reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(OptionsPanel);
+	void* panel = reinterpret_cast<void* (*)(const char*) noexcept>(FetchPanel.address)(settings_rows::PanelOf(d.row));
 	const auto find = reinterpret_cast<void* (*)(void*, const char*) noexcept>(FindChild.address);
 	auto* widget = panel != nullptr ? static_cast<uint8_t*>(find(panel, d.widget)) : nullptr;
 	return widget != nullptr && *reinterpret_cast<int32_t*>(widget + DropdownCount) == static_cast<int32_t>(d.count) ? widget : nullptr;
@@ -348,45 +379,66 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 		const auto result = comms->publishEvent(g_context, &ready);
 		plog::Info("published \"ready\" for the companions that loaded first (result %u)", static_cast<unsigned>(result));
 	}
-	if (++g_frames % WatchFrames != 0) {
-		return;
-	}
-	D2RL::Widgets::WidgetHandle panel {};
-	if (g_widgets->findPanel(g_context, OptionsPanel, &panel) != D2RL::Widgets::Result::Success) {
-		g_panelSeen = false;
-		return;
-	}
-	// shortcut: an Options panel D2R keeps loaded after it closes reads as still open, so the owners refresh on the
-	// first open only (their clicks here keep the rows right); a chat or toml change shows after a restart.
-	if (!g_panelSeen) {
-		g_panelSeen = true;
-		RefreshAll();
-		g_dirty = true;
-	}
-	if (!g_dirty.exchange(false)) {
-		return;
-	}
-	try {
-		const std::lock_guard guard(g_lock);
-		for (Row& row : g_rows) {
-			if (!row.dropdown) {
-				Show(panel, settings_rows::ToggleWidget(row.name, true), !row.removed && row.value);
-				continue;
-			}
-			const settings_rows::Dropdown* d = settings_rows::FindDropdown(row.name);
-			const bool valid = row.index >= 0 && static_cast<size_t>(row.index) < row.options.size();
-			uint8_t* widget = d != nullptr && !row.removed ? NativeDropdown(*d) : nullptr;
-			if (widget == nullptr) {
-				continue;
-			}
-			const int32_t state = valid ? settings_rows::StateOf(*d, row.options[row.index]) : -1;
-			if (state >= 0) {  // a no-op when it already shows that state
-				reinterpret_cast<void (*)(void*, int32_t) noexcept>(DropdownSelect.address)(widget, state);
-			}
-			row.shown = *reinterpret_cast<int32_t*>(widget + DropdownSelected);
+	// Every frame, so the native filter set on a character's join never gets to run.
+	const bool pyre = g_yield && g_pyreRows > 0;
+	if (pyre) {
+		auto* config = reinterpret_cast<uint8_t* (*)() noexcept>(LootConfig.address)();
+		if (config != nullptr && *reinterpret_cast<size_t*>(config + ActiveNameSize) != 0) {
+			reinterpret_cast<void (*)(void*) noexcept>(LootClear.address)(config);
 		}
-	} catch (...) {
-		g_dirty = true;
+	}
+	if (++g_frames % WatchFrames != 0 && !g_soon.exchange(false)) {
+		return;
+	}
+	for (size_t p = 0; p < std::size(Panels); ++p) {
+		D2RL::Widgets::WidgetHandle panel {};
+		if (g_widgets->findPanel(g_context, Panels[p], &panel) != D2RL::Widgets::Result::Success) {
+			g_panelSeen[p] = false;
+			continue;
+		}
+		if (Panels[p] == settings_rows::LootFilterPanel) {
+			Show(panel, "PyreRows", pyre);  // D2R shows a panel's widgets on open, the layout's "visible": false too
+			D2RL::Widgets::WidgetHandle native {};
+			if (pyre && g_widgets->findPanel(g_context, "LootFilterProfilePanel", &native) == D2RL::Widgets::Result::Success) {
+				g_widgets->setWidgetVisible(g_context, native, false);
+				g_widgets->setWidgetEnabled(g_context, native, false);
+			}
+		}
+		// shortcut: a panel D2R keeps loaded after it closes reads as still open, so the owners refresh on the
+		// first open only (their clicks here keep the rows right); a chat or toml change shows after a restart.
+		if (!g_panelSeen[p]) {
+			g_panelSeen[p] = true;
+			RefreshAll();
+			Dirty();
+		}
+		if (!g_dirty[p].exchange(false)) {
+			continue;
+		}
+		try {
+			const std::lock_guard guard(g_lock);
+			for (Row& row : g_rows) {
+				if (settings_rows::PanelOf(row.name) != Panels[p]) {
+					continue;
+				}
+				if (!row.dropdown) {
+					Show(panel, settings_rows::ToggleWidget(row.name, true), !row.removed && row.value);
+					continue;
+				}
+				const settings_rows::Dropdown* d = settings_rows::FindDropdown(row.name);
+				const bool valid = row.index >= 0 && static_cast<size_t>(row.index) < row.options.size();
+				uint8_t* widget = d != nullptr && !row.removed ? NativeDropdown(*d) : nullptr;
+				if (widget == nullptr) {
+					continue;
+				}
+				const int32_t state = valid ? settings_rows::StateOf(*d, row.options[row.index]) : -1;
+				if (state >= 0) {  // a no-op when it already shows that state
+					reinterpret_cast<void (*)(void*, int32_t) noexcept>(DropdownSelect.address)(widget, state);
+				}
+				row.shown = *reinterpret_cast<int32_t*>(widget + DropdownSelected);
+			}
+		} catch (...) {
+			g_dirty[p] = true;
+		}
 	}
 }
 
@@ -414,7 +466,7 @@ auto OnPick() noexcept -> D2RL::SharedEvents::UiMessageAction {
 			}
 			row.shown = picked;
 			const int32_t at = settings_rows::OptionOf(*d, picked, row.options);
-			g_dirty = true;  // a pick the owner does not offer goes back to the owner's
+			Dirty();  // a pick the owner does not offer goes back to the owner's
 			if (at >= 0) {
 				row.index = at;
 				applies.push_back({row.onIndex, at, row.userData});
@@ -439,8 +491,14 @@ auto OnPick() noexcept -> D2RL::SharedEvents::UiMessageAction {
 auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessageEvent* event, void*) noexcept
 	-> D2RL::SharedEvents::UiMessageAction {
 	constexpr size_t PrefixSize = sizeof(settings_rows::ClickPrefix) - 1;
-	if (event == nullptr || event->target == nullptr || event->command == nullptr ||
-	    std::strcmp(event->target, "PanelManager") != 0 || std::strcmp(event->command, "OpenPanel") != 0) {
+	if (event == nullptr || event->target == nullptr || event->command == nullptr) {
+		return D2RL::SharedEvents::UiMessageAction::Continue;
+	}
+	if (std::strcmp(event->target, "PausePanelMessage") == 0 && std::strcmp(event->command, "OpenLootFilter") == 0) {
+		g_soon = true;  // D2R opens it after us: hide its own screen on the next frame, not up to WatchFrames later
+		return D2RL::SharedEvents::UiMessageAction::Continue;
+	}
+	if (std::strcmp(event->target, "PanelManager") != 0 || std::strcmp(event->command, "OpenPanel") != 0) {
 		return D2RL::SharedEvents::UiMessageAction::Continue;
 	}
 	if (event->text == nullptr) {
@@ -460,7 +518,7 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 				row.value = value = !row.value;
 				onToggle = row.onToggle;
 				userData = row.userData;
-				g_dirty = true;
+				Dirty();
 				break;
 			}
 		}
@@ -501,6 +559,15 @@ void InstallHost(const D2RL::PluginContext* context, char* report, size_t size) 
 			plog::Info("signature %s %s: the dropdown rows are off", e->name, sigscan::StateText(e->state));
 		}
 	}
+	sigscan::Resolve(YieldSigs, std::size(YieldSigs), context->exeBase, nullptr, 0);
+	g_yield = true;
+	for (const sigscan::Entry* e : YieldSigs) {
+		if (e->state != sigscan::State::Ok) {
+			g_yield = false;
+			plog::Info("signature %s %s: D2R's own loot filter screen stays, Pyre's rows are off", e->name,
+			           sigscan::StateText(e->state));
+		}
+	}
 	const D2RL::SharedEvents::UiMessageListener listener {.structSize = D2RL::SharedEvents::UiMessageListenerSize,
 	                                                      .callback = OnUiMessage};
 	const D2RL::Overlay::CallbackRegistration frame {.structSize = D2RL::Overlay::CallbackRegistrationSize,
@@ -526,7 +593,7 @@ void InstallHost(const D2RL::PluginContext* context, char* report, size_t size) 
 		return;
 	}
 	g_comms = comms;  // the first frame publishes "ready"
-	std::snprintf(report, size, "the settings service is up: companion toggles and dropdowns show in Options > Gameplay");
+	std::snprintf(report, size, "the settings service is up: companion rows show in Options > Gameplay, Pyre's in Esc > Loot Filter");
 }
 
 parts::Part g_parts[] = {
@@ -540,7 +607,7 @@ constexpr D2RL::PluginInfo Info {
 	.name = "PD2 Resurrected Settings Host",
 	.version = MODKIT_PLUGIN_VERSION,
 	.author = "Synpoo",
-	.description = "Shows the companions' settings rows (Pyre Loot Filter's profile, its toggles) in Options > Gameplay.",
+	.description = "Shows the companions' settings rows in Options > Gameplay, and Pyre Loot Filter's in Esc > Loot Filter.",
 	.flags = D2RL::PluginFlags::Client,
 };
 
