@@ -6,7 +6,7 @@ Torajan Jungle	Jungle	Loop	m04	Large	87	80	The Great Worm	sandleapermap,deathmau
 Canyon of Sescheron	Snow		m05	Medium	87	80	Shattered Soul	sandleapermap2,doomknightmap,oblivionknightmap2,fetishmap2	230	100	100
 Phlegethon	Lava	Winding	m06	Large	87	80	Lieutenant of Sin	minionmap,pantherwomanmap,fallenmap,slingermap,siegebeastmap,bloodlordmap,councilmembermap,reanimatedhordemap,fallenshamanmap,fetishmap	220	100	100
 River of Blood	Durance	Loop	m07	ExtraLarge	89	80	Belial Lord of Lies	doomknightmap,vilemothermap,zealotmap,oblivionknightmap,deathmaulermap,sk_archermap,regurgitatormap,councilmembermap	550	100	100
-Horazon's Memory	Arcane	Winding	m08	ExtraLarge	88	80	Deathmaiden Madinsane	cantorArcane,doomknight1Arcane,doomknightArcane,flyingscimitarArcane,frozenhorrorArcane,lightningspire,painwormArcane,snowyetiArcane,wraithArcane,zealotArcane	100	100	100
+Horazon's Memory	Arcane	Winding	m08	ExtraLarge	88	80	Deathmaiden Madinsane	cantorArcane,doomknightArcane,flyingscimitarArcane,frozenhorrorArcane,painwormArcane,snowyetiArcane,wraithArcane,zealotArcane	100	100	100
 Arreat Battlefield	Siege		m09	Medium	89	80	Armorsmith of Equality	goatmanmap,bigheadmap,reanimatedhordemap,thornhulkmap,mosquitomap	225	100	100
 Ashen Plains	Mesa		m10	Medium	88	80	Borq the Consumed	sandleapermap2,thornhulkmap2,pantherwomanmap2,mosquitomap2,fetishmap2,slingermap2,deathmaulermap2,cantormap2	225	100	100
 Kehjistan Wasteland	Desert		m11	Medium	89	80	Toadflax the Tainted	sandraider3Market,flyingscimitarMarket,corruptrogue2Market,mosquito2Market,firetowerMarket,vampire1Market,cr_archer2Market,unraveler3Market	210	100	100

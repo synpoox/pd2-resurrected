@@ -59,7 +59,10 @@ def expected() -> dict[str, tuple[str, str]]:
 def _ids(strings: dict, keys: list[str]) -> dict[str, int]:
     """Each generated key's ID: the one merge/strings.json holds, else the next free one."""
     held = {k: v[0] for k, v in strings["ids"].items()}
-    nxt = max(FIRST_ID, *(v + 1 for v in held.values()))
+    # hand-added strings (ui.json etc.) are not all in merge/strings.json, so skip every ID the lng files use
+    used = [e["id"] for f in (DATA / "local/lng").glob("*/*.json") for e in json.loads(f.read_text("utf-8-sig"))
+            if isinstance(e, dict) and isinstance(e.get("id"), int) and e.get("Key") not in held]
+    nxt = max(FIRST_ID, *(v + 1 for v in held.values()), *(v + 1 for v in used))
     out = {}
     for key in keys:
         out[key] = held.get(key, nxt)
