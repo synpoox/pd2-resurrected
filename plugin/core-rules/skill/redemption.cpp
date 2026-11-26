@@ -55,13 +55,7 @@ RedemptionCorpseFn g_redemptionCorpse = nullptr;
 // some paths call the setter 0x3519e0); it links the pet in the monster's AI block (0x4a5800: +0x68 id, +0x6c type), which
 // the owner getter 0x4a53c0 reads and the death path (0x44db20 -> 0x4a5f70) leaves set. So both are tested.
 auto RedemptionOwned(Unit* corpse) noexcept -> bool {
-	if (OwnedByPlayer(corpse)) {
-		return true;
-	}
-	const uint8_t* data = At<int32_t>(corpse, d2r::rva::UnitType) == d2r::rva::UnitMonster ? At<uint8_t*>(corpse, d2r::rva::UnitData) : nullptr;
-	const uint8_t* ai = data != nullptr ? At<uint8_t*>(data, MonDataAi) : nullptr;
-	const uint32_t id = ai != nullptr ? At<uint32_t>(ai, AiOwnerId) : 0;
-	return ai != nullptr && At<int32_t>(ai, AiOwnerType) == 0 && id != 0 && id != UINT32_MAX;
+	return OwnedByPlayer(corpse);
 }
 
 
