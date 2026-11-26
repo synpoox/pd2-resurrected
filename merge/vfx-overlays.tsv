@@ -12,7 +12,7 @@ poison_weakness	curselowerresist
 # [AuraDefiance]
 dclone_aura	aura_defiance_front
 # [AuraThorns]
-maxlevel_aura	aura_thorns_front
+maxlevel_aura	convictionfront
 # [AuraWhite]
 dev_aura	aura_prayer_front
 # [evilaura_gold]
