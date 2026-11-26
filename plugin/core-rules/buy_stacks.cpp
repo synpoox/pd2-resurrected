@@ -12,7 +12,9 @@
 // the room), the charge and the add (0x46f090, which tells the buyer's client). So both calls are redirected here as
 // PD2 does, and D2R's own code charges and adds. No SDK service fits: the SDK has no buy event, and its item services
 // take a PlayerHandle, which the server has none of for a remote buyer. The handler runs on the server, so a joined
-// TCP/IP client's buy merges as the host's does.
+// TCP/IP client's buy merges as the host's does. The client must predict the same destination (#2248): its
+// npcmenu buy path (0x11204d, 0x11205f) gets the same redirects, or a second orb buy requests a free cell while
+// the server expects the scroll/tome destination (4, page 0xff) and rejects it before charging gold.
 #include "buy_stacks.h"
 
 #include "item_rules.h"
@@ -44,6 +46,10 @@ constexpr char BuyPattern[] =
 	"38 85 e0 00 00 00 0f 85 ?? ?? ?? ?? 8d 50 16 48 8b cb e8 ?? ?? ?? ?? 85 c0 0f 84 ?? ?? ?? ?? 48 8b 4c 24 58 48 8d 15 "
 	"?? ?? ?? ?? 41 b8 ?? ?? 00 00 e8 ?? ?? ?? ?? 48 8b c8 45 33 c0 48 8b d3 e8 ?? ?? ?? ?? 4c 8b f0 48 85 c0";
 constexpr uint32_t TypeCallAt = 18, FinderCallAt = 63;
+// npcmenu: ItemIsType(item, 0x16) / test / jz / finder(inventory, item, 0) / test / jz / scroll destination
+constexpr char ClientBuyPattern[] =
+	"ba 16 00 00 00 49 8b ce e8 ?? ?? ?? ?? 85 c0 74 ?? 45 33 c0 49 8b d6 48 8b cb e8 ?? ?? ?? ?? 48 85 c0 74 ?? 48 8d 4d d8 e8 ?? ?? ?? ??";
+constexpr uint32_t ClientTypeCallAt = 8, ClientFinderCallAt = 26;
 // The buy's room count: UnitStat(stack, 70, 0) / mov rcx,r14 / mov ebx,eax / call GetMaxStack (93847 0x53dc7c, 0x3719e0)
 constexpr char MaxStackPattern[] = "45 33 c0 41 8d 57 45 49 8b ce e8 ?? ?? ?? ?? 49 8b ce 8b d8 e8 ?? ?? ?? ?? 8b c8 33 d2 2b cb";
 constexpr uint32_t MaxStackCallAt = 20;
@@ -114,10 +120,11 @@ auto BuyFinder(void* inventory, Unit* item, Unit* a3) noexcept -> Unit* {
 auto InstallBuyStacks(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
 	using sigscan::State;
 	const uint64_t base = context->exeBase;
-	uint64_t maxSite = 0, typeSite = 0;
+	uint64_t maxSite = 0, typeSite = 0, clientSite = 0;
 	const bool found = d2r::sig::ItemIsType.state == State::Ok && d2r::sig::InventoryFirstItem.state == State::Ok &&
 	                   d2r::sig::InventoryNextItem.state == State::Ok && d2r::sig::ItemPage.state == State::Ok &&
 	                   d2r::sig::ItemCode.state == State::Ok && d2r::sig::UnitStat.state == State::Ok &&
+	                   sigscan::ScanUnique(base, ClientBuyPattern, 0, &clientSite) == 1 &&
 	                   sigscan::ScanUnique(base, MaxStackPattern, 0, &maxSite) == 1 &&
 	                   sigscan::ScanUnique(base, ItemTypePattern, 0, &typeSite) == 1;
 	if (found) {
@@ -129,6 +136,10 @@ auto InstallBuyStacks(const D2RL::PluginContext* context, char* report, size_t r
 	                RedirectCall(context, BuyPattern, FinderCallAt, reinterpret_cast<uint64_t>(&BuyFinder),
 	                             reinterpret_cast<uint64_t*>(&g_finder)) &&
 	                RedirectCall(context, BuyPattern, TypeCallAt, reinterpret_cast<uint64_t>(&BuyIsType),
+	                             reinterpret_cast<uint64_t*>(&g_isType)) &&
+	                RedirectCall(context, ClientBuyPattern, ClientFinderCallAt, reinterpret_cast<uint64_t>(&BuyFinder),
+	                             reinterpret_cast<uint64_t*>(&g_finder)) &&
+	                RedirectCall(context, ClientBuyPattern, ClientTypeCallAt, reinterpret_cast<uint64_t>(&BuyIsType),
 	                             reinterpret_cast<uint64_t*>(&g_isType));
 	std::snprintf(report, reportSize, "buy merges stacks%s", ok ? "" : found ? " FAILED (call sites)" : " FAILED (signature)");
 	return ok;
