@@ -1,0 +1,1 @@
+- Maps got new sizes and monster density, and Horazon's Memory now spawns PD2's Arcane monsters.
