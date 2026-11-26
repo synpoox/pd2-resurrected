@@ -347,8 +347,8 @@ auto OwnedByPlayer(Game* game, Unit* unit) noexcept -> bool {
 		Unit* owner = type == UnitMonster && pd2r::skills::ValidOwnerId(id) ? find(game, UnitMonster, id) : nullptr;
 		if (owner == nullptr) {
 			const auto* ai = pd2r::skills::MonsterAiOwner(unit);
-			if (ai != nullptr && At<int32_t>(ai, AiOwnerType) == UnitMonster) {
-				const uint32_t aiId = At<uint32_t>(ai, AiOwnerId);
+			if (ai != nullptr && At<int32_t>(ai, pd2r::skills::AiOwnerType) == UnitMonster) {
+				const uint32_t aiId = At<uint32_t>(ai, pd2r::skills::AiOwnerId);
 				if (pd2r::skills::ValidOwnerId(aiId)) {
 					owner = find(game, UnitMonster, aiId);
 				}
