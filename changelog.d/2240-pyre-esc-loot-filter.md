@@ -1,1 +1,0 @@
-- Esc > Loot Filter now holds Pyre Loot Filter's profile and toggles, in place of D2R's own filters.

@@ -1,1 +1,0 @@
-- Fixed map Bosses not spawning since the Bind and Summon plugin was bundled.

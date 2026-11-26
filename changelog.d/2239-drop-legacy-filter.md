@@ -1,1 +1,0 @@
-- The old single `filter.json` no longer ships, so each loot filter lists once (#2239).

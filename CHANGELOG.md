@@ -2,6 +2,39 @@
 
 Player-facing changes, newest first. Entries follow PD2 unless noted. Until multiplayer, a build may break characters (ADR 0003).
 
+### 0.2.7-alpha (2026-11-25)
+
+- Split the skill functions source into one file per rule (no behaviour change).
+- Fixed Cast Triggers (skill on cast and on block) not starting on D2R 3.4 (#2112).
+- Send map and bossing items to their stash tab with Ctrl+click from any tab (#2115).
+- Remove the Holy Freeze mercenary from Greiz's hire list (#2117).
+- Raise the stash gold cap to 25,000,000; all shared stash pages share one pool, as in PD2 (#2118).
+- Fixed Shift+Click with an Almanac to identify all inventory and Cube items (#2123).
+- Show the Horadric Navigator and Almanac in the skill picker (#2124).
+- Stop Leap Attack and Blade Shield from wearing out weapons (#2155).
+- The Act 1 mercenary's Strafe restarts her bow draw for each extra arrow (#2156).
+- Give the Act 2 Might mercenary Thorns at PD2 skill levels instead (#2157).
+- Run mercenaries and pets back to you when they fall behind, as in PD2 (#2158).
+- Fix stray color markers in the names of Anya's map orbs (#2160).
+- Restore gold names for Anya's map orbs without stray color markers (#2163).
+- Play the item's sound when Ctrl+click sends a map or bossing item to its stash tab (#2172).
+- Fix map orbs bought from Anya failing with "That item has just been traded" (#2173).
+- Fixed map Bosses not spawning since the Bind and Summon plugin was bundled.
+- Ctrl+click or Shift+right-click on a big stack in the Maps or Bossing tab now moves 50 to the inventory.
+- Shift+right click on a Gems, Materials or Runes tab item now takes it out to the inventory.
+- The inventory lock now locks only charms in the charm rows; other items there stay movable.
+- Gems, Materials and Runes stash tabs now reach 255 on installs that kept an old config.
+- Ctrl+click or Shift+right-click on a Gems, Materials or Runes stack now takes up to 50.
+- A TCP/IP client's quick-move of a big Maps or Bossing stack now leaves 50 in its inventory.
+- Ships Cartographer 0.1.2. (#2196)
+- Melee attacks reach as far as in PD2 again (the reach rule was switched off).
+- Sacrifice now reaches one step farther, as in Project Diablo 2.
+- Ship the loot filter strictness levels, with Starter active by default (#2234).
+- Pick the Item Roll Ranges and Controller QOL options in Options > Gameplay (#2237).
+- The old single `filter.json` no longer ships, so each loot filter lists once (#2239).
+- Esc > Loot Filter now holds Pyre Loot Filter's profile and toggles, in place of D2R's own filters.
+- Add the Semi strict and Ultra strict loot filters and retune all levels, Resurrected theme (#2245).
+
 ### 0.2.6-alpha (2026-11-23)
 
 

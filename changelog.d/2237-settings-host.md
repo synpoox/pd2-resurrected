@@ -1,1 +1,0 @@
-- Pick the Item Roll Ranges and Controller QOL options in Options > Gameplay (#2237).

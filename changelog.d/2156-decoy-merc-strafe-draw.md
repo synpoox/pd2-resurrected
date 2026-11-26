@@ -1,1 +1,0 @@
-- The Act 1 mercenary's Strafe restarts her bow draw for each extra arrow (#2156).

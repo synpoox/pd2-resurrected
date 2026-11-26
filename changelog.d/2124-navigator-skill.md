@@ -1,1 +1,0 @@
-- Show the Horadric Navigator and Almanac in the skill picker (#2124).
