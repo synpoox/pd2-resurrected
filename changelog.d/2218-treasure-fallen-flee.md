@@ -1,0 +1,1 @@
+- Treasure Fallen now runs from nearby players instead of attacking.

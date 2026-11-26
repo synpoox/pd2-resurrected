@@ -104,7 +104,6 @@ void CheckGame(Game* game) noexcept {
 // Walk a short step away from the nearest living player, never enter an attack mode.
 // PD2 uses a 2-4 cell step; use 3 and retry on the next think if blocked.
 void Flee(Game* game, Unit* unit) noexcept {
-	using namespace d2r::rva;
 	Unit* player = ai_common::NearestPlayer(game, unit, ai_common::LevelOf(unit));
 	int32_t x = 0, y = 0, px = 0, py = 0;
 	d2r::UnitXY(unit, &x, &y);
