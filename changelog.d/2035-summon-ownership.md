@@ -1,1 +1,1 @@
-- Fixed some player summons being treated as monsters by skills, melee reach and Crushing Blow.
+- Fix some player summons being treated as monsters by skills, melee reach and Crushing Blow (#2035).

@@ -504,7 +504,6 @@ auto SplashOne(d2r::AreaContext* area, Unit* victim) noexcept -> int32_t;
 // position left (killed by the hit); 0 without a struck unit, or inside another splash.
 auto Splash(Game* game, Unit* unit, Unit* struck, int32_t skillId, int32_t level) noexcept -> int64_t;
 
-
 extern std::atomic<uint32_t> g_sentinelHits;
 
 extern std::atomic<uint32_t> g_sentinelUnits;
