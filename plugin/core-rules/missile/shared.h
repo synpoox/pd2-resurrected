@@ -44,6 +44,7 @@ extern std::atomic<uint32_t> g_summonHits;
 extern std::atomic<uint32_t> g_spearHits;
 extern std::atomic<uint32_t> g_potionHits;
 extern std::atomic<uint32_t> g_potionClientHits;
+extern std::atomic<uint32_t> g_holyBoltHeals;
 
 auto CltMissileRecord(Unit* missile) noexcept -> const uint8_t*;
 auto MissileInt(uint64_t rva, Unit* missile) noexcept -> int32_t;

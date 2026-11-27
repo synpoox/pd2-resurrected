@@ -37,5 +37,7 @@ void SrvDmgRathmaSpear(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit, d2r:
 // The throwing potions (IR5).
 auto SrvHitThrowPotion(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 68 (PD2 60)
 auto CltHitThrowPotion(d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // chit 72 (PD2 65)
+// Holy Bolt, Fist of the Heavens' bolts and Holy Nova (#2227).
+auto SrvHitHolyBolt(d2r::Game* game, d2r::Unit* missile, d2r::Unit* hit) noexcept -> int32_t;  // shit 70 (PD2 7)
 // Live counters for the status command.
 auto MissileFunctionCounters(char* out, size_t size) noexcept -> void;

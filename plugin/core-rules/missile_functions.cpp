@@ -15,12 +15,12 @@ auto MissileFunctionCounters(char* out, size_t size) noexcept -> void {
 	              "falloff hits %u, state hits %u, bolt hits %u, holy light client hits %u, fist delay client hits %u, "
 	              "charge explodes %u, charge bolt hits %u, hammer frames %u, hits %u, kept %u, client frames %u, "
 	              "chain falloffs %u, fragment walls %u, splits %u, damage %u, client walls %u, summon hits %u, rathma spear hits %u, "
-	              "potion hits %u, potion client hits %u",
+	              "potion hits %u, potion client hits %u, holy bolt heals %u",
 	              g_returnSpawns.load(), g_returnsCaught.load(), g_bounces.load(), g_firstHits.load(),
 	              g_spreadHits.load(), g_spreadExplosions.load(), g_falloffHits.load(), g_stateHits.load(),
 	              g_boltHits.load(), g_holyLightHits.load(), g_fistDelayHits.load(), g_chargeExplodes.load(),
 	              g_chargeBoltHits.load(), g_hammerFrames.load(), g_hammerHits.load(), g_hammerKept.load(),
 	              g_hammerClientFrames.load(), g_chainFalloffs.load(), g_fragmentWalls.load(), g_fragmentSplits.load(),
 	              g_fragmentDamage.load(), g_fragmentClientWalls.load(), g_summonHits.load(), g_spearHits.load(),
-	              g_potionHits.load(), g_potionClientHits.load());
+	              g_potionHits.load(), g_potionClientHits.load(), g_holyBoltHeals.load());
 }
