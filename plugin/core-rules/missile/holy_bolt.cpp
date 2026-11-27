@@ -151,7 +151,6 @@ auto InstallHolyBoltHeal(const D2RL::PluginContext* context, char* report, size_
 		g_partyId = reinterpret_cast<PartyFn>(partyId);
 		g_petTest = reinterpret_cast<AllyFn>(pet);  // last: SrvHitHolyBolt tests it
 	}
-	plog::Info("holy bolt: pd2 heal %s", ok ? "on (shit 70)" : "FAILED (srvhit 7 signatures), D2R's srvhit 7 kept");
 	const size_t used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; holy bolt heal%s", ok ? "" : " FAILED");
