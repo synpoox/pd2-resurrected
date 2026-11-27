@@ -34,7 +34,7 @@ void Deal(Game*, Unit*, Unit* target, void* damage) noexcept {
 void* StateList(Unit*, int32_t) noexcept { return auraChance > 0 ? aura : nullptr; }
 int32_t ListStat(uint32_t, void*, int32_t, int32_t) noexcept { return auraChance; }
 uint32_t* Seed(Unit*) noexcept { return seed; }
-int32_t OriginalDispatch(Game*, int32_t event, Unit* unit, Unit*, void*, void*) noexcept {
+int32_t OriginalDispatch(Game*, int32_t event, Unit* unit, Unit*, void*) noexcept {
     auto* node = At<uint8_t*>(unit, UnitEventNodes);
     Check(At<uint16_t>(node, EventNodeEvent) == 0xffff, "thorns hidden from D2RCore");
     node = At<uint8_t*>(node, EventNodeNext);
@@ -48,8 +48,6 @@ auto OpenWounds(Game*, Unit*, Unit*, uint32_t stat) noexcept -> void {
     ++wounds;
 }
 }
-auto SwapThunkSlot(const D2RL::PluginContext*, const sigscan::Entry&, uint32_t, uint64_t, uint64_t*) noexcept -> bool { return false; }
-auto ThunkSlotRva(const sigscan::Entry&, uint32_t) noexcept -> uint64_t { return 0; }
 
 int main() {
     d2r::sig::UnitStat.address = reinterpret_cast<uint64_t>(&GetStat);
@@ -107,9 +105,14 @@ int main() {
     Put(thorns.data(), EventNodeNext, other.data());
     Put(other.data(), EventNodeEvent, uint16_t{3});
     Put(other.data(), EventNodeStat, int32_t{198});
+    std::array<uint8_t, 0x40> thorns2{};  // a second item's lightning thorns node: still one reflected hit
+    Put(other.data(), EventNodeNext, thorns2.data());
+    Put(thorns2.data(), EventNodeEvent, uint16_t{3});
+    Put(thorns2.data(), EventNodeStat, int32_t{Lightning});
     g_dispatch = OriginalDispatch;
     const int before = hits;
-    Check(Dispatch(game, 3, unit, target, aura, nullptr) == 42 && hits == before + 1 &&
-        At<uint16_t>(thorns.data(), EventNodeEvent) == 3, "dispatch handles thorns exactly once and restores the node");
+    Check(Dispatch(game, 3, unit, target, aura) == 42 && hits == before + 1 &&
+        At<uint16_t>(thorns.data(), EventNodeEvent) == 3 && At<uint16_t>(thorns2.data(), EventNodeEvent) == 3,
+        "dispatch handles thorns exactly once and restores the nodes");
     return 0;
 }
