@@ -1,0 +1,1 @@
+- Fix Power Strike variants' attack rating bonus and excess physical damage (#2224).
