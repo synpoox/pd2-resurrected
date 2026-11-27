@@ -61,4 +61,4 @@ auto InstallSlowMissiles(const D2RL::PluginContext* context, char* report, size_
 	return on;
 }
 
-PD2R_RULE(InstallSlowMissiles, 390)
+PD2R_RULE(InstallSlowMissiles, 430)
