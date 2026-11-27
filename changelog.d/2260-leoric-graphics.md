@@ -1,0 +1,1 @@
+Fix King Leoric's missing legacy graphics and incompatible HD animations with an undead stand-in.

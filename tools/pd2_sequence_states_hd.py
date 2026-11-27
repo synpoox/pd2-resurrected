@@ -21,7 +21,9 @@ the skill runs while the body plays no clip. Each new state copies a D2R state w
     the Traitor boss (act2hire) skills <- Jab; Demon Road boss <- DeathMaul; Imperial Palace mini boss (fallen shaman)
     <- ShamanFire; Radament's and the Unraveler boss's casts <- UnHolyBolt (their 'sequence' clip, not Resurrect2's 'cast').
   Sequences D2R itself has no state for (Fetish raise, Swarm, Overseer, Maggot lay, Flying Scimitar, towers, ...) and
-  PD2-only units with no vanilla state (Warlord of Blood, Leoric map boss, Dark Temple boss, uber Madawc, ...) stay as they are.
+  PD2-only units with no vanilla state (Warlord of Blood, Dark Temple boss, uber Madawc, ...) stay as they are.
+  King Leoric (#2260) uses Radament's compatible HTH art: walk and attack2 for MonCharge, and the resurrect cast
+  clip for LeoricSummonNova and Bone Armor in ordinary Cast mode.
 The skill ids are merged skills.txt rows (tools/tests/test_sequence_states_hd.py checks them by name).
 
     py -3 tools/pd2_sequence_states_hd.py [--d2r D2R_DATA_ROOT]   (default: the toolkit's cache, pd2_table.D2R_DATA)
@@ -70,6 +72,12 @@ def mon(new_skill: int, src_skill: int, name: str) -> tuple:
     return (MONSTER_SEQUENCE_MODE, new_skill, src_skill, f"Seq_{name}", f"_{name.lower()}")
 
 
+def mode_clip(mode: int, skill: int, source_skill: int, name: str, source_mode: int,
+              source_name: str | None, step: int, loop_count: int) -> tuple:
+    return (mode, skill, source_skill, name, "_" + name.lower(), source_mode, False, False,
+            source_name, step, loop_count)
+
+
 # (folder, unit) -> (sequence mode, new skill id, source skill id, state name, transition-name suffix[, source mode]),
 # or a list of them for a unit that needs several
 STATES = {
@@ -107,13 +115,19 @@ STATES = {
     ("enemy", "radament"): [mon(s, 157, n) for s, n in (
         (277, "BladeShield"), (429, "Blink"), (448, "Combustion"), (197, "DiabWall"), (677, "FingerMageSpiderTombEvent"),
         (676, "FrozenOrbTombEvent"), (604, "HowlMonster"), (330, "ImpTeleport"), (229, "MoltenBoulder"),
-        (639, "RadamentBossMeteor"), (637, "RadamentBossRoyalFire"))],
+        (639, "RadamentBossMeteor"), (637, "RadamentBossRoyalFire"))] + [
+            mode_clip(MONSTER_SEQUENCE_MODE, 486, -1, "LeoricChargeWalk", 100, "Walk", 0, 0),
+            mode_clip(MONSTER_SEQUENCE_MODE, 486, -1, "LeoricChargeAttack", 5, "Attack2", 1, 1),
+            mode_clip(MONSTER_CAST_MODE, 595, 327, "LeoricSummonNovaCast", MONSTER_SEQUENCE_MODE, None, 0, 1),
+            mode_clip(MONSTER_CAST_MODE, 68, 327, "LeoricBoneArmorCast", MONSTER_SEQUENCE_MODE, None, 0, 1),
+        ],
     ("enemy", "unraveler1"): mon(477, 157, "UnravelerBossMultiShot"),
 }
 
 
 def build(sm: dict, mode: int, new_skill: int, src_skill: int, name: str, suffix: str, src_mode: int | None = None,
-          pair: bool = False, follow: bool = False) -> dict:
+          pair: bool = False, follow: bool = False, source_name: str | None = None,
+          step: int | None = None, loop_count: int | None = None) -> dict:
     """A copy of every state of src_skill in src_mode (one per step) as a `mode` state under new_skill, wired like its source.
 
     A source from another mode (a plain attack) becomes a looping sequence state.
@@ -121,10 +135,12 @@ def build(sm: dict, mode: int, new_skill: int, src_skill: int, name: str, suffix
     follow: the copy is that follow-up alone (step 1, entered in 0.01 s from every state, itself included)."""
     sm = copy.deepcopy(sm)
     src_mode = mode if src_mode is None else src_mode
-    srcs = [s for s in sm["states"] if s["modeId"] == src_mode and s["skillIndex"] == src_skill]
+    srcs = [s for s in sm["states"] if s["modeId"] == src_mode and s["skillIndex"] == src_skill
+            and (source_name is None or s["_name"] == source_name)]
     if not srcs:
         raise ValueError(f"state machine has no mode {src_mode} state for skill {src_skill}")
-    if any(s["skillIndex"] == new_skill and s["modeId"] == mode for s in sm["states"]):
+    if any(s["skillIndex"] == new_skill and s["modeId"] == mode
+           and (step is None or s["stepIndex"] == step) for s in sm["states"]):
         raise ValueError(f"state machine already has a sequence state for skill {new_skill}")
     next_id = max(s["stateId"] for s in sm["states"]) + 1
     new_ids = {}
@@ -133,9 +149,13 @@ def build(sm: dict, mode: int, new_skill: int, src_skill: int, name: str, suffix
         state = copy.deepcopy(src)
         state.update(stateId=next_id + k, modeId=mode, skillIndex=new_skill,
                      _name=name if len(srcs) == 1 else f"{name}_{src['stepIndex']}")
-        if follow:
+        if step is not None:
+            state["stepIndex"] = step
+        elif follow:
             state["stepIndex"] = 1
-        if src_mode != mode and not (pair or follow):
+        if loop_count is not None:
+            state["loopCount"] = loop_count
+        elif src_mode != mode and not (pair or follow):
             state["loopCount"] = 0
         sm["states"].append(state)
     owns = []
