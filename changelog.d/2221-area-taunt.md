@@ -1,0 +1,1 @@
+- Make Taunt affect all eligible monsters within its radius, as in PD2 (#2221).

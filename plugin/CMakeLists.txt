@@ -302,6 +302,11 @@ target_include_directories(menu_text_check PRIVATE common)
 target_compile_features(menu_text_check PRIVATE cxx_std_20)
 core_options(menu_text_check)
 
+add_executable(taunt_check EXCLUDE_FROM_ALL tests/taunt_check.cpp)
+target_include_directories(taunt_check PRIVATE "${D2R_TOOLKIT_DIR}/plugin-template/src")
+target_link_libraries(taunt_check PRIVATE core_common)
+core_options(taunt_check)
+
 # Under build.ps1 -Tests (MODKIT_BUILD_TESTS=ON) every *_check program is built and run by ctest; otherwise they stay out of `all` (#1949).
 if(MODKIT_BUILD_TESTS)
 	enable_testing()
