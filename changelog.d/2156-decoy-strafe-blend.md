@@ -1,1 +1,1 @@
-- Decoy's Strafe now uses the Act 1 mercenary's bow animation.
+- Decoy's Strafe draws the bow again before its second arrow, and its plain attack plays normally.

@@ -1029,18 +1029,18 @@ seq_wargoatmancleave	A1	16			0
 seq_wargoatmancleave	A1	17			0
 seq_wargoatmancleave	A1	18			0
 seq_wargoatmancleave	A1	19			0
-seq_dopplestrafe	A1	1			
+seq_dopplestrafe	A1	0			
+seq_dopplestrafe	A1	2			
+seq_dopplestrafe	A1	5		2	
+seq_dopplestrafe	A1	0			
+seq_dopplestrafe	A1	2			
 seq_dopplestrafe	A1	4			
 seq_dopplestrafe	A1	5		2	
-seq_dopplestrafe	A1	6			
 seq_dopplestrafe	A1	7			
-seq_dopplestrafe	A1	4			
-seq_dopplestrafe	A1	5		2	
-seq_dopplestrafe	A1	7			
-seq_dopplestrafe	A1	8			
 seq_dopplestrafe	A1	9			
-seq_dopplestrafe	A1	10			
 seq_dopplestrafe	A1	11			
+seq_dopplestrafe	A1	13			
+seq_dopplestrafe	A1	14			
 seq_uberancient1_sc	SC	0			
 seq_uberancient1_sc	SC	5			
 seq_uberancient1_sc	SC	4			

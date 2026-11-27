@@ -8,8 +8,11 @@ the skill runs while the body plays no clip. Each new state copies a D2R state w
   Blade Dance (452, seq 10) <- Whirlwind (151, seq 10): the only Assassin state on sequence 10, a claw spin clip.
   Talic's MonWhirlwind (495) <- Whirlwind (151): D2R's Talic spins with Whirlwind (#1858).
   Korlic's Leap Attack Korlic (602) <- MonLeapAttack (367): D2R's Korlic leaps with MonLeapAttack, four steps (#1858).
-  Decoy (557) and the A1 merc (26) use plain Attack1 (mode 4), with Strafe's native frame rollback.
-    D2R keys monster skill states by (skill, step) in Cast (7) and SQ (14); both get only a Cast follow-up (#2156).
+  Decoy's DoppleZonStrafe (557) <- the rogue's Attack1 (mode 4): D2R's rogue has no sequence state (#1964). It gets the
+    player's Strafe pair (#2156): a first state and a follow-up state (step 1) that restarts the clip with a 0.01 s blend.
+    D2R's client Strafe (cltdofunc 20) asks for the follow-up (skill, step 1) per extra arrow, for any unit.
+  The A1 merc's Strafe (26) runs in plain Attack1 (mode 4). D2R keys a monster state by skill only in Cast (7) and SQ (14)
+    (other modes key by mode alone, first state wins), so the merc gets only the follow-up, as a Cast-mode state (#2156).
   Duriel's MonCharge (486), MonJab (484), MonSmite (485) <- Charge (107), Jab (10), Smite (97): D2R's Duriel (#2083).
   #2092, every other monster whose PD2 skill sits on a sequence D2R keys on a vanilla skill (vanilla source state):
     Blunderbore MonSmite <- Smite; Scarab, Crusher lancer MonJab <- Jab; Siege Beast, Reanimated Horde, Claw Viper
@@ -77,8 +80,9 @@ STATES = {
                                 mon(579, 151, "UberTalicWhirlwind")],
     ("enemy", "ancientbarb3"): [(MONSTER_SEQUENCE_MODE, 602, 367, "Skill_LeapAttackKorlic", "_leapattackkorlic"),
                                 mon(143, 367, "UberLeapAttack")],
-    # Both archers use native A1 Strafe, not a fixed monster sequence (#2156).
-    ("enemy", "roguehire"): [(MONSTER_CAST_MODE, 557, -1, "DoppleZonStrafe_FollowUp", "_dopplestrafe", 4, False, True),
+    # Decoy (dopplezonnew) draws the rogue merc's model; its Strafe sequence repeats A1 frames. The A1 merc's Strafe (26)
+    # starts in plain Attack1, so it needs only the follow-up (#2156)
+    ("enemy", "roguehire"): [(MONSTER_SEQUENCE_MODE, 557, -1, "Seq_DoppleZonStrafe", "_dopplestrafe", 4, True),
                              (MONSTER_CAST_MODE, 26, -1, "Strafe_FollowUp", "_strafe", 4, False, True)],
     ("enemy", "duriel"): [
         (MONSTER_SEQUENCE_MODE, 486, 107, "Ability_MONCHARGE_Sequence", "_moncharge"),
