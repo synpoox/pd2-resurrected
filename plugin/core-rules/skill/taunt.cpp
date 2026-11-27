@@ -124,4 +124,4 @@ auto InstallTaunt(const D2RL::PluginContext* context, char* report, size_t repor
 	return on;
 }
 
-PD2R_RULE(InstallTaunt, 390)
+PD2R_RULE(InstallTaunt, 420)
