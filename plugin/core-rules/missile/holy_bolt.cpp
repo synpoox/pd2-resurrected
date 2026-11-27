@@ -99,8 +99,8 @@ auto SrvHitHolyBolt(Game* game, Unit* missile, Unit* hit) noexcept -> int32_t {
 		return 1;
 	}
 	Unit* owner = d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(d2r::sig::MissileOwner)(game, missile);
-	if (owner == nullptr) {
-		owner = missile;  // PD2's 0x103749f0(missile, 0)
+	if (owner == nullptr) {  // PD2 tests the missile itself, which no test passes; D2R's tests never get a missile
+		return g_stock(game, missile, hit);
 	}
 	const bool heal = At<int32_t>(row, MsHitPar1) != 0 &&
 	                  (g_petTest(game, owner, hit, skill) != 0 || g_partyTest(game, owner, hit, skill) != 0 ||

@@ -55,4 +55,5 @@ PD2's for these rows. The pet and party tests and the party id getter are D2R's,
 PD2 data: Holy Bolt cltcalc2 `edln`, cltcalc3 `1 + edln` (heals edln exactly); Holy Nova cltcalc2 = cltcalc3 (heals that
 value); Fist of the Heavens has no cltcalc, so its bolts heal by their 21..22 roll.
 
-Not ported: the non-player 64 KB pointer accident in step 3; PD2's PvP arena gate (PvP is cut).
+Not ported: the non-player 64 KB pointer accident in step 3; PD2's PvP arena gate (PvP is cut). Without that gate, two hostile players without a party also heal each other (owner-approved). An ownerless missile goes
+straight to D2R's srvhit 7: in PD2 it is its own owner and no test passes.
