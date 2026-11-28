@@ -4,7 +4,11 @@ Project Diablo II rebuilt as a Diablo II: Resurrected mod.
 
 [Discord](https://discord.com/invite/KWGqVxmpDR) | [Launcher](https://github.com/synpoox/resurrected-launcher)
 
-**Status: alpha 0.2.7** ([roadmap](docs/roadmap.md), [changelog](CHANGELOG.md), [how it differs from PD2](docs/deviations.md)).
+**Status: alpha 0.2.7** · Single-player and TCP/IP co-op (beta) playable
+
+[Install](#install) · [Roadmap](#roadmap) · [Upcoming content](#upcoming-content) · [Changelog](CHANGELOG.md) · [Known differences](docs/deviations.md)
+
+**Alpha notice:** Back up characters before updating; save compatibility is not guaranteed. TCP/IP co-op is in beta; bugs and incomplete functionality may remain.
 
 ## Requirements
 
@@ -22,7 +26,9 @@ Choose Reign of the Warlock at character creation for the PD2 gameplay port.
 2. Go to `Settings` and select your D2R directory.
 3. Click `Install` from the main screen. 
 
-### Manual
+<details>
+<summary>Manual installation and updates</summary>
+
 1. Unpack `PD2Resurrected-<version>.7z` into `<D2R folder>\mods\`, so that
    `mods\PD2Resurrected\PD2Resurrected.mpq\modinfo.json` exists.
 2. Make `PD2Resurrected` D2RLoader's default mod (once): in D2RLoader's settings, or with
@@ -31,31 +37,71 @@ Choose Reign of the Warlock at character creation for the PD2 gameplay port.
 
 To update, delete `mods\PD2Resurrected\PD2Resurrected.mpq\data` first, also delete `mods\PD2Resurrected\d2rloader\plugins\core-maps.dll` if it is there (the old name of `core-events.dll`; both loaded together would hook the game twice), then unpack the new release the same way.
 
+</details>
+
 ### Linux
 
 Runs under Wine/Proton with the manual install: [docs/linux.md](docs/linux.md).
 
+## Roadmap
+
+![Progression roadmap: core gameplay complete; play with friends via TCP/IP co-op playable in beta; endgame expansion and gameplay and content development in progress; Warlock rework planned; original PD2 maps and hosted multiplayer exploratory.](docs/roadmap-art/development-roadmap.svg)
+
+<details>
+<summary>What's playable right now?</summary>
+
+- All seven original PD2 classes and the adapted Warlock.
+- PD2 items, runewords, crafting and corruption.
+- Tier I–III maps, map events and invaders.
+- Uber Tristram, Diablo Clone, Rathma and Mendeln, and Lucion with Desecration (testing and polish remain).
+- 10×8 inventory, charm rows, 4×4 Cube and dedicated stash tabs.
+- Seven loot filters and controller improvements.
+- TCP/IP co-op (beta).
+
+</details>
+
+## Upcoming content
+
+<p>
+<a href="https://github.com/synpoox/pd2-resurrected/issues/1721"><img src="docs/roadmap-art/endgame.svg" width="350" alt="Endgame expansion: IN DEVELOPMENT"></a>
+<a href="https://github.com/synpoox/pd2-resurrected/issues/2127"><img src="docs/roadmap-art/coop-polish.svg" width="350" alt="Co-op improvements: IN DEVELOPMENT"></a>
+<a href="https://github.com/synpoox/pd2-resurrected/issues/1545"><img src="docs/roadmap-art/visuals.svg" width="350" alt="Visual improvements: IN DEVELOPMENT"></a>
+<a href="https://github.com/synpoox/pd2-resurrected/issues/1644"><img src="docs/roadmap-art/warlock-planned.svg" width="350" alt="Warlock rework: PLANNED"></a>
+<a href="https://github.com/synpoox/pd2-resurrected/issues/339"><img src="docs/roadmap-art/guilds-exploratory.svg" width="350" alt="Guilds: EXPLORATORY"></a>
+<a href="https://github.com/synpoox/pd2-resurrected/issues/1713"><img src="docs/roadmap-art/cosmetics.svg" width="350" alt="Cosmetic rewards: EXPLORATORY"></a>
+</p>
+
+<details>
+<summary>Ongoing polish and known differences</summary>
+
+- Stability, save safety, skill and item accuracy, HD effects, animations, replacement artwork and controller usability remain ongoing priorities.
+- PD2R currently uses D2R-native maps and arenas; restoring original PD2 map layouts in HD is exploratory. Terror Zones replace corrupted zones; D2R's Uber Ancients remain. Dedicated PvP content is not in scope.
+- Original PD2 maps, hosted multiplayer, three new Warlock skills, guilds and cosmetics are not guaranteed commitments.
+
+</details>
+
+No fixed release dates have been announced. Features can progress in parallel and plans may change as testing progresses.
+
+[Technical roadmap](docs/roadmap.md) · [Detailed differences from PD2](docs/deviations.md)
+
 ## Loot Filters
 
-The mod ships the [Pyre Loot Filter](https://github.com/Pyre-Flies/D2R-Mods/blob/main/plugins/pyre-lootfilter/README.md)
-plugin with seven filters made in the builder.
+The mod ships [Pyre Loot Filter](https://github.com/Pyre-Flies/D2R-Mods/blob/main/plugins/pyre-lootfilter/README.md) with seven profiles, from Starter (default) to Endgame.
 
-- Edit or make a filter: [PD2R loot filter builder](https://synpoox.github.io/pd2r-lootfilter/), built from this mod's own item data. In Chrome or Edge it can save straight into the game folder.
-- All seven strictness levels ship in `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter\` (Starter, Regular, Semi strict, Strict, Very strict, Ultra strict, Endgame), built with the builder in its Resurrected theme. Starter is the default.
-- To switch, open Esc > Loot Filter and pick a filter (or Off) from the Loot Filter Profile dropdown: it loads at once. The same screen holds the plugin's toggles. The pick is saved to `<D2R folder>\mods\PD2Resurrected\d2rloader\config\pyre-lootfilter.toml` (`selected_filter`), which updates keep.
-- Your own filter: open a shipped one in the builder, save it under a new name into the `filter\` folder and point `selected_filter` at it. Don't edit the shipped `pd2r-*.json` files: a new release overwrites them. D2R's own `.fltr` filters can't be picked or applied while this plugin is installed; a pick you made without it comes back if you remove it.
+- Switch profiles or disable filtering in **Esc > Loot Filter**. Changes apply immediately and persist across updates.
+- Create or edit a filter in the [PD2R loot filter builder](https://synpoox.github.io/pd2r-lootfilter/). Chrome and Edge can save directly to the game folder.
+- Save custom filters under a new name in `<D2R folder>\mods\PD2Resurrected\d2rloader\config\filter\`. Set `selected_filter` in `pyre-lootfilter.toml` to use your custom filter.
+- Updates replace shipped `pd2r-*.json` files, not custom filters. Native D2R `.fltr` filters are unavailable while Pyre is installed.
 
-A new release replaces the shipped `filter\pd2r-*.json` files and keeps your own.
+## Controller Support
 
-## Controller
+The included Controller QOL Updates plugin (PyreFly) adds the following controls:
 
-Every controller control the mod ships, with its source and status: [docs/controller.md](docs/controller.md).
+- **RT / RB:** change main menu page / skill tab (reversed from D2R). Use `qol menu on/off` in the console to toggle.
+- **LB + X / A / Y:** pick up labeled ground items. Potions go to the belt.
+- **Right stick:** aim cursor with nearby enemy snapping.
 
-The mod ships the Controller QOL Updates plugin (PyreFly), which changes some of D2R's controller buttons:
-
-- RT changes the main menu page and RB changes the skill tab. This is the reverse of normal D2R. The config file can't switch it back; the console command `qol menu on/off` does.
-- Hold LB to label the items on the ground with X, A and Y. Then LB+X, LB+A or LB+Y picks that item up. Potions go to the belt.
-- The right stick moves the aim cursor. It snaps to monsters near the cursor.
+[Full controller controls and status](docs/controller.md)
 
 ## Cut features
 

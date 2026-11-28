@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="350" height="50" viewBox="0 0 350 50" role="img" aria-labelledby="title desc">
+<title id="title">Cosmetic rewards</title><desc id="desc">EXPLORATORY</desc>
+<rect x=".5" y=".5" width="349" height="49" rx="8" fill="#16191f" stroke="#343a44"/>
+<rect x="8" y="7" width="39" height="36" rx="6" fill="#242830" stroke="#424851"/>
+<g transform="translate(13 10) scale(.6)" stroke="#e0b57f" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" fill="none"><path d="M24 5c10 0 17 8 17 20s-7 20-17 20S7 37 7 25 14 5 24 5z M24 12c6 0 11 6 11 13s-5 13-11 13-11-6-11-13 5-13 11-13z M24 19l3 6-3 6-3-6z"/></g>
+<text x="57" y="20" font-family="Arial, Helvetica, sans-serif" font-size="16" font-weight="700" fill="#f1eee8" >Cosmetic rewards</text>
+<text x="57" y="36" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="700" fill="#a4adba" letter-spacing=".5">EXPLORATORY</text>
+<path d="M333 21l4 4-4 4" stroke="#a4adba" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
