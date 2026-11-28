@@ -35,9 +35,5 @@ for a held stack and rejects the second purchase before charging gold.
 | Flee, wander and stationary Blink | Slot2, level 99, Hell, no mercenary. Force `core-events event treasure` before opening a map. Follow a Fallen in open ground and near an obstruction; use `core-events life 85 unit <id>` for gradual drops and `core-events kill unit <id>` for death. | Flees using the AI target, wanders between attempts, and uses Blink after repeated stationary observations within distance 10; ten loot rolls in total. |
 
 `treasure_fallen_check` covers the stationary threshold, distance boundary, reset on movement,
-PD2's x*y comparison and Blink's per-axis 2-4-cell direction. Gameplay is reserved for owner
-validation; no automated game check was run for this revision, as requested.
-
-Revision validation: all 22 C++ host checks passed; all four rebuilt plugin DLL hashes
-match the Slot2 copies. Slot2 retains `PD2Resurrected-Slot2/` as its save path and the
-existing `owner-open-prs` manual lock. The game was left closed for owner testing.
+PD2's x*y comparison and Blink's per-axis 2-4-cell direction.
+The owner ran the game check above and it passed.
