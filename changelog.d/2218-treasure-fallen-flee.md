@@ -1,1 +1,1 @@
-- Treasure Fallen now runs from nearby players instead of attacking (#2218).
+- Treasure Fallen now flees, wanders and Blinks like PD2 (#2218).

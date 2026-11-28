@@ -302,6 +302,12 @@ target_include_directories(menu_text_check PRIVATE common)
 target_compile_features(menu_text_check PRIVATE cxx_std_20)
 core_options(menu_text_check)
 
+# Treasure Fallen's stationary recovery and Blink direction (#2218).
+add_executable(treasure_fallen_check EXCLUDE_FROM_ALL tests/treasure_fallen_check.cpp)
+target_include_directories(treasure_fallen_check PRIVATE core-events)
+target_compile_features(treasure_fallen_check PRIVATE cxx_std_20)
+core_options(treasure_fallen_check)
+
 # Under build.ps1 -Tests (MODKIT_BUILD_TESTS=ON) every *_check program is built and run by ctest; otherwise they stay out of `all` (#1949).
 if(MODKIT_BUILD_TESTS)
 	enable_testing()
