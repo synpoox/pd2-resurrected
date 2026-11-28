@@ -8,7 +8,7 @@
 // checkbox button whose ticked art this plugin shows and hides. A dropdown row is D2R's own DropdownListWidget with
 // static states (rows.h); no SDK call reads or sets its pick, so this plugin calls D2R's panel fetch, child find and
 // dropdown select, found by signature, and reads the picked state from the widget. A missing signature leaves the
-// dropdowns off. Sliders and status rows need runtime text: refused (Unavailable), they stay toml-only.
+// dropdowns off. Sliders need runtime text: refused (Unavailable), toml-only. Status rows are accepted, never shown.
 // A click applies at once (the Options panel's own Apply button does not cover plugin rows).
 //
 // Pyre's rows sit in this plugin's own panel (aa-settings-host/lootfilterhd.json, #2240, #2243). While Pyre has rows,
@@ -325,8 +325,18 @@ auto __cdecl Refuse(const void*, abi::RowHandle*) noexcept -> abi::Result {
 auto __cdecl SetSlider(abi::RowHandle, int32_t) noexcept -> abi::Result {
 	return abi::Result::InvalidArgument;
 }
-auto __cdecl SetStatus(abi::RowHandle, const char*) noexcept -> abi::Result {
-	return abi::Result::InvalidArgument;
+// A status row is accepted but never shown: a refusal makes Pyre log a warning at startup (#2244).
+// Find() never matches this handle, so RemoveRow ignores it.
+inline constexpr abi::RowHandle HiddenStatus = UINT64_MAX;
+auto __cdecl AddStatus(const void* spec, abi::RowHandle* handle) noexcept -> abi::Result {
+	if (spec == nullptr || handle == nullptr) {
+		return abi::Result::InvalidArgument;
+	}
+	*handle = HiddenStatus;
+	return abi::Result::Success;
+}
+auto __cdecl SetStatus(abi::RowHandle handle, const char*) noexcept -> abi::Result {
+	return handle == HiddenStatus ? abi::Result::Success : abi::Result::InvalidArgument;
 }
 
 constexpr abi::ServiceV1 Service {
@@ -340,7 +350,7 @@ constexpr abi::ServiceV1 Service {
 	.addDropdown = AddDropdown,
 	.setDropdown = SetDropdown,
 	.setDropdownOptions = SetDropdownOptions,
-	.addStatus = Refuse,
+	.addStatus = AddStatus,
 	.setStatus = SetStatus,
 };
 
