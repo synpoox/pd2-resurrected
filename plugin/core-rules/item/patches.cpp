@@ -195,12 +195,10 @@ StunFn g_stunApply = nullptr;
 // and MissileOwner 0x490300 (no SDK service resolves a unit's owner). A first stun is untouched. Server side, so it
 // holds for joined clients.
 constexpr int StunnedState = 21;
-constexpr int MonsterDataAi = 0x30;  // 0x4a53c0 asserts on a monster without its AI block: checked before the call
 auto StunOwnerStep(Unit* unit, AiOwnerFn aiOwner) noexcept -> Unit* {
 	switch (At<int32_t>(unit, d2r::rva::UnitType)) {
 	case 1: {
-		const auto* data = At<const uint8_t*>(unit, d2r::rva::UnitData);
-		return data != nullptr && At<void*>(data, MonsterDataAi) != nullptr ? aiOwner(unit) : nullptr;
+		return pd2r::skills::MonsterAiOwner(unit) != nullptr ? aiOwner(unit) : nullptr;
 	}
 	case 3:
 		return d2r::Engine<Unit* (*)(Game*, Unit*) noexcept>(d2r::sig::MissileOwner)(At<Game*>(unit, d2r::rva::UnitGame), unit);

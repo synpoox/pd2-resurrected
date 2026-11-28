@@ -1,0 +1,1 @@
+- Fix crashes during monster special attacks while keeping summon ownership and reach. (#2269)

@@ -302,6 +302,11 @@ target_include_directories(menu_text_check PRIVATE common)
 target_compile_features(menu_text_check PRIVATE cxx_std_20)
 core_options(menu_text_check)
 
+# Shared ownership: server AI, client sentinel, corpse IDs and bounded nested owners (#2269).
+add_executable(ownership_check EXCLUDE_FROM_ALL tests/ownership_check.cpp)
+target_link_libraries(ownership_check PRIVATE core_common)
+core_options(ownership_check)
+
 # Under build.ps1 -Tests (MODKIT_BUILD_TESTS=ON) every *_check program is built and run by ctest; otherwise they stay out of `all` (#1949).
 if(MODKIT_BUILD_TESTS)
 	enable_testing()

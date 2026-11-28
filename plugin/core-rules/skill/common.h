@@ -7,6 +7,7 @@
 #include "log.h"
 #include "pd2_engine.h"
 #include "sig.h"
+#include "ownership.h"
 
 #include <atomic>
 #include <cstddef>
@@ -281,35 +282,6 @@ extern std::atomic<uint32_t> g_splashStarts;
 template <typename Fn>
 auto VanillaSlot(uint64_t table, int slot) noexcept -> Fn {
 	return *reinterpret_cast<Fn*>(d2r::imageBase + table + static_cast<uint64_t>(slot) * 8);
-}
-
-// PD2's Find guard: a corpse whose owner is a player (a summon or minion) can't be searched. D2R's unowned units
-// carry id 0 or -1 here; both pass.
-
-// PD2's Find guard: a corpse whose owner is a player (a summon or minion) can't be searched. D2R's unowned units
-// carry id 0 or -1 here; both pass.
-// Summons can record ownership only in the monster AI block (#2035); see Redemption #1987.
-// The monster data's AI block (unit data +0x30) and its owner id / type, as 0x4a5800 writes and 0x4a53c0 reads them
-constexpr int MonDataAi = 0x30, AiOwnerId = 0x68, AiOwnerType = 0x6c;
-inline auto MonsterAiOwner(const Unit* target) noexcept -> const uint8_t* {
-	using namespace d2r::rva;
-	const auto* data = target != nullptr && At<int32_t>(target, UnitType) == UnitMonster
-	    ? At<uint8_t*>(target, UnitData) : nullptr;
-	return data != nullptr ? At<uint8_t*>(data, MonDataAi) : nullptr;
-}
-inline auto ValidOwnerId(uint32_t id) noexcept -> bool {
-	return id != 0 && id != UINT32_MAX;
-}
-inline auto OwnedByPlayer(const Unit* target) noexcept -> bool {
-	using namespace d2r::rva;
-	if (target == nullptr) {
-		return false;
-	}
-	if (At<int32_t>(target, UnitOwnerType) == 0 && ValidOwnerId(At<uint32_t>(target, UnitOwnerId))) {
-		return true;
-	}
-	const auto* ai = MonsterAiOwner(target);
-	return ai != nullptr && At<int32_t>(ai, AiOwnerType) == 0 && ValidOwnerId(At<uint32_t>(ai, AiOwnerId));
 }
 
 // PD2's 46 bosses whose corpses can't be searched (map, uber and PD2-only-area bosses; docs/research/skills/w10-barbarian.md),

@@ -336,27 +336,9 @@ auto WoundsByLevel(int32_t level) noexcept -> int32_t {
 // PD2's 0x103749f0 (unit, 1) is a player: the monster's owner, or its owner's owner, is a player (a summon, a
 // hireling, a summon's own minion)
 auto OwnedByPlayer(Game* game, Unit* unit) noexcept -> bool {
-	using namespace d2r::rva;
-	for (int depth = 0; depth < 2 && unit != nullptr && At<int32_t>(unit, UnitType) == 1; ++depth) {
-		if (pd2r::skills::OwnedByPlayer(unit)) {
-			return true;
-		}
-		const int32_t type = At<int32_t>(unit, UnitOwnerType);
-		const uint32_t id = At<uint32_t>(unit, UnitOwnerId);
-		const auto find = d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(FindUnit);
-		Unit* owner = type == UnitMonster && pd2r::skills::ValidOwnerId(id) ? find(game, UnitMonster, id) : nullptr;
-		if (owner == nullptr) {
-			const auto* ai = pd2r::skills::MonsterAiOwner(unit);
-			if (ai != nullptr && At<int32_t>(ai, pd2r::skills::AiOwnerType) == UnitMonster) {
-				const uint32_t aiId = At<uint32_t>(ai, pd2r::skills::AiOwnerId);
-				if (pd2r::skills::ValidOwnerId(aiId)) {
-					owner = find(game, UnitMonster, aiId);
-				}
-			}
-		}
-		unit = owner;
-	}
-	return false;
+	return pd2r::skills::PlayerOwnedMonster(unit, [game](const Unit*, uint32_t id) {
+		return d2r::Engine<Unit* (*)(Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit)(game, d2r::rva::UnitMonster, id);
+	});
 }
 
 // PD2's list step (event 15, step 7) on one unit: below 3 stacks the hit adds to the old list's damage and a stack; at 3

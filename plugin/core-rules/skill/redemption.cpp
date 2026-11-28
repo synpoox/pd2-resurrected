@@ -47,21 +47,10 @@ using RedemptionCorpseFn = int32_t (*)(Game*, Unit*, Unit*, int32_t, int32_t, in
 
 RedemptionCorpseFn g_redemptionCorpse = nullptr;
 
-// D2R's summon spawn (0x4350e0, Raise Skeleton's and the other pets') never sets the unit's owner (+0xe8 / +0xec, only
-// some paths call the setter 0x3519e0); it links the pet in the monster's AI block (0x4a5800: +0x68 id, +0x6c type), which
-// the owner getter 0x4a53c0 reads and the death path (0x44db20 -> 0x4a5f70) leaves set. So both are tested.
-
-// D2R's summon spawn (0x4350e0, Raise Skeleton's and the other pets') never sets the unit's owner (+0xe8 / +0xec, only
-// some paths call the setter 0x3519e0); it links the pet in the monster's AI block (0x4a5800: +0x68 id, +0x6c type), which
-// the owner getter 0x4a53c0 reads and the death path (0x44db20 -> 0x4a5f70) leaves set. So both are tested.
-auto RedemptionOwned(Unit* corpse) noexcept -> bool {
-	return OwnedByPlayer(corpse);
-}
-
-
+// Ownership IDs survive death; the shared helper reads AI fields only on server units.
 auto RedemptionCorpse(Game* game, Unit* unit, Unit* corpse, int32_t skillId, int32_t level, int32_t flag) noexcept
     -> int32_t {
-	const bool owned = corpse != nullptr && RedemptionOwned(corpse);
+	const bool owned = corpse != nullptr && OwnedByPlayer(corpse);
 	const int32_t taken = owned ? 0 : g_redemptionCorpse(game, unit, corpse, skillId, level, flag);
 	return taken;
 }

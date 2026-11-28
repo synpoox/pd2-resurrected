@@ -46,6 +46,10 @@ constexpr const char* MeleeRangePattern = "40 55 56 57 48 83 ec 50 48 8b f9 48 8
 // MeleeRoll: mov r8d,[rsp+0x88] (last arg) / xor r9d,r9d / add r8d,eax (UnitReach) / mov rdx,rdi / mov rcx,rsi / call
 constexpr const char* RollReachCall = "44 8b 84 24 88 00 00 00 45 33 c9 44 03 c0 48 8b d7 48 8b ce e8";
 constexpr int RollReachCallAt = 20;
+// RosterPets owner-id getter, 0x13aba0 on image 0x6ab3782c; pattern starts at +14,
+// past an entry hook. Native client roster lookup is required: pets can have empty unit owner fields.
+constexpr const char* ClientPetOwnerPattern = "8b 40 0c 48 83 c4 28 c3 b8 ff ff ff ff 48 83 c4 28 c3";
+pd2r::skills::ClientPetOwnerFn g_clientPetOwner = nullptr;
 // srvdo 76: flags 3 / mov rcx,r13 / radius 5 / call NearestTarget
 constexpr const char* WhirlSearchCall = "c7 44 24 28 03 00 00 00 49 8b cd c7 44 24 20 05 00 00 00 e8";
 constexpr int WhirlSearchCallAt = 19;
@@ -93,14 +97,20 @@ struct Nearest {
 
 enum class Owner { None, Monster, Player };
 
-// 0x10374a60 by the unit's owner fields. shortcut: a monster owned by a monster counts as a monster (PD2 asks that
-// owner's owner too); missiles get no growth. Upgrade if a player's summon summons.
+// PD2 ownership on both sides; missiles get no growth.
 auto OwnerOf(const Unit* unit) noexcept -> Owner {
 	switch (At<int32_t>(unit, d2r::rva::UnitType)) {
 	case 0:
 		return Owner::Player;
 	case 1: {
-		return pd2r::skills::OwnedByPlayer(unit) ? Owner::Player : Owner::Monster;
+		const bool player = pd2r::skills::PlayerOwnedMonster(unit, [](const Unit* child, uint32_t id) {
+			if (pd2r::skills::IsServerUnit(child)) {
+				return d2r::Engine<Unit* (*)(d2r::Game*, int32_t, uint32_t) noexcept>(d2r::sig::FindUnit)(
+				    At<d2r::Game*>(child, d2r::rva::UnitGame), d2r::rva::UnitMonster, id);
+			}
+			return d2r::Engine<Unit* (*)(uint32_t, int32_t) noexcept>(d2r::sig::ClientFindUnit)(id, d2r::rva::UnitMonster);
+		}, g_clientPetOwner);
+		return player ? Owner::Player : Owner::Monster;
 	}
 	default:
 		return Owner::None;
@@ -209,6 +219,10 @@ auto ScanOff(int matches) noexcept -> const char* {
 auto InstallMeleeReach(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
 	using sigscan::State;
 	uint64_t rva = 0;
+	const int ownerN = sigscan::ScanUnique(context->exeBase, ClientPetOwnerPattern, -14, &rva);
+	if (ownerN == 1) {
+		g_clientPetOwner = reinterpret_cast<pd2r::skills::ClientPetOwnerFn>(context->exeBase + rva);
+	}
 	const int rangeN = sigscan::ScanUnique(context->exeBase, MeleeRangePattern, 0, &rva);
 	if (rangeN == 1) {
 		g_meleeRange = reinterpret_cast<RangeFn>(context->exeBase + rva);
@@ -219,10 +233,14 @@ auto InstallMeleeReach(const D2RL::PluginContext* context, char* report, size_t 
 	}
 	const char* testOff = nullptr;
 	const char* testPart = nullptr;
-	if (rangeN != 1) {
+	if (ownerN != 1) {
+		testPart = "ClientPetOwnerPattern"; testOff = ScanOff(ownerN);
+	} else if (rangeN != 1) {
 		testPart = "MeleeRangePattern"; testOff = ScanOff(rangeN);
 	} else if (rollN != 1) {
 		testPart = "RollReachCall"; testOff = ScanOff(rollN);
+	} else if (d2r::sig::FindUnit.state != State::Ok || d2r::sig::ClientFindUnit.state != State::Ok) {
+		testPart = "owner lookup"; testOff = "the shared signature did not resolve";
 	} else if (d2r::sig::UnitReach.state != State::Ok) {
 		testPart = "UnitReach"; testOff = "the shared signature did not resolve";
 	} else if (d2r::sig::UnitInReach.state != State::Ok) {
@@ -242,8 +260,12 @@ auto InstallMeleeReach(const D2RL::PluginContext* context, char* report, size_t 
 	}
 	const char* searchOff = nullptr;
 	const char* searchPart = nullptr;
-	if (rangeN != 1) {
+	if (ownerN != 1) {
+		searchPart = "ClientPetOwnerPattern"; searchOff = ScanOff(ownerN);
+	} else if (rangeN != 1) {
 		searchPart = "MeleeRangePattern"; searchOff = ScanOff(rangeN);
+	} else if (d2r::sig::FindUnit.state != State::Ok || d2r::sig::ClientFindUnit.state != State::Ok) {
+		searchPart = "owner lookup"; searchOff = "the shared signature did not resolve";
 	} else if (areaN != 1) {
 		searchPart = "AreaIterateCall"; searchOff = ScanOff(areaN);
 	} else if (d2r::sig::UnitRoom.state != State::Ok) {
