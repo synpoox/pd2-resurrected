@@ -8,7 +8,9 @@ namespace {
 
 constexpr int StockSlot = 1;                // srvhit 1; slots 61-70, the free ones, are all taken
 constexpr int16_t SkillHydra = 62;          // the Sorceress Hydra, hydrafireball's Skill column
-constexpr int32_t PierceResult = 6;         // PD2's: deal the missile's hit damage (2), keep flying (4)
+// PD2's value. D2R's dispatcher (0x4639a0) stops after the hit on bit 4, so no kill and no bit-2 damage: the
+// damage is the explosion's. LastCollide 1 keeps the fireball from re-hitting the unit it just hit.
+constexpr int32_t PierceResult = 6;
 
 MissileSrvHitFn g_stock = nullptr;  // D2R's srvhit 1: the explosion, result 1 (die)
 
