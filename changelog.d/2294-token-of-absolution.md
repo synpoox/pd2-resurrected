@@ -1,0 +1,1 @@
+- Fix Token of Absolution use to refund skill and stat points (#2294).
