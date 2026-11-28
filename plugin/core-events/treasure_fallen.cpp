@@ -2,13 +2,13 @@
 // the monster's treasure class once for each 10% of life lost while it is hit (n counts them), and its death step
 // (0x10378d10) drops the rest, 9 - n times, so the stock death drop makes it 10 rolls in all. D2R does neither: one roll.
 //
-// Think: class 962 (treasurefallenMap) on monai row 6 runs the per-10% drop, then D2R's own Fallen think. PD2's flee
-// from the player is not ported (docs/deviations.md). D2R's think keeps its own state in AI param 0, so n lives in a small
-// table here, per game and unit. Death: a monster-death listener drops 9 - n more and clears the slot.
+// Think: class 962 (treasurefallenMap) on monai row 6 runs the per-10% drop, then walks away from players (#2218).
+// n lives in a small table here, per game and unit. Death: a monster-death listener drops 9 - n more and clears the slot.
 // Both drops go through D2R's MonsterTcDrop. PD2 passes no killer; D2R's drop reads one for the quality roll, so the
 // killer is a player (the tick's target or the nearest one) and no player means no drop.
 // D2R's Fallen think is found by a signature of its own (an entry here, not a d2r::sig one); the part is off without it.
 #include "treasure_fallen.h"
+#include "treasure_fallen_movement.h"
 
 #include "ai_common.h"
 #include "ai_hooks.h"
@@ -35,7 +35,13 @@ constexpr size_t Slots = 16;                    // at most 3 fallen a map
 // 93847: 0x5ae650, monai row 6's think (reference only), read from the AI table
 sigscan::Entry AiFallen {"AiFallen", "ai", sigscan::Kind::Code, 0, 0,
                          "4c 89 44 24 18 55 56 41 55 41 56 48 81 ec 88 00 00 00 48 8b e9 49 8b f0 48 8b ca 4c 8b f2 e8 ?? ?? ?? ??"};
-sigscan::Entry* const Own[] = {&AiFallen};
+// The SDK has no monster movement service. Call the native AI tactics used by PD2's think.
+// Build 93847 references: RunAway 0x4a7df0; Wander 0x4a8320. Patterns start past hookable entries.
+sigscan::Entry RunAway {"TreasureFallenRunAway", "ai", sigscan::Kind::Code, -18, 0,
+                       "49 8b d8 48 8b fa 4c 8b f9 48 85 d2 74 05 48 85 db 75 26"};
+sigscan::Entry Wander {"TreasureFallenWander", "ai", sigscan::Kind::Code, -16, 0,
+                      "41 56 41 57 48 83 ec 40 41 0f b6 e8 48 8b da 4c 8b f1 48 85 d2 75 13"};
+sigscan::Entry* const Own[] = {&AiFallen, &RunAway, &Wander};
 
 struct Count {
 	bool used;
@@ -102,6 +108,62 @@ void CheckGame(Game* game) noexcept {
 	g_frame = frame;
 }
 
+// PD2 0x1035a3c0: flee the AI target, wander between attempts, Blink when stationary nearby.
+void Flee(Game* game, Unit* unit, uint8_t* tick) noexcept {
+	using namespace d2r::rva;
+	const auto mode = At<int32_t>(unit, UnitMode);
+	if (mode == MonModeDeath || mode == MonModeDead) {
+		return;
+	}
+	d2r::Engine<void (*)(Game*, Unit*, uint32_t, int32_t) noexcept>(d2r::sig::RemoveUnitEvent)(game, unit, 2, 0);
+	const auto idle = d2r::Engine<void (*)(Game*, Unit*, int32_t) noexcept>(d2r::sig::AiIdle);
+	if (mode != 1 || tick == nullptr) {
+		idle(game, unit, 10);
+		return;
+	}
+	uint32_t* seed = d2r::Engine<uint32_t* (*)(Unit*) noexcept>(d2r::sig::UnitSeed)(unit);
+	const auto wander = reinterpret_cast<void (*)(Game*, Unit*, uint8_t) noexcept>(Wander.address);
+	Unit* target = At<Unit*>(tick, AiTickTarget);
+	if (target == nullptr) {
+		if (d2r::RandomBelow(seed, 3) == 0) {
+			wander(game, unit, 10);
+		} else {
+			idle(game, unit, 10);
+		}
+		return;
+	}
+	auto* control = At<uint8_t*>(tick, AiTickControl);
+	if (control != nullptr && At<void*>(unit, UnitPath) != nullptr && At<void*>(target, UnitPath) != nullptr) {
+		int32_t x = 0, y = 0, tx = 0, ty = 0;
+		d2r::UnitXY(unit, &x, &y);
+		d2r::UnitXY(target, &tx, &ty);
+		const auto movement = treasure_fallen::Track(
+			*reinterpret_cast<uint32_t*>(control + AiControlParams + 4),
+			*reinterpret_cast<int32_t*>(control + AiControlParams + 8),
+			x, y, At<int32_t>(tick, AiTickDistance));
+		if (movement == treasure_fallen::Movement::Blink) {
+			const int32_t bx = treasure_fallen::BlinkCoordinate(x, tx, d2r::RandomBelow(seed, 3));
+			const int32_t by = treasure_fallen::BlinkCoordinate(y, ty, d2r::RandomBelow(seed, 3));
+			const auto* record = At<const uint8_t*>(tick, AiTickMonStats);
+			if (record != nullptr) {
+				d2r::Engine<int32_t (*)(Game*, Unit*, uint8_t, int32_t, Unit*, int32_t, int32_t, uint8_t) noexcept>(
+					d2r::sig::AiUseSkill)(game, unit, 4, ai_common::Mon {record}.Skill(1), nullptr, bx, by, 0);
+			} else {
+				idle(game, unit, 10);
+			}
+			return;
+		}
+		if (movement == treasure_fallen::Movement::Wander) {
+			wander(game, unit, 4);
+			return;
+		}
+	}
+	reinterpret_cast<int32_t (*)(Game*, Unit*, Unit*, uint8_t, int32_t) noexcept>(RunAway.address)(game, unit, target, 7, 0);
+	if (d2r::RandomBelow(seed, 2) == 0) {
+		wander(game, unit, 4);
+	}
+}
+
 void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 	using namespace d2r::rva;
 	CheckGame(game);
@@ -120,7 +182,7 @@ void Think(Game* game, Unit* unit, uint8_t* tick) noexcept {
 			}
 		}
 	}
-	ai_registry::Vanilla(FallenRow)(game, unit, tick);
+	Flee(game, unit, tick);
 }
 
 void OnDeath(const D2RL::PluginContext*, const D2RL::Lifecycle::MonsterDeathEvent* event, void*) noexcept {
@@ -166,10 +228,12 @@ void OnDeath(const D2RL::PluginContext*, const D2RL::Lifecycle::MonsterDeathEven
 }  // namespace
 
 auto InstallTreasureFallen(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
-	sigscan::Resolve(Own, 1, context->exeBase, nullptr, 0);
-	if (AiFallen.state != sigscan::State::Ok) {
-		std::snprintf(report, reportSize, "off: signature AiFallen %s", sigscan::StateText(AiFallen.state));
-		return 0;
+	sigscan::Resolve(Own, sizeof(Own) / sizeof(Own[0]), context->exeBase, nullptr, 0);
+	for (const auto* entry : Own) {
+		if (entry->state != sigscan::State::Ok) {
+			std::snprintf(report, reportSize, "off: signature %s %s", entry->name, sigscan::StateText(entry->state));
+			return 0;
+		}
 	}
 	const D2RL::LifecycleService* lifecycle = nullptr;
 	if (context->QueryService(&lifecycle) != D2RL::ServiceQueryResult::Success ||
@@ -188,7 +252,7 @@ auto InstallTreasureFallen(const D2RL::PluginContext* context, char* report, siz
 		std::snprintf(report, reportSize, "off: monster-death listener refused");
 		return 0;
 	}
-	std::snprintf(report, reportSize, "Treasure Fallen: a drop per 10%% of life lost, the rest on death (monai %d think)", FallenRow);
+	std::snprintf(report, reportSize, "Treasure Fallen: a drop per 10%% of life lost, the rest on death; flees (monai %d think)", FallenRow);
 	return 1;
 }
 

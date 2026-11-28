@@ -210,10 +210,19 @@ runs for every `Fallen`-row monster:
   record (`0x1037c1d0`) or a unit with no room (D2Common #10331, the path's room); else 1.13c's monster TC drop
   (D2Game `+0x75680`, thunk `0x1030f2b0`; D2R's `MonsterTcDrop` `0x447b80`) with the record `{0, monster, killer 0}`:
   no killer, so no player's magic find.
-- **Its movement** (the rest of `0x35a3c0`, not asked for, noted because the port runs D2R's stock Fallen think): it
-  tracks its own position in control `+0x18`/`+0x1c`; standing still 3+ ticks with the target closer than 10 it walks
-  to a spot 2-4 cells past its own position away from the target (`0x103a1880`), so it **runs from the player** rather
-  than fighting like a fallen. Not decoded further.
+- **Its movement** (fully decoded for #2218 from `0x1035a3c0`): uses the think tick's target, including a
+  non-player target. In neutral mode, with paths on both units, control `+0x18` stores **x*y** and `+0x1c` counts
+  repeated unchanged observations. A changed product resets the count and invokes the native flee tactic with
+  distance 7 and flag 0 (`0x103a2220`); a 50% roll then invokes wandering with radius 4 (`0x103a18b0`).
+  An unchanged product normally increments the count and wanders at radius 4. When the count is already greater
+  than 2 and tick distance is below 10, it instead casts monstats Skill1 (`Blink`, mode 4/A1) with no target,
+  choosing 2-4 cells independently on each axis, **toward** the target (positive on equal coordinates), then
+  resets the count. This corrects the earlier note that described the recovery as walking away.
+- **No target / other modes.** In neutral mode without a target, one third of rolls wander at radius 10 and the
+  rest idle for 10 frames. Other living modes idle for 10. The think removes event type 2 before movement.
+  PD2 imports: `0x105e0a18` -> D2Game `0xf2d80` (flee); `0x105e0598` -> `0xf29b0` (wander);
+  `0x105e0a98` -> `0xf22c0` (idle). D2R build 93847 counterparts: `0x4a7df0`, `0x4a8320`, `0x4a6d10`.
+  The port uses D2R's native seeded random generator and tactics; it does not reproduce PD2's exact seed stream.
 
 ### Port plan (for a Sonnet implementer)
 

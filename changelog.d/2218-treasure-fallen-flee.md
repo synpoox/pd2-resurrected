@@ -1,0 +1,1 @@
+- Treasure Fallen now flees, wanders and Blinks like PD2 (#2218).

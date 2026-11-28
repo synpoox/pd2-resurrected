@@ -27,3 +27,13 @@ The server's scroll/tome buy path already handles the orb types, but the client'
 `npcmenu` prediction also needs the type test and stack finder redirects. Otherwise
 the client requests a free cell while the server expects destination 4/page 0xff
 for a held stack and rejects the second purchase before charging gold.
+
+# Treasure Fallen movement (#2218)
+
+| Change | Setup and action | Expected |
+|---|---|---|
+| Flee, wander and stationary Blink | Slot2, level 99, Hell, no mercenary. Force `core-events event treasure` before opening a map. Follow a Fallen in open ground and near an obstruction; use `core-events life 85 unit <id>` for gradual drops and `core-events kill unit <id>` for death. | Flees using the AI target, wanders between attempts, and uses Blink after repeated stationary observations within distance 10; ten loot rolls in total. |
+
+`treasure_fallen_check` covers the stationary threshold, distance boundary, reset on movement,
+PD2's x*y comparison and Blink's per-axis 2-4-cell direction.
+The owner ran the game check above and it passed.
