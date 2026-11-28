@@ -1,9 +1,9 @@
-#include "common.h"
 #include "registry.h"
 
 #include "log.h"
 #include "sig.h"
 
+#include <D2RLPlugin/mutations.h>
 #include <Windows.h>
 
 #include <cstdio>
@@ -11,7 +11,6 @@
 
 namespace {
 
-using pd2r::skills::SwapSlot;
 using d2r::Game;
 using d2r::Unit;
 
@@ -51,6 +50,34 @@ auto SrvDoCloak(Game* game, Unit* caster, int32_t skillId, int32_t skillLevel) n
 	return g_original(game, caster, skillId, skillLevel);
 }
 
+auto PatchCloakSlot(const D2RL::PluginContext* context, uint64_t original) noexcept -> bool {
+	using namespace D2RL::Mutations;
+	const D2RL::MutationService* mutations = nullptr;
+	TransactionHandle transaction = 0;
+	if (context->QueryService(&mutations) != D2RL::ServiceQueryResult::Success ||
+	    !D2RL::HasMutationServiceField(mutations, D2RL::MutationServiceRequiredSize) ||
+	    mutations->beginTransaction(context, &transaction) != Result::Success) {
+		return false;
+	}
+
+	const auto replacement = reinterpret_cast<uint64_t>(&SrvDoCloak);
+	const BytePatchRequest patch{
+	    .structSize = BytePatchRequestSize,
+	    .rva = d2r::sig::SrvDoTable.rva + SrvDoCloakSlot * sizeof(original),
+	    .expected = &original,
+	    .expectedSize = sizeof(original),
+	    .bytes = &replacement,
+	    .size = sizeof(replacement)};
+	OperationHandle operation = 0;
+	CommitResult result{.structSize = CommitResultSize};
+	if (mutations->stageBytePatch(context, transaction, &patch, &operation) != Result::Success ||
+	    mutations->commit(context, transaction, &result) != Result::Success) {
+		mutations->cancelTransaction(context, transaction);
+		return false;
+	}
+	return true;
+}
+
 }  // namespace
 
 auto InstallUberCloakRestriction(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
@@ -70,8 +97,7 @@ auto InstallUberCloakRestriction(const D2RL::PluginContext* context, char* repor
 	    sigscan::ScanUnique(context->exeBase, Pattern, -0x20, &originalRva) == 1) {
 		const auto original = context->exeBase + originalRva;
 		g_original = reinterpret_cast<SrvDoFn>(original);
-		const auto slot = d2r::sig::SrvDoTable.rva + SrvDoCloakSlot * sizeof(original);
-		on = SwapSlot(context, slot, original, reinterpret_cast<const void*>(&SrvDoCloak));
+		on = PatchCloakSlot(context, original);
 	}
 
 	plog::Info("uber cloak restriction: %s", on ? "on" : "FAILED");
