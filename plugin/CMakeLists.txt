@@ -326,6 +326,11 @@ target_include_directories(treasure_fallen_check PRIVATE core-events)
 target_compile_features(treasure_fallen_check PRIVATE cxx_std_20)
 core_options(treasure_fallen_check)
 
+# core-rules skills install results (#2286): core-rules/install_report.h has no engine types.
+add_executable(install_report_check EXCLUDE_FROM_ALL tests/install_report_check.cpp)
+target_include_directories(install_report_check PRIVATE core-rules)
+target_compile_features(install_report_check PRIVATE cxx_std_20)
+core_options(install_report_check)
 # Under build.ps1 -Tests (MODKIT_BUILD_TESTS=ON) every *_check program is built and run by ctest; otherwise they stay out of `all` (#1949).
 if(MODKIT_BUILD_TESTS)
 	enable_testing()

@@ -7,8 +7,11 @@
 #include <cstddef>
 #include <cstdint>
 
-// Writes every function into its slot; `report` gets one entry per slot. Returns how many were installed.
+// Installs every PD2R_SLOT and skill/ rule and keeps each result (install_report.h); `report` gets the one-line
+// installed/expected summary. Logs a WARN per partial and an ERROR per failed install. Returns how many were installed.
 auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int;
+// `core-rules installs [failed]`: the summary, then every install's result (or only the partial and failed ones).
+auto WriteInstallResults(const D2RL::ConsoleCommandContext* command, bool failedOnly) noexcept -> void;
 auto SkillFunctionCount() noexcept -> int;
 // Live counters for the status command.
 auto SkillFunctionCounters(char* out, size_t size) noexcept -> void;

@@ -14,6 +14,7 @@
 // another plugin already uses is refused and logged, never overwritten. Slots keep PD2's own numbers where free (docs/features/core-rules.md).
 #include "skill_functions.h"
 
+#include "install_report.h"
 #include "log.h"
 #include "missile_functions.h"
 #include "skill_router.h"
@@ -29,6 +30,7 @@ using namespace pd2r::skills;
 
 namespace {
 int g_skillTotal = 0;
+pd2r::installs::Report g_installs;  // the session's results: `core-rules installs`
 }  // namespace
 
 auto InstallRouter(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> bool {
@@ -95,25 +97,24 @@ PD2R_SLOT(68, MissileCltHit, 72, static_cast<MissileCltHitFn>(CltHitThrowPotion)
 
 auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, size_t reportSize) noexcept -> int {
 	static constexpr uint8_t Empty[8] = {};  // the slot must still be a null pointer
-	int installed = 0;
-	int total = 0;  // every rule tried below: SkillFunctionCount() reports it, so there is no literal to keep
-	size_t used = 0;
 	std::vector<SlotEntry> slots = Slots();  // each rule file adds its own (PD2R_SLOT), in the report's old order
 	std::sort(slots.begin(), slots.end(), [](const SlotEntry& x, const SlotEntry& y) { return x.order < y.order; });
 	for (const SlotEntry& f : slots) {
 		const Table& table = *f.table;
-		bool ok = f.slot >= table.firstFree && f.slot < table.slots;
-		if (ok) {
+		char name[96];
+		std::snprintf(name, sizeof(name), "%s %d %s", table.name, f.slot, f.name);
+		g_installs.Run("slot", name, 1, [&](char* why, size_t size) -> int {
+			if (f.slot < table.firstFree || f.slot >= table.slots) {
+				std::snprintf(why, size, "slot out of range (free %d-%d)", table.firstFree, table.slots - 1);
+				return 0;
+			}
 			const uint64_t rva = table.rva + static_cast<uint64_t>(f.slot) * 8;
-			ok = context->PatchWriteU64(rva, Empty, sizeof(Empty), reinterpret_cast<uint64_t>(f.function));
-		}
-		installed += ok ? 1 : 0;
-		++total;
-		if (used < reportSize) {
-			const int n = std::snprintf(report + used, reportSize - used, "%s %s %d %s%s", used ? ";" : "",
-			                            table.name, f.slot, f.name, ok ? "" : " FAILED (slot not empty or out of range)");
-			used += n > 0 ? static_cast<size_t>(n) : 0;
-		}
+			if (!context->PatchWriteU64(rva, Empty, sizeof(Empty), reinterpret_cast<uint64_t>(f.function))) {
+				std::snprintf(why, size, "slot not empty (D2R or another plugin uses it)");
+				return 0;
+			}
+			return 1;
+		});
 	}
 	// Every other install is a rule file of skill/ (skill/registry.h), sorted by (order, name): the temp buff, router
 	// and the other pre-existing installs run at negative orders, the new ones from 10, the mode gate and the rest from 320.
@@ -122,16 +123,47 @@ auto InstallSkillFunctions(const D2RL::PluginContext* context, char* report, siz
 		return x.order != y.order ? x.order < y.order : std::strcmp(x.name, y.name) < 0;
 	});
 	for (const pd2r::RuleEntry& rule : rules) {
-		if (rule.installN != nullptr) {
-			installed += rule.installN(context, report, reportSize);
-			total += rule.tried;
-		} else {
-			installed += rule.install(context, report, reportSize) ? 1 : 0;
-			++total;
+		g_installs.Run("rule", rule.name, rule.installN != nullptr ? rule.tried : 1, [&](char* text, size_t size) -> int {
+			return rule.installN != nullptr ? rule.installN(context, text, size) : rule.install(context, text, size) ? 1 : 0;
+		});
+	}
+	// Startup log: the part's one summary line (parts::InstallAll), plus a WARN or ERROR per install that fell short.
+	char line[pd2r::installs::DetailSize + 160];
+	for (const pd2r::installs::Result& r : g_installs.Results()) {
+		const pd2r::installs::Status s = r.status();
+		if (s != pd2r::installs::Status::Ok) {
+			pd2r::installs::Line(r, line, sizeof(line));
+			if (s == pd2r::installs::Status::Partial) {
+				plog::Warn("skills %s", line);
+			} else {
+				plog::Error("skills %s", line);
+			}
 		}
 	}
-	g_skillTotal = total;
-	return installed;
+	g_installs.Summary(report, reportSize);
+	g_skillTotal = g_installs.Expected();
+	return g_installs.Installed();
+}
+
+auto WriteInstallResults(const D2RL::ConsoleCommandContext* command, bool failedOnly) noexcept -> void {
+	char line[pd2r::installs::DetailSize + 160];
+	g_installs.Summary(line, sizeof(line));
+	command->plugin->WriteConsoleMessage(line);
+	plog::Info("installs %s", line);  // asked for: the full list also goes to the log, the only per-install success lines
+	int written = 0;
+	for (const pd2r::installs::Result& r : g_installs.Results()) {
+		if (failedOnly && r.status() == pd2r::installs::Status::Ok) {
+			continue;
+		}
+		pd2r::installs::Line(r, line, sizeof(line));
+		command->plugin->WriteConsoleMessage(line);
+		plog::Info("installs %s", line);
+		++written;
+	}
+	if (written == 0) {
+		command->plugin->WriteConsoleMessage(g_installs.Results().empty() ? "no installs ran: the skills part is off"
+		                                                                  : "no failed or partial installs");
+	}
 }
 
 auto SkillFunctionCount() noexcept -> int {

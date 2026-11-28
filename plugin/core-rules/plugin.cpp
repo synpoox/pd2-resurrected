@@ -65,9 +65,7 @@ constexpr D2RL::PluginInfo Info {
 };
 
 void InstallSkills(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char slots[2600] = "";
-	const int installed = InstallSkillFunctions(context, slots, sizeof(slots));
-	std::snprintf(report, size, "%d/%d installed:%s", installed, SkillFunctionCount(), slots);
+	InstallSkillFunctions(context, report, size);  // the summary line; `core-rules installs` lists each install (#2286)
 }
 
 void InstallItems(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
@@ -227,6 +225,19 @@ auto StatusCommand(D2R::Game::Client* client, const D2RL::ConsoleCommandContext*
 		command->plugin->WriteConsoleMessage(answer);
 		return queued ? D2RL::ConsoleCommandResult::Handled : D2RL::ConsoleCommandResult::Failed;
 	}
+	if (std::strncmp(args, "installs", 8) == 0 && (args[8] == '\0' || args[8] == ' ')) {
+		const char* rest = args + 8;
+		while (*rest == ' ') {
+			++rest;
+		}
+		const bool failedOnly = std::strncmp(rest, "failed", 6) == 0 && (rest[6] == '\0' || rest[6] == ' ');
+		if (*rest != '\0' && !failedOnly) {
+			command->plugin->WriteConsoleMessage("core-rules installs: usage `core-rules installs [failed]`");
+			return D2RL::ConsoleCommandResult::Failed;
+		}
+		WriteInstallResults(command, failedOnly);
+		return D2RL::ConsoleCommandResult::Handled;
+	}
 	char line[2500];
 	char image[200];
 	build_guard::Describe(image, sizeof(image), build_guard::ImageStamp(static_cast<uintptr_t>(g_context->exeBase)), D2RL::GetBuildVersion(g_context));
@@ -313,7 +324,7 @@ D2RL_PLUGIN_EXPORT auto D2RLoaderLoadPlugin(const D2RL::PluginContext* context) 
 	g_imageKnown = d2r::Bind(context->exeBase);
 	parts::InstallAll(g_parts, std::size(g_parts), context, PluginName, g_imageKnown);
 	return context->RegisterConsoleCommand(PluginName, StatusCommand,
-	                                       "PD2 Resurrected Core Rules: every part and its counters; `armageddon` (dev) turns a Phase Blade into the Armageddon Blade.");
+	                                       "PD2 Resurrected Core Rules: every part and its counters; `installs [failed]` lists each skills install; `armageddon` (dev) turns a Phase Blade into the Armageddon Blade.");
 }
 
 D2RL_PLUGIN_EXPORT void D2RLoaderUnloadPlugin() noexcept {

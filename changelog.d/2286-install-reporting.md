@@ -1,0 +1,1 @@
+- Startup log now names every failed engine rule; new `core-rules installs` lists each one. (#2286)
