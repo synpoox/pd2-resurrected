@@ -1,0 +1,1 @@
+- Fix lightning and missile thorns, including physical thorns' open wounds rolls (#2226).

@@ -313,6 +313,12 @@ target_include_directories(power_strike_check PRIVATE "${D2R_TOOLKIT_DIR}/plugin
 target_link_libraries(power_strike_check PRIVATE core_common)
 core_options(power_strike_check)
 
+# PD2's thorns handler and item dispatch, with host engine probes (#2226).
+add_executable(thorns_check EXCLUDE_FROM_ALL tests/thorns_check.cpp)
+target_include_directories(thorns_check PRIVATE core-rules/skill "${D2R_TOOLKIT_DIR}/plugin-template/src")
+target_link_libraries(thorns_check PRIVATE core_common)
+core_options(thorns_check)
+
 # Under build.ps1 -Tests (MODKIT_BUILD_TESTS=ON) every *_check program is built and run by ctest; otherwise they stay out of `all` (#1949).
 if(MODKIT_BUILD_TESTS)
 	enable_testing()
