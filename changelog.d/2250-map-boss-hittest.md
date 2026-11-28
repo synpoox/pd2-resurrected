@@ -1,1 +1,1 @@
-- Rotting Horror and Nakrul can now be targeted and show their nameplates (#2250).
+- Rotting Horror, Nakrul, Iskatu, the Warlord of Blood and the Writhing Deceiver can be targeted again (#2250).
