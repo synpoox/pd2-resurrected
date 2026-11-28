@@ -11917,6 +11917,23 @@
     "zhCN": "Tier: 3\nImmunities: ÿc9L120ÿc0, ÿc2P120ÿc0"
   },
   {
+    "id": 51596,
+    "Key": "MapTierm08",
+    "enUS": "Tier: 2\nImmunities: ÿc9L120ÿc0",
+    "zhTW": "Tier: 2\nImmunities: ÿc9L120ÿc0",
+    "deDE": "Tier: 2\nImmunities: ÿc9L120ÿc0",
+    "esES": "Tier: 2\nImmunities: ÿc9L120ÿc0",
+    "frFR": "Tier: 2\nImmunities: ÿc9L120ÿc0",
+    "itIT": "Tier: 2\nImmunities: ÿc9L120ÿc0",
+    "koKR": "Tier: 2\nImmunities: ÿc9L120ÿc0",
+    "plPL": "Tier: 2\nImmunities: ÿc9L120ÿc0",
+    "esMX": "Tier: 2\nImmunities: ÿc9L120ÿc0",
+    "jaJP": "Tier: 2\nImmunities: ÿc9L120ÿc0",
+    "ptBR": "Tier: 2\nImmunities: ÿc9L120ÿc0",
+    "ruRU": "Tier: 2\nImmunities: ÿc9L120ÿc0",
+    "zhCN": "Tier: 2\nImmunities: ÿc9L120ÿc0"
+  },
+  {
     "id": 51569,
     "Key": "MapTierm09",
     "enUS": "Tier: 3\nImmunities: ÿc2P120ÿc0",
