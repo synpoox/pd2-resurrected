@@ -16,10 +16,11 @@ inline auto RowName(const std::string& plugin, const std::string& key) -> std::s
 	return plugin + "/" + key;
 }
 
-// The panel a row's widgets live in: Pyre's in Esc > Loot Filter (lootfilteroptionspanelhd.json, #2240), the rest in
-// Options > Gameplay.
+// The panel a row's widgets live in: Pyre's in the host's own panel, opened from Esc > Loot Filter
+// (aa-settings-host/lootfilterhd.json, #2243), the rest in Options > Gameplay.
 inline constexpr char OptionsPanel[] = "GameplayOptionsPanel";
-inline constexpr char LootFilterPanel[] = "LootFilterOptionsPanel";
+inline constexpr char LootFilterPanelId[] = "LootFilter";
+inline constexpr char LootFilterPanel[] = "aa-settings-host/LootFilter";
 inline auto PanelOf(const std::string& row) -> const char* {
 	return row.starts_with("pyre-lootfilter/") ? LootFilterPanel : OptionsPanel;
 }

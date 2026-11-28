@@ -11,8 +11,9 @@
 // dropdowns off. Sliders and status rows need runtime text: refused (Unavailable), they stay toml-only.
 // A click applies at once (the Options panel's own Apply button does not cover plugin rows).
 //
-// Pyre's rows sit in Esc > Loot Filter (LootFilterOptionsPanel, #2240), under "PyreRows". This plugin hides them while
-// Pyre has no rows; while it has, it shows them, hides D2R's LootFilterProfilePanel (its .fltr picker and editor) and clears D2R's active filter
+// Pyre's rows sit in this plugin's own panel (aa-settings-host/lootfilterhd.json, #2240, #2243). While Pyre has rows,
+// Esc > Loot Filter opens that panel instead of D2R's screen. D2R shows a panel's widgets on open, "visible": false
+// too, so rows kept inside D2R's own panel would show when no host runs. This plugin also clears D2R's active filter
 // name, which D2R sets from lootfilter.json when a character joins: the native filter goes by that name only, and
 // Pyre stops while it is set. lootfilter.json is not touched, so without Pyre D2R's own pick comes back.
 #include <D2RLPlugin/api.h>
@@ -168,6 +169,8 @@ struct Row {
 
 const D2RL::PluginContext* g_context = nullptr;
 const D2RL::WidgetService* g_widgets = nullptr;
+const D2RL::PanelService* g_panels = nullptr;
+D2RL::Panels::RegistrationHandle g_lootPanel {};  // Pyre's screen; registered only with g_yield
 std::atomic<const D2RL::PluginCommunicationService*> g_comms {nullptr};  // until "ready" is published
 std::mutex g_lock;
 std::deque<Row> g_rows;  // handle = index + 1; a deque keeps the rows in place as more are added
@@ -176,6 +179,10 @@ std::atomic<bool> g_dirty[std::size(Panels)] {true, true};
 std::atomic<int> g_pyreRows {0};    // Pyre's live rows: while any, Pyre owns Esc > Loot Filter
 std::atomic<bool> g_soon {false};   // the loot filter screen opens: sync on the next frame
 bool g_panelSeen[std::size(Panels)] {};  // UI thread only
+
+auto PyreOwns() noexcept -> bool {
+	return g_yield && g_pyreRows > 0;
+}
 
 void Dirty() noexcept {
 	for (auto& dirty : g_dirty) {
@@ -427,8 +434,7 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 		plog::Info("published \"ready\" for the companions that loaded first (result %u)", static_cast<unsigned>(result));
 	}
 	// Every frame, so the native filter set on a character's join never gets to run.
-	const bool pyre = g_yield && g_pyreRows > 0;
-	if (pyre) {
+	if (PyreOwns()) {
 		auto* config = reinterpret_cast<uint8_t* (*)() noexcept>(LootConfig.address)();
 		if (config != nullptr && *reinterpret_cast<size_t*>(config + ActiveNameSize) != 0) {
 			reinterpret_cast<void (*)(void*) noexcept>(LootClear.address)(config);
@@ -442,14 +448,6 @@ void OnFrame(const D2RL::PluginContext*, const D2RL::Overlay::Frame*, void*) noe
 		if (g_widgets->findPanel(g_context, Panels[p], &panel) != D2RL::Widgets::Result::Success) {
 			g_panelSeen[p] = false;
 			continue;
-		}
-		if (Panels[p] == settings_rows::LootFilterPanel) {
-			Show(panel, "PyreRows", pyre);  // D2R shows a panel's widgets on open, the layout's "visible": false too
-			D2RL::Widgets::WidgetHandle native {};
-			if (pyre && g_widgets->findPanel(g_context, "LootFilterProfilePanel", &native) == D2RL::Widgets::Result::Success) {
-				g_widgets->setWidgetVisible(g_context, native, false);
-				g_widgets->setWidgetEnabled(g_context, native, false);
-			}
 		}
 		// shortcut: a panel D2R keeps loaded after it closes reads as still open, so the owners refresh on the
 		// first open only (their clicks here keep the rows right); a chat or toml change shows after a restart.
@@ -543,8 +541,11 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 		return D2RL::SharedEvents::UiMessageAction::Continue;
 	}
 	if (std::strcmp(event->target, "PausePanelMessage") == 0 && std::strcmp(event->command, "OpenLootFilter") == 0) {
-		g_soon = true;  // D2R opens it after us: hide its own screen on the next frame, not up to WatchFrames later
-		return D2RL::SharedEvents::UiMessageAction::Continue;
+		if (!PyreOwns() || g_panels->openPanel(g_context, g_lootPanel) != D2RL::Panels::Result::Success) {
+			return D2RL::SharedEvents::UiMessageAction::Continue;  // D2R's own screen
+		}
+		g_soon = true;  // sync the rows on the next frame, not up to WatchFrames later
+		return D2RL::SharedEvents::UiMessageAction::Consume;
 	}
 	if (std::strcmp(event->target, "PanelManager") != 0 || std::strcmp(event->command, "OpenPanel") != 0) {
 		return D2RL::SharedEvents::UiMessageAction::Continue;
@@ -552,7 +553,9 @@ auto OnUiMessage(const D2RL::PluginContext*, const D2RL::SharedEvents::UiMessage
 	if (event->text == nullptr) {
 		return OnPick();
 	}
-	if (std::strncmp(event->text, settings_rows::ClickPrefix, PrefixSize) != 0) {
+	// D2RCore opens our panel with this same message: let it through
+	if (std::strncmp(event->text, settings_rows::ClickPrefix, PrefixSize) != 0 ||
+	    std::strcmp(event->text, settings_rows::LootFilterPanel) == 0) {
 		return D2RL::SharedEvents::UiMessageAction::Continue;
 	}
 	const char* clicked = event->text + PrefixSize;  // a toggle row
@@ -615,6 +618,14 @@ void InstallHost(const D2RL::PluginContext* context, char* report, size_t size) 
 			plog::Info("signature %s %s: D2R's own loot filter screen stays, Pyre's rows are off", e->name,
 			           sigscan::StateText(e->state));
 		}
+	}
+	const D2RL::Panels::PanelRegistration lootPanel {.structSize = D2RL::Panels::PanelRegistrationSize,
+	                                                 .flags = D2RL::Panels::PanelFlags::CloseOnEscape,
+	                                                 .localId = settings_rows::LootFilterPanelId};
+	if (g_yield && !(Query(g_panels, D2RL::HasPanelServiceField, D2RL::PanelServiceRequiredSize) &&
+	                 g_panels->registerPanel(context, &lootPanel, &g_lootPanel) == D2RL::Panels::Result::Success)) {
+		g_yield = false;
+		plog::Info("no loot filter panel: D2R's own loot filter screen stays, Pyre's rows are off");
 	}
 	const D2RL::SharedEvents::UiMessageListener listener {.structSize = D2RL::SharedEvents::UiMessageListenerSize,
 	                                                      .callback = OnUiMessage};
