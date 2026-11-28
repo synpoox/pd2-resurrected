@@ -1,0 +1,1 @@
+- Make Sorceress Hydra fireballs pass through monsters, exploding on each hit, as in PD2 (#2228).
