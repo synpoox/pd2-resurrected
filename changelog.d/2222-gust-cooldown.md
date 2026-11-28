@@ -1,0 +1,1 @@
+- Twister and Tornado now shorten Gust's running cooldown on each cast.

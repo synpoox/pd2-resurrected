@@ -1,0 +1,1 @@
+- Fixed Holy Bolt, Fist of the Heavens and Holy Nova healing allies by the wrong amount (#2227).

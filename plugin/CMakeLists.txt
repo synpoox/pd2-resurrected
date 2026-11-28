@@ -54,6 +54,7 @@ modkit_add_plugin(core-rules VERSION "${CORE_RULES_VERSION}" SOURCES
 	core-rules/missile/bounce.cpp
 	core-rules/missile/client_hits.cpp
 	core-rules/missile/fragments.cpp
+	core-rules/missile/holy_bolt.cpp
 	core-rules/missile/hit_effects.cpp
 	core-rules/missile/potions.cpp
 	core-rules/missile/return_missiles.cpp
@@ -301,6 +302,22 @@ add_executable(menu_text_check EXCLUDE_FROM_ALL tests/menu_text_check.cpp)
 target_include_directories(menu_text_check PRIVATE common)
 target_compile_features(menu_text_check PRIVATE cxx_std_20)
 core_options(menu_text_check)
+
+add_executable(taunt_check EXCLUDE_FROM_ALL tests/taunt_check.cpp)
+target_include_directories(taunt_check PRIVATE "${D2R_TOOLKIT_DIR}/plugin-template/src")
+target_link_libraries(taunt_check PRIVATE core_common)
+core_options(taunt_check)
+
+add_executable(power_strike_check EXCLUDE_FROM_ALL tests/power_strike_check.cpp)
+target_include_directories(power_strike_check PRIVATE "${D2R_TOOLKIT_DIR}/plugin-template/src")
+target_link_libraries(power_strike_check PRIVATE core_common)
+core_options(power_strike_check)
+
+# PD2's thorns handler and item dispatch, with host engine probes (#2226).
+add_executable(thorns_check EXCLUDE_FROM_ALL tests/thorns_check.cpp)
+target_include_directories(thorns_check PRIVATE core-rules/skill "${D2R_TOOLKIT_DIR}/plugin-template/src")
+target_link_libraries(thorns_check PRIVATE core_common)
+core_options(thorns_check)
 
 # Treasure Fallen's stationary recovery and Blink direction (#2218).
 add_executable(treasure_fallen_check EXCLUDE_FROM_ALL tests/treasure_fallen_check.cpp)

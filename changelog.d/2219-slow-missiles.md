@@ -1,0 +1,1 @@
+- Make Slow Missiles skip prime evils, as in PD2 (#2219).
