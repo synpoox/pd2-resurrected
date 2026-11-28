@@ -1,0 +1,1 @@
+- Invader Barbarians and Paladins no longer T-pose while whirlwinding or charging (#2284).
