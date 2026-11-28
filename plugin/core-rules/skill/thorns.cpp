@@ -2,6 +2,9 @@
 // Item nodes run through D2RCore's private event table, reached from D2R's unit-stat event function 0x44d570.
 // No SDK service exposes these nodes: hook 0x44d570's entry (signature) and leave D2RCore's dispatch slot
 // (thunk 0x5881e0) alone, as Cast Triggers requires it (#385). The aura slot write uses MutationService.
+// Event 0 (hitbymissile) skips 0x44d570: the missile hit 0x4639a0 calls the thunk directly with no damage block,
+// so its two calls are redirected to the same wrapper.
+#include "../item_rules.h"
 #include "pd2_engine.h"
 #include "log.h"
 #include "registry.h"
@@ -10,6 +13,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <iterator>
+#include <string>
 #include <vector>
 
 namespace itemrules {
@@ -39,6 +43,10 @@ sigscan::Entry PetOwner {"ThornsPetOwner", "thorns", sigscan::Kind::Code, 0, 0,
 	"40 53 48 83 ec 20 48 8b d9 e8 ?? ?? ?? ?? 83 f8 01 0f 85 ?? ?? ?? ?? 48 85 db"};
 using DispatchFn = int32_t (*)(Game*, int32_t, Unit*, Unit*, void*) noexcept;
 DispatchFn g_dispatch = nullptr;
+DispatchFn g_missileDispatch = nullptr;  // D2RCore's thunk, called by the missile hit for event 0
+// The missile hit's two event-0 calls (93847: 0x463ca0, 0x463dc3), each unique in the image
+constexpr const char* MissileHitTail = "48 8d 44 24 68 48 c7 44 24 68 01 00 00 00 0f 57 c0 48 89 44 24 28 0f 57 c9 "
+	"48 89 7c 24 20 4d 8b ce 4d 8b c7 33 d2 49 8b cc f3 0f 7f 44 24 70 f3 0f 7f 4d 80 e8";
 
 auto Stat(Unit* unit, int32_t stat, int32_t layer = 0) noexcept -> int32_t {
 	return d2r::Engine<int32_t (*)(Unit*, int32_t, int32_t) noexcept>(d2r::sig::UnitStat)(unit, stat, layer);
@@ -52,15 +60,12 @@ auto PlayerOwned(Unit* target) noexcept -> bool {
 	return target != nullptr && At<int32_t>(target, UnitType) == 0;
 }
 
-auto Thorns(Game* game, int32_t, Unit* unit, Unit* attacker, void* incoming, int32_t packed, int32_t) noexcept -> int32_t {
+auto Thorns(Game* game, int32_t, Unit* unit, Unit* attacker, void*, int32_t packed, int32_t) noexcept -> int32_t {
 	if (game == nullptr || unit == nullptr || attacker == nullptr) {
 		return 0;
 	}
 	int32_t rate = 0;
 	if (At<int32_t>(attacker, UnitType) == 3) {
-		if (incoming == nullptr) {
-			return 0;
-		}
 		const auto* missile = d2r::Engine<const uint8_t* (*)(uint32_t, int32_t) noexcept>(d2r::sig::MissileRecord)(
 			d2r::DataFlag(game), At<int32_t>(attacker, UnitClassId));
 		rate = missile != nullptr ? At<int32_t>(missile, MissileDamageRate) : 0;
@@ -104,9 +109,9 @@ auto Thorns(Game* game, int32_t, Unit* unit, Unit* attacker, void* incoming, int
 	return 1;
 }
 
-auto Dispatch(Game* game, int32_t event, Unit* unit, Unit* target, void* damage) noexcept -> int32_t {
+auto Wrap(DispatchFn original, Game* game, int32_t event, Unit* unit, Unit* target, void* damage) noexcept -> int32_t {
 	if (game == nullptr || unit == nullptr || target == nullptr || (event != 0 && event != 3)) {
-		return g_dispatch(game, event, unit, target, damage);
+		return original(game, event, unit, target, damage);
 	}
 	struct Node { uint8_t* address; int32_t stat; };
 	std::vector<Node> nodes;
@@ -119,7 +124,7 @@ auto Dispatch(Game* game, int32_t event, Unit* unit, Unit* target, void* damage)
 	for (const auto& node : nodes) {
 		*reinterpret_cast<uint16_t*>(node.address + EventNodeEvent) = 0xffff;
 	}
-	const int32_t result = g_dispatch(game, event, unit, target, damage);
+	const int32_t result = original(game, event, unit, target, damage);
 	for (const auto& node : nodes) {
 		*reinterpret_cast<uint16_t*>(node.address + EventNodeEvent) = static_cast<uint16_t>(event);
 	}
@@ -133,6 +138,14 @@ auto Dispatch(Game* game, int32_t event, Unit* unit, Unit* target, void* damage)
 		Thorns(game, event, unit, target, damage, Lightning << 16, 0);
 	}
 	return result;
+}
+
+auto Dispatch(Game* game, int32_t event, Unit* unit, Unit* target, void* damage) noexcept -> int32_t {
+	return Wrap(g_dispatch, game, event, unit, target, damage);
+}
+
+auto MissileDispatch(Game* game, int32_t event, Unit* unit, Unit* target, void* damage) noexcept -> int32_t {
+	return Wrap(g_missileDispatch, game, event, unit, target, damage);
 }
 }  // namespace
 
@@ -152,6 +165,12 @@ auto InstallThorns(const D2RL::PluginContext* context, char* report, size_t repo
 		on = old != 0 && context->PatchWriteU64(slot, &old, sizeof(old), reinterpret_cast<uint64_t>(&Thorns)) &&
 			 sigscan::HookBySignature(context, "ThornsUnitEvent", EventPattern, 0, EventEntry, sizeof(EventEntry),
 									  &Dispatch, &g_dispatch);
+		// Both call sites share one original (the thunk); a later failure leaves the first redirected, which is safe
+		auto* missileOriginal = reinterpret_cast<uint64_t*>(&g_missileDispatch);
+		const std::string first = std::string("85 c0 0f 85 ?? ?? ?? ?? ") + MissileHitTail;
+		const std::string second = std::string("33 ff ") + MissileHitTail;
+		on = on && RedirectCall(context, first.c_str(), 60, reinterpret_cast<uint64_t>(&MissileDispatch), missileOriginal) &&
+			 RedirectCall(context, second.c_str(), 54, reinterpret_cast<uint64_t>(&MissileDispatch), missileOriginal);
 	}
 	plog::Info("thorns: PD2 event 6 %s", on ? "on" : "FAILED");
 	const size_t used = std::strlen(report);

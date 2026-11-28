@@ -42,6 +42,8 @@ int32_t OriginalDispatch(Game*, int32_t event, Unit* unit, Unit*, void*) noexcep
     return 42;
 }
 }
+auto RedirectCall(const D2RL::PluginContext*, const char*, uint32_t, uint64_t, uint64_t*) noexcept -> bool { return false; }
+
 namespace itemrules {
 auto OpenWounds(Game*, Unit*, Unit*, uint32_t stat) noexcept -> void {
     Check(stat == Wounds, "open wounds uses stat 135");
@@ -87,7 +89,7 @@ int main() {
     Check(run(Lightning, AsUnit(missile), aura) == 1 && lightning == 256, "positive missile reflection has a one-point minimum");
     Put(missileRow.data(), MissileDamageRate, int32_t{0});
     Check(run(Lightning, AsUnit(missile), aura) == 1 && lightning == 51200, "zero DamageRate keeps full reflection as in PD2");
-    Check(run(Physical, AsUnit(missile)) == 0, "missile without a damage block is ignored");
+    Check(run(Physical, AsUnit(missile)) == 1 && physical == 25600, "missile hit (event 0, no damage block) reflects");
     owner = nullptr;
     Check(run(Physical, AsUnit(missile), aura) == 0, "missing missile owner is ignored");
     Put(target, UnitMainFlags, uint32_t{0});
@@ -110,9 +112,16 @@ int main() {
     Put(thorns2.data(), EventNodeEvent, uint16_t{3});
     Put(thorns2.data(), EventNodeStat, int32_t{Lightning});
     g_dispatch = OriginalDispatch;
+    g_missileDispatch = OriginalDispatch;
     const int before = hits;
     Check(Dispatch(game, 3, unit, target, aura) == 42 && hits == before + 1 &&
         At<uint16_t>(thorns.data(), EventNodeEvent) == 3 && At<uint16_t>(thorns2.data(), EventNodeEvent) == 3,
         "dispatch handles thorns exactly once and restores the nodes");
+    for (auto* node : {thorns.data(), other.data(), thorns2.data()}) {
+        Put(node, EventNodeEvent, uint16_t{0});
+    }
+    const int missileBefore = hits;
+    Check(MissileDispatch(game, 0, unit, target, nullptr) == 42 && hits == missileBefore + 1 &&
+        At<uint16_t>(thorns.data(), EventNodeEvent) == 0, "missile-hit dispatch handles thorns once with no damage block");
     return 0;
 }
