@@ -17,6 +17,16 @@ Log lines go to the plugin's log (`core-maps.log` for core-events, whose plugin 
 counters (skill functions, items, merc, cube, cube stacks, stash stacks, item prices, almanac, shrines, loot, sockets)
 to the console and the log. No arguments, no precondition. Example: `core-rules`.
 
+`core-rules installs` : the skills part's install results (#2286), kept from startup for the session. First the
+summary (`<installed>/<expected> installed (<n> slots, <n> rules); <n> partial, <n> failed`), then one line per
+PD2R_SLOT, PD2R_RULE and PD2R_RULE_N install in install order: `ok|PARTIAL|FAILED slot|rule <name> <installed>/<expected>:
+<what it reported or why it failed>`; a diagnostic over 1023 characters ends `[diagnostic cut]`. Every line also goes
+to the log as `installs ...`: the only per-install success lines (startup logs just the summary, a WARN per partial
+and an ERROR per failed install). No precondition. Example: `core-rules installs`.
+
+`core-rules installs failed` : the same summary, then only the PARTIAL and FAILED lines (`no failed or partial
+installs` when there are none). Example: `core-rules installs failed`.
+
 `core-rules armageddon` : dev test aid (#1843): swaps the first Phase Blade (`7cr`) in the local player's inventory for
 the Armageddon Blade, the unique the imbue makes on a hit (base `7cr2`, the one uniqueitems row on it, item level 87),
 through one SDK item transaction on the game thread, with no roll. Single player / host only. Precondition: in a game,
