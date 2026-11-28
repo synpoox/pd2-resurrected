@@ -180,4 +180,4 @@ auto InstallThorns(const D2RL::PluginContext* context, char* report, size_t repo
 	return on;
 }
 
-PD2R_RULE(InstallThorns, 390)
+PD2R_RULE(InstallThorns, 440)
