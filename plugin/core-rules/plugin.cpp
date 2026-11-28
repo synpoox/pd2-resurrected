@@ -65,7 +65,7 @@ constexpr D2RL::PluginInfo Info {
 };
 
 void InstallSkills(const D2RL::PluginContext* context, char* report, size_t size) noexcept {
-	char slots[parts::ReportSize] = "";  // the skills line outgrew 2600 (#2228)
+	char slots[2600] = "";
 	const int installed = InstallSkillFunctions(context, slots, sizeof(slots));
 	std::snprintf(report, size, "%d/%d installed:%s", installed, SkillFunctionCount(), slots);
 }

@@ -37,6 +37,7 @@ auto InstallHydraFireball(const D2RL::PluginContext* context, char* report, size
 	g_stock = reinterpret_cast<MissileSrvHitFn>(stock);  // set before the slot points at SrvHitExplode
 	const bool ok = stock != 0 && d2r::sig::MissileRecord.state == sigscan::State::Ok &&
 	                context->PatchWriteU64(slot, &stock, sizeof(stock), reinterpret_cast<uint64_t>(&SrvHitExplode));
+	plog::Info("hydra fireball pierce%s", ok ? "" : " FAILED");  // own line: the skills report is full (#2286)
 	const size_t used = std::strlen(report);
 	if (used < reportSize) {
 		std::snprintf(report + used, reportSize - used, "; hydra fireball pierce%s", ok ? "" : " FAILED");
