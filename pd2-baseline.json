@@ -28,6 +28,11 @@
       "data/global/monsters/$4/*",
       "data/global/monsters/$7/*",
       "data/global/monsters/$8/*",
+      "data/global/monsters/!3/*",
+      "data/global/monsters/!8/*",
+      "data/global/monsters/0n/*",
+      "data/global/monsters/j6/*",
+      "data/global/monsters/vi/*",
       "data/global/sfx/*.wav"
     ]
   }

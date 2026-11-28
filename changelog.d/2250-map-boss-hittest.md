@@ -1,0 +1,1 @@
+- Rotting Horror, Nakrul, Iskatu, the Warlord of Blood and the Writhing Deceiver can be targeted again (#2250).
