@@ -1,0 +1,1 @@
+- Esc > Loot Filter shows D2R's own screen, with no dead Pyre rows, when the settings host is off (#2243).

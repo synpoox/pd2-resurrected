@@ -1,14 +1,11 @@
 {
-    "type": "LootFilterOptionsPanel", "name": "LootFilterOptionsPanel",
+    "type": "Panel", "name": "aa-settings-host/LootFilter",
     "fields": {
         "priority": 9003,
         "rect": "$LootFilterOptionsPanelRect",
-        "anchor": { "x": 0.5 },
+        "anchor": { "x": 0.5 }
     },
     "children": [
-        // This click catcher is the same size as the panel - this is needed for PC Handheld
-        // Because when we're using controllers we hide the 'background' rect defined below.
-        // We also don't want this one to block the entire screen, because  then it would cover the controller overlay.
         {
             "type": "ClickCatcherWidget", "name": "catcher",
             "fields": {
@@ -22,8 +19,6 @@
                 "color": [ 0.0, 0.0, 0.0, 0.7 ]
             },
             "children": [
-                // This click catcher covers the full screen and is only used for MKB. 
-                // This prevents us from interacting with game UI like the HUD widget at the bottom of the screen.
                 {
                     "type": "ClickCatcherWidget", "name": "catcher",
                     "fields": {
@@ -34,22 +29,22 @@
                     "type": "Widget", "name": "Anchor",
                     "fields": {
                         "anchor": { "x": 0.5, "y": 0.5 },
-                        "rect": "$SettingsPanelAnchorRect",
+                        "rect": "$SettingsPanelAnchorRect"
                     },
                     "children": [
                         {
                             "type": "ImageWidget", "name": "Background",
                             "fields": {
-                                "filename": "\\PANEL\\Options\\FrontEndOptionsBG",
-                            },
+                                "filename": "\\PANEL\\Options\\FrontEndOptionsBG"
+                            }
                         },
                         {
                             "type": "TextBoxWidget", "name": "Title",
                             "fields": {
                                 "rect": { "x": 0, "y": 45, "width": 1950, "height": 103 },
                                 "text": "@LootFilter",
-                                "style": "$StyleTitleBlock",
-                            },
+                                "style": "$StyleTitleBlock"
+                            }
                         },
                         {
                             "type": "ButtonWidget", "name": "CloseButton",
@@ -57,21 +52,20 @@
                                 "rect": { "x": 1868, "y": 8 },
                                 "filename": "PANEL\\closebtn_4x",
                                 "hoveredFrame": 3,
-                                "onClickMessage": "LootFilterOptionsPanelMessage:Close",
+                                "onClickMessage": "PanelManager:TogglePanel:aa-settings-host/LootFilter",
                                 "tooltipString": "@strClose",
                                 "sound": "cursor_close_window_hd",
-                                "acceptsEscKeyEverywhere": true,
-                            },
-                        },
+                                "acceptsEscKeyEverywhere": true
+                            }
+                        }
                     ]
-                },
+                }
             ]
         },
 		{
             "type": "ImageWidget", "name": "LootFilterBackground",
             "fields": {
                 "rect": {"x": -30, "y": -10},
-                //"anchor": { "x": 0.5 },
                 "filename": "Controller/Panel/Options/Panel_Options_BG"
             },
             "children": [
@@ -83,11 +77,9 @@
                 }
             ]
         },
-        // PD2R #2240: Pyre Loot Filter's rows (aa-settings-host shows them and hides LootFilterProfilePanel while
-        // Pyre is loaded; without it D2R's own screen shows as before)
         {
             "type": "Widget", "name": "PyreRows",
-            "fields": { "rect": { "x": 0, "y": 40 }, "visible": false },
+            "fields": { "rect": { "x": 0, "y": 40 } },
             "children": [
                 {
                     "type": "TableWidget", "name": "PyreTable",
@@ -456,6 +448,6 @@
                     ]
                 }
             ]
-        },
+        }
 	]
 }
