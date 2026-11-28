@@ -1,0 +1,1 @@
+- Decoy's Strafe draws the bow again before its second arrow, and its plain attack plays normally.
