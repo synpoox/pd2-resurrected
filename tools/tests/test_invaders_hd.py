@@ -75,6 +75,20 @@ class InvaderHdTests(unittest.TestCase):
                     if st["modeId"] in gen.MODES:
                         self.assertTrue(st["animationBindings"], st["name"])
 
+    def test_sequence_skills_have_a_body_clip(self):
+        # #2284: an SQ skill with no state draws the body in its bind pose
+        for cls, skills in gen.SEQ.items():
+            sm = json.loads((HD / f"enemy/invader{cls}/invader{cls}_state_machine.json").read_text("utf-8"))
+            names = {a["name"] for a in sm["animations"]}
+            for skill in skills:
+                with self.subTest(cls=cls, skill=skill):
+                    sts = [s for s in sm["states"] if s["modeId"] == 14 and s["skillIndex"] == skill]
+                    self.assertTrue(sts)
+                    for s in sts:
+                        self.assertTrue(s["animationBindings"]["hth"])
+                        self.assertLessEqual(set(s["animationBindings"]["hth"]), names)
+                        self.assertTrue(any(g["from"] == s["stateId"] for g in sm["transitions"]))
+
 
 if __name__ == "__main__":
     unittest.main()

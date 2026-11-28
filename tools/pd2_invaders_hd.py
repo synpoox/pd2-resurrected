@@ -29,6 +29,10 @@ CLASSES = {
 # barbarian no Skill2 clip, so a skill falls back to an attack)
 MODES = {0: [0], 1: [1], 2: [2], 3: [4], 4: [7, 8], 5: [8, 7], 6: [9, 1], 7: [10], 8: [13, 7, 8], 9: [14, 7, 8], 10: [15, 7, 8], 11: [16, 7, 8],
          12: [17], 13: [19], 14: [7, 8], 15: [3]}
+# monstats skill on a sequence (monster mode 14, SQ) -> the player skill whose sequence states it plays. D2R keys an SQ
+# body clip by skill id; with no state the body draws in its bind pose (T-pose, #2284).
+SEQ = {"barbarian": {151: 151},  # Whirlwind, seq_barbarianwhirlwind
+       "paladin": {486: 107}}    # MonCharge <- Charge (both steps), seq_paladincharge
 # player mode -> monster mode, for an item's own state machine (a bow draws its string by mode)
 PLAYER_TO_MONSTER = {p: m for m, ps in MODES.items() for p in ps[:1] if m != 14}
 # monstats2 list -> (part, the bone the attachment hangs on)
@@ -157,6 +161,23 @@ def build(b, cls, basew, row, items):
             used.update({x: have[x] for x in c})
         else:
             st["animationBindings"] = {}  # Dopplezon's run turns and starts: not a monster mode
+    for mon_skill, pl_skill in SEQ.get(cls, {}).items():
+        srcs = [s for s in pl["states"] if s["modeId"] == 18 and s["skillIndex"] == pl_skill]
+        if not srcs:
+            raise ValueError(f"{key}: no player sequence state for skill {pl_skill}")
+        for src in srcs:
+            sid = max(s["stateId"] for s in sm["states"]) + 1
+            c = next(src["animationBindings"][k] for k in (basew, "hth") if src["animationBindings"].get(k))
+            st = copy.deepcopy(src)
+            st.update(stateId=sid, modeId=14, skillIndex=mon_skill, animationBindings={"hth": c, basew: c})
+            used.update({x: have[x] for x in c})
+            others = [s["stateId"] for s in sm["states"]]
+            for g in sm["transitions"]:
+                g["settings"].append({"type": "AnimationTransitionItem", "name": f"to_seq{sid}", "crossfadeSeconds": 0.2, "to": sid})
+            sm["transitions"].append({"type": "AnimationTransitionGroup", "name": f"seq{sid}_transitions", "from": sid,
+                                      "settings": [{"type": "AnimationTransitionItem", "name": f"seq{sid}_to_{o}",
+                                                    "crossfadeSeconds": 0.2, "to": o} for o in others + [sid]]})
+            sm["states"].append(st)
     sm["animations"] = [{"type": "AnimationItem", "name": k, "filename": v} for k, v in sorted(used.items())]
     sm["dependencies"] = {k: ([{"path": v} for v in sorted(used.values())] if k == "animations" else [])
                           for k in sm["dependencies"]}
