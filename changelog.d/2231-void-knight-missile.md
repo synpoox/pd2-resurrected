@@ -1,0 +1,1 @@
+- Void knights fire their own element's missile, as in PD2 (#2231).
