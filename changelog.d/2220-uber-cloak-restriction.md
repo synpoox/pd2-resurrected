@@ -1,0 +1,1 @@
+- Block Cloak of Shadows in the Dclone, Rathma, and Lucion encounters. (#2220)
