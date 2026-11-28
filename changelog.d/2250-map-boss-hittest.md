@@ -1,0 +1,1 @@
+- Rotting Horror and Nakrul can now be targeted and show their nameplates (#2250).
