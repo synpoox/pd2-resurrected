@@ -308,6 +308,11 @@ target_include_directories(taunt_check PRIVATE "${D2R_TOOLKIT_DIR}/plugin-templa
 target_link_libraries(taunt_check PRIVATE core_common)
 core_options(taunt_check)
 
+add_executable(power_strike_check EXCLUDE_FROM_ALL tests/power_strike_check.cpp)
+target_include_directories(power_strike_check PRIVATE "${D2R_TOOLKIT_DIR}/plugin-template/src")
+target_link_libraries(power_strike_check PRIVATE core_common)
+core_options(power_strike_check)
+
 # Under build.ps1 -Tests (MODKIT_BUILD_TESTS=ON) every *_check program is built and run by ctest; otherwise they stay out of `all` (#1949).
 if(MODKIT_BUILD_TESTS)
 	enable_testing()
