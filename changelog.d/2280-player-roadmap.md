@@ -1,0 +1,1 @@
+- Added a visual roadmap and simplified player guides in the README. (#2280)
